@@ -443,7 +443,7 @@ def _build_function_cache_key(
     bound_args.apply_defaults()
 
     # Create hashable representation
-    key_data = {
+    key_data: Dict[str, Any] = {
         "function": f"{func.__module__}.{func.__name__}",
         "args": {},
     }

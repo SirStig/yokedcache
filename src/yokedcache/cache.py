@@ -488,18 +488,19 @@ class YokedCache:
             logger.error("fuzzywuzzy library not available for fuzzy search")
             return []
 
-        results = []
+        results: List[FuzzySearchResult] = []
 
         try:
             async with self._get_redis() as r:
                 # Get keys to search
                 if tags:
                     # Search within tagged keys
-                    search_keys = set()
+                    search_keys_set = set()
                     for tag in tags:
                         tag_key = self._build_tag_key(tag)
                         tag_keys = await r.smembers(tag_key)
-                        search_keys.update(tag_keys)
+                        search_keys_set.update(tag_keys)
+                    search_keys = list(search_keys_set)
                 else:
                     # Search all keys with our prefix
                     pattern = self._build_key("*")

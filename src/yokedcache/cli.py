@@ -455,7 +455,7 @@ async def export_config(ctx, output: Optional[str]):
     )
 
     try:
-        config_dict = {
+        config_dict: Dict[str, Any] = {
             "redis_url": cache.config.redis_url,
             "default_ttl": cache.config.default_ttl,
             "key_prefix": cache.config.key_prefix,

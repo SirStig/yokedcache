@@ -105,18 +105,20 @@ class CacheConfig:
         }
 
         for env_var, attr_name in env_mappings.items():
-            env_value = os.getenv(env_var)
-            if env_value is not None:
+            env_str = os.getenv(env_var)
+            if env_str is not None:
                 # Type conversion based on current attribute type
                 current_value = getattr(self, attr_name)
                 if isinstance(current_value, bool):
-                    env_value = env_value.lower() in ("true", "1", "yes", "on")
+                    converted_value = env_str.lower() in ("true", "1", "yes", "on")
                 elif isinstance(current_value, int):
-                    env_value = int(env_value)
+                    converted_value = int(env_str)
                 elif isinstance(current_value, float):
-                    env_value = float(env_value)
+                    converted_value = float(env_str)
+                else:
+                    converted_value = env_str
 
-                setattr(self, attr_name, env_value)
+                setattr(self, attr_name, converted_value)
 
     def _validate_config(self) -> None:
         """Validate configuration values."""
@@ -342,7 +344,7 @@ def save_config_to_file(config: CacheConfig, file_path: Union[str, Path]) -> Non
     file_path = Path(file_path)
 
     # Convert config to dictionary format suitable for YAML
-    config_dict = {
+    config_dict: Dict[str, Any] = {
         "redis_url": config.redis_url,
         "default_ttl": config.default_ttl,
         "key_prefix": config.key_prefix,

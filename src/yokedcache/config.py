@@ -109,6 +109,7 @@ class CacheConfig:
             if env_str is not None:
                 # Type conversion based on current attribute type
                 current_value = getattr(self, attr_name)
+                converted_value: Union[str, int, float, bool]
                 if isinstance(current_value, bool):
                     converted_value = env_str.lower() in ("true", "1", "yes", "on")
                 elif isinstance(current_value, int):

@@ -6,7 +6,7 @@ featuring automatic cache invalidation, fuzzy search capabilities, and intellige
 database integration.
 """
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 __author__ = "Project Yoked LLC"
 __email__ = "twogoodgamer2@gmail.com"
 __license__ = "MIT"

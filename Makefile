@@ -14,9 +14,11 @@ help:
 	@echo "format       Format code with black and isort"
 	@echo "type-check   Run mypy type checking"
 	@echo "clean        Clean build artifacts"
-	@echo "docs         Build documentation"
 	@echo "build        Build package for distribution"
+	@echo "test-build   Build and check package"
+	@echo "publish-test Publish to Test PyPI"
 	@echo "publish      Publish package to PyPI"
+	@echo "setup-remote Show commands to setup GitHub remote"
 
 # Installation
 install:
@@ -75,8 +77,20 @@ docs:
 build: clean
 	python -m build
 
-publish: build
+test-build: build
+	python -m twine check dist/*
+
+publish-test: test-build
+	python -m twine upload --repository testpypi dist/*
+
+publish: test-build
 	python -m twine upload dist/*
+
+# GitHub repository setup
+setup-remote:
+	@echo "Run this command to add your GitHub remote:"
+	@echo "git remote add origin https://github.com/sirstig/yokedcache.git"
+	@echo "git push -u origin main"
 
 # Utilities
 redis-start:

@@ -61,6 +61,8 @@ dev = [
     "httpx>=0.24.0",
     "types-PyYAML>=6.0.0",
     "types-redis>=4.0.0",
+    "fuzzywuzzy>=0.18.0",
+    "python-levenshtein>=0.12.0",
 ]
 docs = [
     "mkdocs>=1.4.0",

@@ -146,7 +146,7 @@ class YokedCache:
         self._shutdown = True
 
         if self._redis:
-            await self._redis.close()
+            await self._redis.aclose()
 
         if self._pool:
             await self._pool.disconnect()
@@ -225,7 +225,11 @@ class YokedCache:
 
                 # Update access time if requested
                 if touch:
-                    await r.touch(sanitized_key)
+                    try:
+                        await r.touch(sanitized_key)
+                    except Exception:
+                        # touch command might not be supported (e.g., in fakeredis)
+                        pass
 
                 if self.config.log_cache_hits:
                     logger.debug(f"Cache hit: {sanitized_key}")
@@ -422,12 +426,21 @@ class YokedCache:
         Returns:
             True if successful
         """
-        pattern = self._build_key("*")
-
         try:
-            deleted = await self.invalidate_pattern("*")
-            logger.warning(f"Flushed all cache keys ({deleted} keys deleted)")
-            return True
+            async with self._get_redis() as r:
+                # Get all keys with our prefix
+                pattern = self._build_key("*")
+                keys = await r.keys(pattern)
+                
+                if not keys:
+                    deleted = 0
+                else:
+                    # Delete all matching keys
+                    deleted = await r.delete(*keys)
+                    self._stats.total_invalidations += deleted
+                
+                logger.warning(f"Flushed all cache keys ({deleted} keys deleted)")
+                return True
 
         except Exception as e:
             logger.error(f"Error flushing cache: {e}")
@@ -556,7 +569,9 @@ class YokedCache:
 
     def _build_key(self, key: str) -> str:
         """Build full cache key with prefix."""
-        if key.startswith(self.config.key_prefix):
+        # Check if key already has the full prefix with separator
+        expected_prefix = f"{self.config.key_prefix}:"
+        if key.startswith(expected_prefix):
             return sanitize_key(key)
         return sanitize_key(f"{self.config.key_prefix}:{key}")
 

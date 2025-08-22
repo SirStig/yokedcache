@@ -431,14 +431,14 @@ class YokedCache:
                 # Get all keys with our prefix
                 pattern = self._build_key("*")
                 keys = await r.keys(pattern)
-                
+
                 if not keys:
                     deleted = 0
                 else:
                     # Delete all matching keys
                     deleted = await r.delete(*keys)
                     self._stats.total_invalidations += deleted
-                
+
                 logger.warning(f"Flushed all cache keys ({deleted} keys deleted)")
                 return True
 

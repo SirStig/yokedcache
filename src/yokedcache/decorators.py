@@ -48,7 +48,6 @@ def cached(
     """
     def decorator(func: F) -> F:
         # Get cache instance
-        nonlocal cache
         actual_cache = cache if cache is not None else YokedCache()
         
         # Determine if function is async

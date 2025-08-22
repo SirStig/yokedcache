@@ -1,0 +1,24 @@
+# Include additional files in the package distribution
+include README.md
+include LICENSE
+include CHANGELOG.md
+include CONTRIBUTING.md
+include requirements-*.txt
+
+# Include configuration examples
+recursive-include examples *.py *.yaml *.yml *.md
+
+# Include tests (optional, for source distributions)
+recursive-include tests *.py
+
+# Exclude development files
+exclude .pre-commit-config.yaml
+exclude Makefile
+exclude tox.ini
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * .DS_Store
+recursive-exclude * *.egg-info
+
+# Include package data
+recursive-include src/yokedcache *.py *.pyi

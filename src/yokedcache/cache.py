@@ -146,7 +146,7 @@ class YokedCache:
         self._shutdown = True
 
         if self._redis:
-            await self._redis.aclose()
+            await self._redis.close()
 
         if self._pool:
             await self._pool.disconnect()

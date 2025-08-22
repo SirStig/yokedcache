@@ -1,0 +1,35 @@
+# Development requirements for YokedCache
+# Install with: pip install -r requirements-dev.txt
+
+# Core dependencies
+redis>=4.0.0
+fastapi>=0.68.0
+pyyaml>=6.0
+click>=8.0.0
+typing-extensions>=4.0.0
+
+# Optional dependencies for development
+sqlalchemy>=1.4.0
+fuzzywuzzy>=0.18.0
+python-levenshtein>=0.12.0
+
+# Development tools
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+black>=22.0.0
+isort>=5.10.0
+flake8>=4.0.0
+mypy>=1.0.0
+pre-commit>=2.20.0
+fakeredis>=2.0.0
+httpx>=0.24.0
+
+# Documentation tools
+mkdocs>=1.4.0
+mkdocs-material>=8.0.0
+mkdocstrings[python]>=0.19.0
+
+# Build tools
+build>=0.10.0
+twine>=4.0.0

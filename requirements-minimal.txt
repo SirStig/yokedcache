@@ -1,0 +1,8 @@
+# Minimal requirements for YokedCache core functionality
+# Install with: pip install -r requirements-minimal.txt
+
+redis>=4.0.0
+fastapi>=0.68.0
+pyyaml>=6.0
+click>=8.0.0
+typing-extensions>=4.0.0

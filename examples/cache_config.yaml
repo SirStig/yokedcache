@@ -1,0 +1,125 @@
+# YokedCache Configuration Example
+# This file shows various configuration options for YokedCache
+
+# Redis connection settings
+redis_url: "redis://localhost:6379/0"
+# Alternatively, you can specify individual components:
+# redis_host: "localhost"
+# redis_port: 6379
+# redis_db: 0
+# redis_password: "your_password"  # if needed
+# redis_ssl: false
+
+# Global cache settings
+default_ttl: 300  # 5 minutes default TTL
+key_prefix: "myapp"  # Prefix for all cache keys
+enable_compression: false
+compression_threshold: 1024  # bytes
+
+# Connection pool settings
+max_connections: 50
+retry_on_timeout: true
+health_check_interval: 30
+socket_connect_timeout: 5.0
+socket_timeout: 5.0
+
+# Fuzzy search configuration
+enable_fuzzy: true
+fuzzy_threshold: 80  # 0-100 similarity threshold
+fuzzy_max_results: 10
+fuzzy_backend: "fuzzywuzzy"  # or "redis_search"
+
+# Performance settings
+batch_size: 100
+pipeline_size: 20
+enable_metrics: true
+metrics_interval: 60  # seconds
+
+# Logging configuration
+log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+log_cache_hits: false
+log_cache_misses: false
+log_invalidations: true
+
+# Table-specific cache configurations
+tables:
+  users:
+    ttl: 3600  # 1 hour for user data
+    tags:
+      - "user_data"
+      - "profiles"
+    enable_fuzzy: true
+    fuzzy_threshold: 85
+    max_entries: 10000
+    invalidation_rules:
+      - on: ["insert", "update", "delete"]
+        invalidate_tags: ["user_data"]
+        invalidate_patterns: ["user:*"]
+  
+  posts:
+    ttl: 1800  # 30 minutes for posts
+    tags:
+      - "content"
+      - "posts"
+    enable_fuzzy: true
+    invalidation_rules:
+      - on: ["insert", "update", "delete"]
+        invalidate_tags: ["content"]
+        cascade_tables: ["comments"]  # Also invalidate related tables
+  
+  sessions:
+    ttl: 900  # 15 minutes for sessions
+    tags:
+      - "sessions"
+      - "auth"
+    max_entries: 50000
+    invalidation_rules:
+      - on: ["delete"]
+        invalidate_patterns: ["session:*"]
+  
+  products:
+    ttl: 7200  # 2 hours for product data
+    tags:
+      - "products"
+      - "catalog"
+    enable_fuzzy: true
+    fuzzy_threshold: 75
+    query_ttls:
+      # Query-specific TTLs (query hash -> TTL)
+      "featured_products": 1800  # 30 minutes for featured products
+      "search_results": 600      # 10 minutes for search results
+
+# Global invalidation rules
+invalidation_rules:
+  - table: "users"
+    on: ["update"]
+    invalidate_tags: ["user_sessions"]
+    delay: 1.0  # Delay invalidation by 1 second
+  
+  - table: "products"
+    on: ["insert", "update", "delete"]
+    invalidate_patterns: ["catalog:*", "search:*"]
+    cascade_tables: ["categories", "inventory"]
+
+# Cache warming configuration
+warm:
+  # Predefined cache entries to warm on startup
+  items:
+    - key: "system:status"
+      value: {"status": "active", "version": "1.0.0"}
+      ttl: 3600
+      tags: ["system"]
+    
+    - key: "config:features"
+      value: {"feature_a": true, "feature_b": false}
+      ttl: 7200
+      tags: ["config"]
+
+# Environment-specific overrides
+# These can be overridden by environment variables:
+# YOKEDCACHE_REDIS_URL
+# YOKEDCACHE_DEFAULT_TTL
+# YOKEDCACHE_KEY_PREFIX
+# YOKEDCACHE_ENABLE_FUZZY
+# YOKEDCACHE_LOG_LEVEL
+# etc.

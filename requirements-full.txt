@@ -1,0 +1,16 @@
+# Full requirements for YokedCache with all optional features
+# Install with: pip install -r requirements-full.txt
+
+# Core dependencies
+redis>=4.0.0
+fastapi>=0.68.0
+pyyaml>=6.0
+click>=8.0.0
+typing-extensions>=4.0.0
+
+# Optional dependencies - SQLAlchemy support
+sqlalchemy>=1.4.0
+
+# Optional dependencies - Fuzzy search
+fuzzywuzzy>=0.18.0
+python-levenshtein>=0.12.0

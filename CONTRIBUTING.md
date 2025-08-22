@@ -6,7 +6,7 @@ We welcome contributions to YokedCache! This document provides guidelines for co
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.9 or higher
 - Redis server
 - Git
 
@@ -65,7 +65,7 @@ isort src tests examples
 flake8 src tests examples
 
 # Type checking
-mypy src
+mypy src --ignore-missing-imports
 ```
 
 ### Running Tests
@@ -137,7 +137,7 @@ For new features:
    pytest
    black src tests examples
    flake8 src tests examples
-   mypy src
+   mypy src --ignore-missing-imports
    ```
 
 6. **Commit your changes** with a clear commit message:

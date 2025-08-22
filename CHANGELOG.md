@@ -26,18 +26,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test suite with pytest
 - Documentation and usage examples
 - Development tooling (pre-commit, Makefile, CI/CD)
+- CLI module execution support via `python -m yokedcache`
+- Full CLI command suite: ping, stats, list, flush, search, export-config, warm
 
 ### Changed
-- N/A (initial release)
+- Improved CLI architecture with proper command registration
+- Enhanced GitHub Actions workflow for better CI/CD reliability
 
 ### Deprecated
 - N/A (initial release)
 
 ### Removed
-- N/A (initial release)
+- Codecov integration temporarily disabled due to rate limiting issues
 
 ### Fixed
-- N/A (initial release)
+- Redis connection method: changed from `aclose()` to `close()` for proper async connection handling
+- CLI command registration issue with async decorators using `functools.wraps`
+- Black code formatting compliance across all source files
+- MyPy type checking errors for Redis client methods
+- GitHub Actions integration test failures with CLI module execution
 
 ### Security
 - N/A (initial release)

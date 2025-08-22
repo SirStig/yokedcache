@@ -93,5 +93,5 @@ jobs:
         
     - name: Test CLI
       run: |
-        yokedcache ping
-        yokedcache stats --format json
+        python -m yokedcache.cli ping
+        python -m yokedcache.cli stats --format json

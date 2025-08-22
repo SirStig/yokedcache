@@ -50,9 +50,8 @@ def async_command(f):
     """Decorator to handle async commands."""
 
     @functools.wraps(f)
-    @click.pass_context
-    def wrapper(ctx, *args, **kwargs):
-        return asyncio.run(f(ctx, *args, **kwargs))
+    def wrapper(*args, **kwargs):
+        return asyncio.run(f(*args, **kwargs))
 
     return wrapper
 

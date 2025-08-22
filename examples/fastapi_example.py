@@ -5,18 +5,21 @@ This example demonstrates how to integrate YokedCache with a FastAPI
 application for automatic database query caching.
 """
 
-from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session, relationship
 from datetime import datetime
 from typing import List, Optional
+
+from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session, relationship, sessionmaker
 
 from yokedcache import YokedCache, cached_dependency
 
 # Database setup
 SQLALCHEMY_DATABASE_URL = "sqlite:///./example.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -24,24 +27,24 @@ Base = declarative_base()
 # Models
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     email = Column(String, unique=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     posts = relationship("Post", back_populates="author")
 
 
 class Post(Base):
     __tablename__ = "posts"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     content = Column(String)
     author_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     author = relationship("User", back_populates="posts")
 
 
@@ -50,8 +53,7 @@ Base.metadata.create_all(bind=engine)
 
 # Initialize YokedCache
 cache = YokedCache(
-    redis_url="redis://localhost:6379/0",
-    config_file="cache_config.yaml"  # Optional
+    redis_url="redis://localhost:6379/0", config_file="cache_config.yaml"  # Optional
 )
 
 # FastAPI app
@@ -69,16 +71,15 @@ def get_db():
 
 # Cached database dependency
 cached_get_db = cached_dependency(
-    get_db,
-    cache=cache,
-    ttl=300,  # 5 minutes
-    auto_invalidate=True
+    get_db, cache=cache, ttl=300, auto_invalidate=True  # 5 minutes
 )
 
 
 # API Routes
 @app.get("/users/", response_model=List[dict])
-async def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(cached_get_db)):
+async def get_users(
+    skip: int = 0, limit: int = 100, db: Session = Depends(cached_get_db)
+):
     """Get users with automatic caching."""
     users = db.query(User).offset(skip).limit(limit).all()
     return [{"id": u.id, "name": u.name, "email": u.email} for u in users]
@@ -90,27 +91,23 @@ async def get_user(user_id: int, db: Session = Depends(cached_get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     return {
         "id": user.id,
         "name": user.name,
         "email": user.email,
-        "created_at": user.created_at
+        "created_at": user.created_at,
     }
 
 
 @app.post("/users/", response_model=dict)
-async def create_user(
-    name: str,
-    email: str,
-    db: Session = Depends(cached_get_db)
-):
+async def create_user(name: str, email: str, db: Session = Depends(cached_get_db)):
     """Create user - will invalidate user caches automatically."""
     user = User(name=name, email=email)
     db.add(user)
     db.commit()  # This will trigger cache invalidation
     db.refresh(user)
-    
+
     return {"id": user.id, "name": user.name, "email": user.email}
 
 
@@ -119,20 +116,20 @@ async def update_user(
     user_id: int,
     name: Optional[str] = None,
     email: Optional[str] = None,
-    db: Session = Depends(cached_get_db)
+    db: Session = Depends(cached_get_db),
 ):
     """Update user - will invalidate related caches."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     if name:
         user.name = name
     if email:
         user.email = email
-    
+
     db.commit()  # This will trigger cache invalidation
-    
+
     return {"id": user.id, "name": user.name, "email": user.email}
 
 
@@ -142,15 +139,17 @@ async def delete_user(user_id: int, db: Session = Depends(cached_get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     db.delete(user)
     db.commit()  # This will trigger cache invalidation
-    
+
     return {"message": "User deleted"}
 
 
 @app.get("/posts/", response_model=List[dict])
-async def get_posts(skip: int = 0, limit: int = 100, db: Session = Depends(cached_get_db)):
+async def get_posts(
+    skip: int = 0, limit: int = 100, db: Session = Depends(cached_get_db)
+):
     """Get posts with caching."""
     posts = db.query(Post).offset(skip).limit(limit).all()
     return [
@@ -159,7 +158,7 @@ async def get_posts(skip: int = 0, limit: int = 100, db: Session = Depends(cache
             "title": p.title,
             "content": p.content,
             "author_id": p.author_id,
-            "created_at": p.created_at
+            "created_at": p.created_at,
         }
         for p in posts
     ]
@@ -170,12 +169,7 @@ async def get_user_posts(user_id: int, db: Session = Depends(cached_get_db)):
     """Get posts by user with caching."""
     posts = db.query(Post).filter(Post.author_id == user_id).all()
     return [
-        {
-            "id": p.id,
-            "title": p.title,
-            "content": p.content,
-            "created_at": p.created_at
-        }
+        {"id": p.id, "title": p.title, "content": p.content, "created_at": p.created_at}
         for p in posts
     ]
 
@@ -190,22 +184,24 @@ async def get_cache_stats():
         "misses": stats.total_misses,
         "hit_rate": stats.hit_rate,
         "total_keys": stats.total_keys,
-        "memory_usage": stats.total_memory_bytes
+        "memory_usage": stats.total_memory_bytes,
     }
 
 
 @app.post("/cache/invalidate")
-async def invalidate_cache(pattern: Optional[str] = None, tags: Optional[List[str]] = None):
+async def invalidate_cache(
+    pattern: Optional[str] = None, tags: Optional[List[str]] = None
+):
     """Manually invalidate cache."""
     deleted_count = 0
-    
+
     if pattern:
         deleted_count = await cache.invalidate_pattern(pattern)
     elif tags:
         deleted_count = await cache.invalidate_tags(tags)
     else:
         raise HTTPException(status_code=400, detail="Must provide pattern or tags")
-    
+
     return {"deleted_keys": deleted_count}
 
 
@@ -216,9 +212,8 @@ async def search_cache(query: str, threshold: int = 80):
     return {
         "query": query,
         "results": [
-            {"key": r.key, "score": r.score, "value": r.value}
-            for r in results
-        ]
+            {"key": r.key, "score": r.score, "value": r.value} for r in results
+        ],
     }
 
 
@@ -239,12 +234,8 @@ async def shutdown_event():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     # Run the application
     uvicorn.run(
-        "fastapi_example:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
+        "fastapi_example:app", host="0.0.0.0", port=8000, reload=True, log_level="info"
     )

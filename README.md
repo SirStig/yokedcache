@@ -7,9 +7,9 @@
 [![PyPI version](https://img.shields.io/pypi/v/yokedcache.svg)](https://pypi.org/project/yokedcache/)
 [![Python](https://img.shields.io/pypi/pyversions/yokedcache.svg)](https://pypi.org/project/yokedcache/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://github.com/sirstig/yokedcache/workflows/Tests/badge.svg)](https://github.com/sirstig/yokedcache/actions)
-[![Coverage](https://img.shields.io/codecov/c/github/sirstig/yokedcache)](https://codecov.io/gh/sirstig/yokedcache)
-[![Downloads](https://img.shields.io/pypi/dm/yokedcache.svg)](https://pypi.org/project/yokedcache/)
+[![Tests](https://github.com/sirstig/yokedcache/actions/workflows/test.yml/badge.svg)](https://github.com/sirstig/yokedcache/actions/workflows/test.yml)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/yokedcache)](https://pypi.org/project/yokedcache/)
 
 *Intelligent caching with automatic invalidation, fuzzy search, and seamless FastAPI integration*
 
@@ -249,8 +249,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 ## 📊 **Project Status**
 
 <div align="center">
-
-![Alt](https://repobeats.axiom.co/api/embed/your-repo-id.svg "Repobeats analytics image")
 
 [![GitHub stars](https://img.shields.io/github/stars/sirstig/yokedcache?style=social)](https://github.com/sirstig/yokedcache/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/sirstig/yokedcache?style=social)](https://github.com/sirstig/yokedcache/network/members)

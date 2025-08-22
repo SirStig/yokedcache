@@ -3,12 +3,13 @@ Pytest configuration and fixtures for YokedCache tests.
 """
 
 import asyncio
-import pytest
-import pytest_asyncio
 from unittest.mock import AsyncMock, Mock
 
 import fakeredis.aioredis
-from yokedcache import YokedCache, CacheConfig
+import pytest
+import pytest_asyncio
+
+from yokedcache import CacheConfig, YokedCache
 
 
 @pytest.fixture(scope="session")
@@ -42,13 +43,13 @@ async def test_config():
 async def cache(test_config, fake_redis):
     """Provide a YokedCache instance with fake Redis for testing."""
     cache_instance = YokedCache(config=test_config)
-    
+
     # Replace the Redis connection with fake Redis
     cache_instance._redis = fake_redis
     cache_instance._connected = True
-    
+
     yield cache_instance
-    
+
     # Cleanup
     if cache_instance._connected:
         await cache_instance.disconnect()

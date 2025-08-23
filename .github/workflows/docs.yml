@@ -31,4 +31,5 @@ jobs:
       - name: Deploy to GitHub Pages (gh-pages branch)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mkdocs gh-deploy --force --clean --message "docs: deploy ${GITHUB_SHA}"
+        run: |
+          mkdocs gh-deploy --force --clean --message "docs: deploy ${GITHUB_SHA}"

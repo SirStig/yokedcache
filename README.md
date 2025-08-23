@@ -2,12 +2,18 @@
 
 High-Performance Caching for Modern Python Applications
 
+<div align="center">
+
+[![⭐ Star YokedCache](https://img.shields.io/github/stars/sirstig/yokedcache?style=for-the-badge&logo=github&logoColor=white&color=yellow)](https://github.com/sirstig/yokedcache/stargazers)
+
 [![PyPI version](https://img.shields.io/pypi/v/yokedcache.svg)](https://pypi.org/project/yokedcache/)
 [![Python](https://img.shields.io/pypi/pyversions/yokedcache.svg)](https://pypi.org/project/yokedcache/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/sirstig/yokedcache/actions/workflows/test.yml/badge.svg)](https://github.com/sirstig/yokedcache/actions/workflows/test.yml)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/yokedcache)
+
+</div>
 
 Intelligent caching with automatic invalidation, fuzzy search, and seamless FastAPI integration.
 
@@ -377,15 +383,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
-
-- [Redis](https://redis.io/) - For the excellent caching backend
-- [FastAPI](https://fastapi.tiangolo.com/) - For the amazing Python web framework  
-- [SQLAlchemy](https://www.sqlalchemy.org/) - For database ORM integration
-- Python Community - For continuous inspiration and feedback
-
 ---
 
 **Made with care by [Project Yoked LLC](https://github.com/sirstig)**
-
-If YokedCache helps your project, please consider giving it a star on GitHub!

@@ -9,7 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Placeholder for future features
+- Star request button prominently displayed in README
+- Documentation build verification with `mkdocs build --strict`
+
+### Changed
+
+- Updated documentation dependencies to latest versions
+- Enhanced CONTRIBUTING.md with documentation build requirements
+- Updated development setup to include docs dependencies
+
+### Fixed
+
+- Fixed mkdocs navigation configuration to include all existing documentation files
+- Resolved relative link issues in documentation
+- Fixed missing file warnings in mkdocs build
+
+### Removed
+
+- Acknowledgments section from README.md (streamlined for professional appearance)
 
 ## [0.2.0] - 2024-01-15
 

@@ -48,6 +48,7 @@ Describe the tests that have been performed to verify the changes. Include instr
 - [ ] Integration tests pass
 - [ ] Manual testing performed
 - [ ] Performance testing (if applicable)
+- [ ] Documentation builds correctly (`mkdocs build --strict`)
 
 ### Test Instructions
 
@@ -71,6 +72,7 @@ Describe the tests that have been performed to verify the changes. Include instr
 - [ ] No new linting warnings introduced
 - [ ] Type hints added where appropriate
 - [ ] Error handling implemented appropriately
+- [ ] Documentation is accurate and up-to-date
 
 ## Breaking Changes
 

@@ -26,7 +26,7 @@ We welcome contributions to YokedCache! This document provides guidelines for co
 
 3. **Install development dependencies:**
    ```bash
-   pip install -e ".[dev]"
+   pip install -e ".[dev,docs]"
    ```
 
 4. **Install pre-commit hooks:**
@@ -98,6 +98,9 @@ pytest tests/test_cache.py::TestYokedCache::test_basic_get_set
 - Follow Google-style docstring format
 - Update README.md for new features
 - Add examples to the `examples/` directory
+- Update documentation in `docs/` directory as needed
+- Run `mkdocs build --strict` to verify documentation builds correctly
+- Test documentation locally with `mkdocs serve`
 
 ## Contribution Guidelines
 
@@ -138,6 +141,7 @@ For new features:
    black src tests examples
    flake8 src tests examples
    mypy src --ignore-missing-imports
+   mkdocs build --strict
    ```
 
 6. **Commit your changes** with a clear commit message:

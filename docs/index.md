@@ -76,7 +76,7 @@ Command-line tools and utilities:
 ### 📖 **Reference**
 Detailed technical documentation:
 
-- **[API Reference](api/)** - Complete API documentation
+- **[API Reference](api/index.md)** - Complete API documentation
 - **[Performance Guide](performance.md)** - Optimization and tuning
 - **[Security Guide](security.md)** - Security best practices
 - **[Troubleshooting](troubleshooting.md)** - Common issues and solutions

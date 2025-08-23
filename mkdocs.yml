@@ -49,24 +49,21 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
-  - Concepts: concepts.md
-  - Usage Guide: usage.md
-  - Auto-Invalidation: auto-invalidation.md
-  - Keys & Serialization: keys-serialization.md
-  - Fuzzy Search: fuzzy-search.md
-  - Redis Setup: redis-setup.md
+  - Core Concepts: core-concepts.md
+  - Usage Patterns: usage-patterns.md
   - Configuration: configuration.md
-  - Configuration Reference: config-reference.md
+  - Backends: backends.md
+  - Redis Setup: redis-setup.md
+  - Vector Search: vector-search.md
   - CLI: cli.md
-  - CLI Cookbook: cli-cookbook.md
   - Performance: performance.md
   - Security: security.md
+  - Monitoring: monitoring.md
+  - Testing: testing.md
   - Troubleshooting & FAQ: troubleshooting.md
-  - Examples: examples.md
   - Tutorials:
       - FastAPI: tutorials/fastapi.md
       - SQLAlchemy: tutorials/sqlalchemy.md
-  - Architecture: architecture.md
   - API Reference:
       - Overview: api/index.md
 

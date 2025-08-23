@@ -1,0 +1,72 @@
+site_name: YokedCache
+site_description: High-performance caching for modern Python applications
+site_url: https://sirstig.github.io/yokedcache
+repo_url: https://github.com/sirstig/yokedcache
+repo_name: sirstig/yokedcache
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_signature_annotations: true
+            show_source: false
+            filters: ["!^_", "!^__"]
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - tables
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Concepts: concepts.md
+  - Usage Guide: usage.md
+  - Auto-Invalidation: auto-invalidation.md
+  - Keys & Serialization: keys-serialization.md
+  - Fuzzy Search: fuzzy-search.md
+  - Redis Setup: redis-setup.md
+  - Configuration: configuration.md
+  - Configuration Reference: config-reference.md
+  - CLI: cli.md
+  - CLI Cookbook: cli-cookbook.md
+  - Performance: performance.md
+  - Security: security.md
+  - Troubleshooting & FAQ: troubleshooting.md
+  - Examples: examples.md
+  - Tutorials:
+      - FastAPI: tutorials/fastapi.md
+      - SQLAlchemy: tutorials/sqlalchemy.md
+  - Architecture: architecture.md
+  - API Reference:
+      - Overview: api/index.md
+

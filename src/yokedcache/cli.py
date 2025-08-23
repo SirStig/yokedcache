@@ -6,10 +6,12 @@ and maintenance operations.
 """
 
 import asyncio
+import csv
 import functools
 import json
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -90,16 +92,22 @@ def main(ctx, redis_url: str, config: Optional[str], verbose: bool):
 @click.option(
     "--format",
     "-f",
-    type=click.Choice(["human", "json", "yaml"]),
+    type=click.Choice(["human", "json", "yaml", "csv"]),
     default="human",
     help="Output format",
 )
 @click.option(
     "--watch", "-w", is_flag=True, help="Watch mode (refresh every 5 seconds)"
 )
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    help="Output file (for CSV/JSON/YAML formats)",
+)
 @click.pass_context
 @async_command
-async def stats(ctx, format: str, watch: bool):
+async def stats(ctx, format: str, watch: bool, output: Optional[str]):
     """Show cache statistics and performance metrics."""
     cache = get_cache_instance(
         redis_url=ctx.obj["redis_url"], config_file=ctx.obj["config_file"]
@@ -110,13 +118,13 @@ async def stats(ctx, format: str, watch: bool):
 
         if watch:
             while True:
-                await _display_stats(cache, format)
+                await _display_stats(cache, format, output)
                 if format == "human":
                     click.echo("\n" + "=" * 60)
                     click.echo("Press Ctrl+C to stop watching...")
                 time.sleep(5)
         else:
-            await _display_stats(cache, format)
+            await _display_stats(cache, format, output)
 
     except KeyboardInterrupt:
         if watch:
@@ -128,7 +136,7 @@ async def stats(ctx, format: str, watch: bool):
         await cache.disconnect()
 
 
-async def _display_stats(cache: YokedCache, format: str):
+async def _display_stats(cache: YokedCache, format: str, output: Optional[str] = None):
     """Display cache statistics in the specified format."""
     stats = await cache.get_stats()
 
@@ -149,7 +157,13 @@ async def _display_stats(cache: YokedCache, format: str):
             "table_stats": stats.table_stats,
             "tag_stats": stats.tag_stats,
         }
-        click.echo(json.dumps(stats_dict, indent=2))
+        output_content = json.dumps(stats_dict, indent=2)
+        if output:
+            with open(output, "w") as f:
+                f.write(output_content)
+            click.echo(f"Stats exported to {output}")
+        else:
+            click.echo(output_content)
 
     elif format == "yaml":
         stats_dict = {
@@ -177,7 +191,56 @@ async def _display_stats(cache: YokedCache, format: str):
                 "tag_stats": stats.tag_stats,
             }
         }
-        click.echo(yaml.dump(stats_dict, default_flow_style=False))
+        output_content = yaml.dump(stats_dict, default_flow_style=False)
+        if output:
+            with open(output, "w") as f:
+                f.write(output_content)
+            click.echo(f"Stats exported to {output}")
+        else:
+            click.echo(output_content)
+
+    elif format == "csv":
+        # Create CSV data
+        timestamp = datetime.now().isoformat()
+        csv_data = [
+            {
+                "timestamp": timestamp,
+                "total_hits": stats.total_hits,
+                "total_misses": stats.total_misses,
+                "total_sets": stats.total_sets,
+                "total_deletes": stats.total_deletes,
+                "total_invalidations": stats.total_invalidations,
+                "total_keys": stats.total_keys,
+                "total_memory_bytes": stats.total_memory_bytes,
+                "uptime_seconds": stats.uptime_seconds,
+                "hit_rate": stats.hit_rate,
+                "miss_rate": stats.miss_rate,
+                "average_get_time_ms": stats.average_get_time_ms,
+                "average_set_time_ms": stats.average_set_time_ms,
+            }
+        ]
+
+        if output:
+            # Check if file exists to determine if we need headers
+            file_exists = Path(output).exists()
+
+            with open(output, "a", newline="") as csvfile:
+                fieldnames = csv_data[0].keys()
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                if not file_exists:
+                    writer.writeheader()
+
+                writer.writerows(csv_data)
+
+            click.echo(f"Stats appended to {output}")
+        else:
+            # Output to stdout
+            fieldnames = csv_data[0].keys()
+            output_stream = sys.stdout
+            writer = csv.DictWriter(output_stream, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(csv_data)
 
     else:  # human format
         click.echo("YokedCache Statistics")
@@ -489,6 +552,157 @@ async def export_config(ctx, output: Optional[str]):
     except Exception as e:
         click.echo(f"Error exporting configuration: {e}", err=True)
         sys.exit(1)
+
+
+@main.command()
+@click.argument("key", required=True)
+@click.pass_context
+@async_command
+async def get(ctx, key: str):
+    """Get a value from cache."""
+    cache = get_cache_instance(
+        redis_url=ctx.obj["redis_url"], config_file=ctx.obj["config_file"]
+    )
+
+    try:
+        await cache.connect()
+        value = await cache.get(key)
+
+        if value is not None:
+            click.echo(value)
+        else:
+            click.echo(f"Key '{key}' not found")
+            sys.exit(1)
+
+    except Exception as e:
+        click.echo(f"Error getting key: {e}", err=True)
+        sys.exit(1)
+    finally:
+        await cache.disconnect()
+
+
+@main.command()
+@click.argument("key", required=True)
+@click.argument("value", required=True)
+@click.option("--ttl", "-t", type=int, help="Time to live in seconds")
+@click.option("--tags", help="Comma-separated list of tags")
+@click.pass_context
+@async_command
+async def set(ctx, key: str, value: str, ttl: Optional[int], tags: Optional[str]):
+    """Set a value in cache."""
+    cache = get_cache_instance(
+        redis_url=ctx.obj["redis_url"], config_file=ctx.obj["config_file"]
+    )
+
+    try:
+        await cache.connect()
+
+        tag_list = [tag.strip() for tag in tags.split(",")] if tags else []
+
+        success = await cache.set(key, value, ttl=ttl, tags=tag_list)
+
+        if success:
+            click.echo(f"Set key '{key}' = '{value}'")
+        else:
+            click.echo(f"Failed to set key '{key}'")
+            sys.exit(1)
+
+    except Exception as e:
+        click.echo(f"Error setting key: {e}", err=True)
+        sys.exit(1)
+    finally:
+        await cache.disconnect()
+
+
+@main.command()
+@click.argument("key", required=True)
+@click.pass_context
+@async_command
+async def delete(ctx, key: str):
+    """Delete a key from cache."""
+    cache = get_cache_instance(
+        redis_url=ctx.obj["redis_url"], config_file=ctx.obj["config_file"]
+    )
+
+    try:
+        await cache.connect()
+
+        success = await cache.delete(key)
+
+        if success:
+            click.echo(f"Deleted key '{key}'")
+        else:
+            click.echo(f"Key '{key}' not found")
+            sys.exit(1)
+
+    except Exception as e:
+        click.echo(f"Error deleting key: {e}", err=True)
+        sys.exit(1)
+    finally:
+        await cache.disconnect()
+
+
+@main.command()
+@click.option("--pattern", "-p", help="Key pattern to invalidate (supports * and ?)")
+@click.option("--tags", "-t", help="Comma-separated list of tags to invalidate")
+@click.pass_context
+@async_command
+async def invalidate(ctx, pattern: Optional[str], tags: Optional[str]):
+    """Invalidate cache entries by pattern or tags."""
+    if not pattern and not tags:
+        click.echo("Error: Must specify --pattern or --tags", err=True)
+        sys.exit(1)
+
+    cache = get_cache_instance(
+        redis_url=ctx.obj["redis_url"], config_file=ctx.obj["config_file"]
+    )
+
+    try:
+        await cache.connect()
+
+        deleted_count = 0
+
+        if pattern:
+            deleted_count = await cache.invalidate_pattern(pattern)
+            click.echo(f"Invalidated {deleted_count} keys matching pattern: {pattern}")
+
+        if tags:
+            tag_list = [tag.strip() for tag in tags.split(",")]
+            deleted_count = await cache.invalidate_tags(tag_list)
+            click.echo(f"Invalidated {deleted_count} keys with tags: {tag_list}")
+
+    except Exception as e:
+        click.echo(f"Error invalidating cache: {e}", err=True)
+        sys.exit(1)
+    finally:
+        await cache.disconnect()
+
+
+@main.command()
+@click.pass_context
+@async_command
+async def health(ctx):
+    """Check cache health status."""
+    cache = get_cache_instance(
+        redis_url=ctx.obj["redis_url"], config_file=ctx.obj["config_file"]
+    )
+
+    try:
+        await cache.connect()
+
+        healthy = await cache.health_check()
+
+        if healthy:
+            click.echo("✓ Cache is healthy")
+        else:
+            click.echo("✗ Cache is not healthy")
+            sys.exit(1)
+
+    except Exception as e:
+        click.echo(f"Error checking health: {e}", err=True)
+        sys.exit(1)
+    finally:
+        await cache.disconnect()
 
 
 @main.command()

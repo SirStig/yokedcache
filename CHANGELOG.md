@@ -9,15 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Performance improvements and optimization features
+- Placeholder for future features
+
+## [0.2.0] - 2024-01-15
+
+### Added
+
+- **Multi-Backend Architecture**: Support for Redis, Memcached, and in-memory backends with abstract interface
+- **Vector-Based Similarity Search**: Advanced semantic search using TF-IDF and cosine/euclidean/manhattan similarity
+- **Production Monitoring**: Prometheus and StatsD metrics integration for real-time monitoring and alerting
+- **CSV Export**: CLI support for exporting cache statistics to CSV format for analysis and reporting
+- **Enhanced CLI**: Improved command-line interface with file output, format options, and advanced search
+- **Professional Templates**: Pull request template and code of conduct for better project governance
+- **Memory Backend**: In-memory caching with LRU eviction, TTL support, and thread-safe operations
+- **Testing Infrastructure**: Comprehensive test suite with 200+ tests covering all features and edge cases
+- **Testing Guide**: Complete documentation for testing methodology and best practices
 
 ### Changed
 
-- Enhanced error handling and logging capabilities
+- **Modular Backend System**: Refactored cache implementation to support pluggable backends with consistent API
+- **Enhanced Configuration**: Extended configuration options for multi-backend setup and monitoring integration
+- **Improved Documentation**: Updated README with comprehensive examples, feature descriptions, and testing info
+- **Development Workflow**: Added pre-commit hooks with black, isort, mypy, and pytest for code quality
+- **Professional Standards**: Removed emojis from documentation for enterprise-ready appearance
 
 ### Fixed
 
-- Minor bug fixes and stability improvements
+- **DateTime Warnings**: Replaced deprecated `datetime.utcnow()` with timezone-aware alternatives
+- **Import Handling**: Improved graceful degradation when optional dependencies are not available
+- **Vector Search**: Corrected Manhattan distance calculation using proper sklearn functions
+- **Test Reliability**: Enhanced async test mocking and fixture management for consistent results
+
+### Security
+
+- **Dependency Management**: Updated and categorized optional dependencies for better security and maintenance
 
 ## [0.1.3] - 2025-08-22
 

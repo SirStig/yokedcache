@@ -48,6 +48,27 @@ dependencies = [
 [project.optional-dependencies]
 sqlalchemy = ["sqlalchemy>=1.4.0"]
 fuzzy = ["fuzzywuzzy>=0.18.0", "python-levenshtein>=0.12.0"]
+memcached = ["aiomcache>=0.8.0,<1.0.0"]
+monitoring = [
+    "prometheus_client>=0.16.0",
+    "statsd>=4.0.0",
+]
+vector = [
+    "numpy>=1.21.0",
+    "scipy>=1.7.0",
+    "scikit-learn>=1.0.0",
+]
+full = [
+    "sqlalchemy>=1.4.0",
+    "fuzzywuzzy>=0.18.0",
+    "python-levenshtein>=0.12.0",
+    "aiomcache>=0.8.0,<1.0.0",
+    "prometheus_client>=0.16.0",
+    "statsd>=4.0.0",
+    "numpy>=1.21.0",
+    "scipy>=1.7.0",
+    "scikit-learn>=1.0.0",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
@@ -63,6 +84,12 @@ dev = [
     "types-redis>=4.0.0",
     "fuzzywuzzy>=0.18.0",
     "python-levenshtein>=0.12.0",
+    "aiomcache>=0.8.0,<1.0.0",
+    "prometheus_client>=0.16.0",
+    "statsd>=4.0.0",
+    "numpy>=1.21.0",
+    "scipy>=1.7.0",
+    "scikit-learn>=1.0.0",
 ]
 docs = [
     "mkdocs>=1.4.0",

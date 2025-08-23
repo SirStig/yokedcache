@@ -35,10 +35,12 @@ Intelligent caching with automatic invalidation, fuzzy search, and seamless Fast
 Traditional caching solutions require manual cache management and lack intelligent invalidation. YokedCache solves this with:
 
 - **Smart Auto-Invalidation**: Automatically detects database changes and invalidates related caches
+- **Multi-Backend Support**: Redis, Memcached, and in-memory backends for flexibility
 - **Zero-Code Integration**: Drop-in replacement for your existing database dependencies  
 - **Intelligent Tagging**: Group and invalidate related caches effortlessly  
-- **Fuzzy Search**: Find cached data with approximate matching  
-- **Performance Insights**: Built-in metrics and monitoring tools
+- **Advanced Search**: Traditional fuzzy search plus vector-based semantic similarity
+- **Production Monitoring**: Prometheus and StatsD integration for real-time metrics
+- **Professional Tooling**: Comprehensive CLI with CSV export and monitoring capabilities
 
 ## Quick Start
 
@@ -65,12 +67,26 @@ That's it! Your database queries are now cached with automatic invalidation.
 
 ## Key Features
 
+### Multi-Backend Architecture
+
+- **Redis**: Full-featured backend with clustering and persistence support
+- **Memcached**: High-performance distributed caching
+- **In-Memory**: Fast local caching for development and testing
+- Pluggable backend system for custom implementations
+
 ### Smart Invalidation
 
 - Automatic cache invalidation on database writes
 - Tag-based grouping for related data
 - Pattern-based invalidation with wildcards
 - Configurable rules per table/operation
+
+### Advanced Search Capabilities
+
+- Traditional fuzzy search with configurable thresholds
+- Vector-based semantic similarity using TF-IDF and cosine similarity
+- Multiple similarity algorithms (cosine, euclidean, manhattan)
+- Redis vector persistence for large-scale deployments
 
 ### Deep Integration
 
@@ -79,30 +95,37 @@ That's it! Your database queries are now cached with automatic invalidation.
 - Async/await throughout
 - Connection pooling & health checks
 
-### Advanced Features
+### Production Monitoring
 
-- Fuzzy search for approximate matches
-- Multiple serialization methods
-- Performance metrics & monitoring
-- Variable TTLs with jitter
+- **Prometheus**: Native metrics export for Grafana dashboards
+- **StatsD**: Real-time metrics for DataDog, Grafana, and other platforms
+- Comprehensive performance tracking and alerting
+- Custom metrics collection support
 
-### Management Tools
+### Professional Tooling
 
-- Comprehensive CLI for cache control
-- Real-time statistics and monitoring
-- YAML-based configuration
-- Cache warming capabilities
+- Comprehensive CLI for cache control and monitoring
+- CSV export for data analysis and reporting
+- Real-time statistics with watch mode
+- YAML-based configuration with validation
+- Cache warming and bulk operations
 
 ## Installation
 
 ```bash
-# Basic installation
+# Basic installation (Redis backend only)
 pip install yokedcache
 
-# With optional features
-pip install yokedcache[sqlalchemy,fuzzy]  # Full-featured
+# With specific features
+pip install yokedcache[memcached]     # Add Memcached support
+pip install yokedcache[monitoring]    # Add Prometheus/StatsD support  
+pip install yokedcache[vector]        # Add vector similarity search
+pip install yokedcache[fuzzy]         # Add traditional fuzzy search
 
-# Development
+# Full installation with all features
+pip install yokedcache[full]
+
+# Development installation
 pip install yokedcache[dev]
 ```
 
@@ -136,6 +159,64 @@ async def get_user(user_id: int, db=Depends(cached_get_db)):
 ```
 
 ### Advanced Usage
+
+### Multi-Backend Configuration
+
+```python
+from yokedcache import YokedCache
+from yokedcache.backends import RedisBackend, MemcachedBackend, MemoryBackend
+
+# Redis backend (default)
+redis_cache = YokedCache(backend=RedisBackend(
+    redis_url="redis://localhost:6379/0"
+))
+
+# Memcached backend
+memcached_cache = YokedCache(backend=MemcachedBackend(
+    servers=["localhost:11211"]
+))
+
+# In-memory backend for development
+memory_cache = YokedCache(backend=MemoryBackend(
+    max_size=1000  # Limit to 1000 keys
+))
+```
+
+### Vector-Based Similarity Search
+
+```python
+from yokedcache.vector_search import VectorSimilaritySearch
+
+# Initialize vector search
+vector_search = VectorSimilaritySearch(
+    similarity_method="cosine",  # or "euclidean", "manhattan"
+    max_features=1000
+)
+
+# Perform semantic search
+results = await cache.vector_search(
+    query="user authentication",
+    threshold=0.5,  # 50% similarity
+    max_results=10
+)
+```
+
+### Production Monitoring
+
+```python
+from yokedcache.monitoring import PrometheusCollector, StatsDCollector, CacheMetrics
+
+# Set up Prometheus monitoring
+prometheus = PrometheusCollector(namespace="myapp")
+cache_metrics = CacheMetrics([prometheus])
+
+# Set up StatsD monitoring  
+statsd = StatsDCollector(host="statsd.example.com", prefix="myapp.cache")
+cache_metrics.add_collector(statsd)
+
+# Initialize cache with monitoring
+cache = YokedCache(metrics=cache_metrics)
+```
 
 ### Configuration with YAML
 
@@ -177,20 +258,30 @@ YokedCache includes a powerful CLI for cache management:
 # View cache statistics
 yokedcache stats --watch
 
-# Test Redis connection
-yokedcache ping
+# Export stats to CSV for analysis
+yokedcache stats --format csv --output cache_stats.csv
 
-# List cached keys
-yokedcache list --pattern "user:*"
+# Export stats to JSON for dashboards  
+yokedcache stats --format json --output stats.json
 
-# Flush specific caches
-yokedcache flush --tags "user_data"
+# Test connection to different backends
+yokedcache ping --backend redis
+yokedcache ping --backend memcached
 
-# Search cache contents
-yokedcache search "alice" --threshold 80
+# List cached keys with filtering
+yokedcache list --pattern "user:*" --limit 50
 
-# Monitor in real-time (JSON output for dashboards)
-yokedcache stats --format json
+# Flush specific caches by tags
+yokedcache flush --tags "user_data,session_data"
+
+# Advanced search with vector similarity
+yokedcache search "user authentication" --method vector --threshold 0.5
+
+# Traditional fuzzy search
+yokedcache search "alice" --method fuzzy --threshold 80
+
+# Monitor in real-time with CSV logging
+yokedcache stats --format csv --output metrics.csv --watch
 
 # Export current configuration
 yokedcache export-config --output config.yaml
@@ -224,19 +315,43 @@ graph TB
 
 ## Testing
 
+YokedCache includes comprehensive test coverage for all features:
+
+### Quick Verification
+
 ```bash
-# Install with dev dependencies
+# Verify all features are working
+python test_quick_verification.py
+```
+
+### Full Test Suite
+
+```bash
+# Install development dependencies
 pip install yokedcache[dev]
 
-# Run tests
+# Run all tests
 pytest
 
 # Run with coverage
-pytest --cov=yokedcache
+pytest --cov=yokedcache --cov-report=html
 
-# Test specific functionality
-pytest tests/test_cache.py::TestAutoInvalidation
+# Run specific feature tests
+pytest tests/test_backends.py      # Multi-backend tests
+pytest tests/test_vector_search.py # Vector similarity tests
+pytest tests/test_monitoring.py    # Monitoring tests
+pytest tests/test_cli.py           # CLI tests
 ```
+
+### Test Categories
+
+- **Backend Tests**: Memory, Redis, Memcached implementations
+- **Vector Search Tests**: TF-IDF, cosine similarity, semantic search
+- **Monitoring Tests**: Prometheus, StatsD, metrics collection
+- **CLI Tests**: CSV export, search commands, configuration
+- **Integration Tests**: End-to-end workflows and error handling
+
+For detailed testing information, see the [Testing Guide](docs/testing.md).
 
 ## Contributing
 

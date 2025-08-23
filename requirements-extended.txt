@@ -1,0 +1,44 @@
+# Extended requirements for YokedCache with specific feature sets
+# Install with: pip install -r requirements-extended.txt
+
+# Core dependencies (always required)
+redis>=4.0.0
+fastapi>=0.68.0
+pyyaml>=6.0
+click>=8.0.0
+typing-extensions>=4.0.0
+
+# ========================================
+# Feature-specific optional dependencies
+# ========================================
+
+# For SQLAlchemy integration:
+# pip install sqlalchemy>=1.4.0
+
+# For traditional fuzzy search:
+# pip install fuzzywuzzy>=0.18.0 python-levenshtein>=0.12.0
+
+# For Memcached backend support:
+# pip install aiomcache>=0.8.0
+
+# For production monitoring (Prometheus + StatsD):
+# pip install prometheus_client>=0.16.0 statsd>=4.0.0
+
+# For vector-based similarity search:
+# pip install numpy>=1.21.0 scipy>=1.7.0 scikit-learn>=1.0.0
+
+# ========================================
+# Installation examples:
+# ========================================
+
+# Full installation with all features:
+# pip install -r requirements-full.txt
+
+# Minimal + Monitoring:
+# pip install -r requirements-minimal.txt prometheus_client statsd
+
+# Minimal + Vector search:
+# pip install -r requirements-minimal.txt numpy scipy scikit-learn
+
+# Minimal + Memcached:
+# pip install -r requirements-minimal.txt aiomcache

@@ -12,6 +12,12 @@ typing-extensions>=4.0.0
 sqlalchemy>=1.4.0
 fuzzywuzzy>=0.18.0
 python-levenshtein>=0.12.0
+aiomcache>=0.8.0,<1.0.0
+prometheus_client>=0.16.0
+statsd>=4.0.0
+numpy>=1.21.0
+scipy>=1.7.0
+scikit-learn>=1.0.0
 
 # Development tools
 pytest>=7.0.0
@@ -24,6 +30,10 @@ mypy>=1.0.0
 pre-commit>=2.20.0
 fakeredis>=2.0.0
 httpx>=0.24.0
+
+# Type stubs
+types-PyYAML>=6.0.0
+types-redis>=4.0.0
 
 # Documentation tools
 mkdocs>=1.4.0

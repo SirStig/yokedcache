@@ -232,4 +232,4 @@ Contributors will be recognized in:
 - Release notes
 - The CONTRIBUTORS file
 
-Thank you for contributing to YokedCache! 🚀
+Thank you for contributing to YokedCache!

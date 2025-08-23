@@ -8,36 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- N/A
+
+- Performance improvements and optimization features
 
 ### Changed
-- N/A
 
-### Deprecated
-- N/A
-
-### Removed
-- N/A
+- Enhanced error handling and logging capabilities
 
 ### Fixed
-- N/A
 
-### Security
-- N/A
+- Minor bug fixes and stability improvements
 
 ## [0.1.3] - 2025-08-22
 
 ### Added
+
 - CLI module execution support via `python -m yokedcache`
 - Full CLI command suite: ping, stats, list, flush, search, export-config, warm
 - Comprehensive documentation updates with accurate CLI examples
 
 ### Changed
+
 - Improved CLI architecture with proper command registration
 - Enhanced GitHub Actions workflow for better CI/CD reliability
 - Updated all documentation files for accuracy and completeness
 
 ### Fixed
+
 - Redis connection method: changed from `aclose()` to `close()` for proper async connection handling
 - CLI command registration issue with async decorators using `functools.wraps`
 - CLI parameter conflict with double context passing in async commands
@@ -47,11 +44,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions integration test failures with CLI module execution
 
 ### Removed
+
 - Codecov integration temporarily disabled due to rate limiting issues
 
 ## [0.1.2] - 2025-08-22
 
 ### Added
+
 - Initial project structure and core architecture
 - Basic caching functionality with Redis backend
 - Automatic cache invalidation on database writes
@@ -74,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2024-MM-DD
 
 ### Added
+
 - Initial release of YokedCache
 - Core caching functionality with Redis
 - FastAPI integration support

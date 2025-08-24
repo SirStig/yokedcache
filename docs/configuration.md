@@ -20,7 +20,7 @@ config = CacheConfig(
 )
 cache = YokedCache(config=config)
 
-# Advanced configuration
+# Advanced configuration with v0.2.1 features
 config = CacheConfig(
     # Connection settings
     redis_url="redis://localhost:6379/0",
@@ -37,6 +37,25 @@ config = CacheConfig(
     
     # Serialization
     default_serialization=SerializationMethod.JSON,
+    
+    # Circuit breaker settings (v0.2.1+)
+    enable_circuit_breaker=True,
+    circuit_breaker_failure_threshold=5,
+    circuit_breaker_timeout=60.0,
+    
+    # Connection pool customization (v0.2.1+)
+    connection_pool_kwargs={
+        "socket_connect_timeout": 5.0,
+        "socket_timeout": 5.0,
+        "socket_keepalive": True,
+        "retry_on_timeout": True,
+        "health_check_interval": 30
+    },
+    
+    # Error handling and resilience (v0.2.1+)
+    fallback_enabled=True,
+    connection_retries=3,
+    retry_delay=0.1,
     
     # Logging
     log_level="INFO"
@@ -205,6 +224,61 @@ Maximum number of connections in the Redis connection pool.
 
 #### `connection_timeout` (int)
 **Default**: `30`
+
+#### `connection_pool_kwargs` (Dict[str, Any]) *(v0.2.1+)*
+**Default**: `{}`
+
+Advanced Redis connection pool configuration options. Allows fine-tuning of Redis connection behavior:
+
+```python
+connection_pool_kwargs={
+    "socket_connect_timeout": 5.0,  # Connection timeout
+    "socket_timeout": 5.0,          # Socket read/write timeout
+    "socket_keepalive": True,       # Enable TCP keepalive
+    "socket_keepalive_options": {   # Keepalive settings
+        "TCP_KEEPIDLE": 1,
+        "TCP_KEEPINTVL": 3,
+        "TCP_KEEPCNT": 5
+    },
+    "retry_on_timeout": True,       # Retry on timeout
+    "health_check_interval": 30     # Health check frequency
+}
+```
+
+### Resilience Settings *(v0.2.1+)*
+
+#### `enable_circuit_breaker` (bool)
+**Default**: `False`
+**Environment**: `YOKEDCACHE_ENABLE_CIRCUIT_BREAKER`
+
+Enable circuit breaker pattern to prevent cascading failures during Redis outages.
+
+#### `circuit_breaker_failure_threshold` (int)
+**Default**: `5`
+
+Number of consecutive failures before opening the circuit breaker.
+
+#### `circuit_breaker_timeout` (float)
+**Default**: `60.0`
+
+Time in seconds to wait before attempting to close the circuit breaker.
+
+#### `fallback_enabled` (bool)
+**Default**: `True`
+**Environment**: `YOKEDCACHE_FALLBACK_ENABLED`
+
+Enable graceful fallback behavior when cache operations fail.
+
+#### `connection_retries` (int)
+**Default**: `3`
+**Environment**: `YOKEDCACHE_CONNECTION_RETRIES`
+
+Number of retry attempts for failed Redis operations.
+
+#### `retry_delay` (float)
+**Default**: `0.1`
+
+Base delay between retry attempts (with exponential backoff).
 **Environment**: `YOKEDCACHE_CONNECTION_TIMEOUT`
 
 Connection timeout in seconds for Redis operations.

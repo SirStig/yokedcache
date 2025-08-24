@@ -10,6 +10,7 @@ High-Performance Caching for Modern Python Applications
 [![Python](https://img.shields.io/pypi/pyversions/yokedcache.svg)](https://pypi.org/project/yokedcache/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/sirstig/yokedcache/actions/workflows/test.yml/badge.svg)](https://github.com/sirstig/yokedcache/actions/workflows/test.yml)
+[![Coverage](https://codecov.io/gh/sirstig/yokedcache/branch/main/graph/badge.svg)](https://codecov.io/gh/sirstig/yokedcache)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/yokedcache)
 
@@ -72,6 +73,21 @@ async def get_user(user_id: int, db=Depends(cached_get_db)):
 That's it! Your database queries are now cached with automatic invalidation.
 
 ## Key Features
+
+### 🔐 Production-Grade Resilience *(New in v0.2.1)*
+
+- **Circuit Breaker Pattern**: Prevents cascading failures during Redis outages
+- **Connection Pool Management**: Advanced Redis connection configuration
+- **Retry Logic**: Exponential backoff for transient failures
+- **Health Monitoring**: Comprehensive cache status and performance metrics
+- **Graceful Fallbacks**: Application stability during cache issues
+
+### 🔄 Enhanced Async/Sync Support *(New in v0.2.1)*
+
+- **Smart Context Detection**: Prevents Task object returns in mixed environments
+- **Explicit Method Variants**: `aget`/`aset` for async, `get_sync`/`set_sync` for sync
+- **FastAPI Generator Support**: Better handling of database session dependencies
+- **Performance Optimization**: Improved serialization and key generation
 
 ### Multi-Backend Architecture
 
@@ -145,6 +161,69 @@ pip install yokedcache[dev]
 | CLI Guide | [CLI Usage](#cli-usage) | Command-line tool documentation |
 
 ## Usage Examples
+
+### Enhanced Configuration *(New in v0.2.1)*
+
+```python
+from yokedcache import YokedCache, CacheConfig
+
+# Production-ready configuration with resilience features
+config = CacheConfig(
+    redis_url="redis://localhost:6379",
+    max_connections=50,
+    
+    # Circuit breaker for Redis failures
+    enable_circuit_breaker=True,
+    circuit_breaker_failure_threshold=5,
+    circuit_breaker_timeout=60.0,
+    
+    # Enhanced connection pool settings
+    connection_pool_kwargs={
+        "socket_connect_timeout": 5.0,
+        "socket_timeout": 5.0,
+        "socket_keepalive": True,
+        "retry_on_timeout": True,
+        "health_check_interval": 30
+    },
+    
+    # Error handling and fallbacks
+    fallback_enabled=True,
+    connection_retries=3,
+    retry_delay=0.1
+)
+
+cache = YokedCache(config=config)
+
+# Monitor cache health
+health = await cache.detailed_health_check()
+print(f"Cache status: {health['status']}")
+print(f"Connection pool: {health['connection_pool']}")
+
+# Get comprehensive metrics
+metrics = cache.get_comprehensive_metrics()
+print(f"Hit rate: {metrics.hit_rate:.2%}")
+print(f"Average response time: {metrics.avg_response_time:.3f}s")
+```
+
+### Explicit Async/Sync Methods *(New in v0.2.1)*
+
+```python
+# Explicit async methods (recommended in async contexts)
+value = await cache.aget("user:123")
+await cache.aset("user:123", user_data, ttl=300)
+exists = await cache.aexists("user:123")
+await cache.adelete("user:123")
+
+# Explicit sync methods (for sync contexts)
+value = cache.get_sync("user:123")
+cache.set_sync("user:123", user_data, ttl=300)
+exists = cache.exists_sync("user:123")
+cache.delete_sync("user:123")
+
+# Smart context-aware methods (auto-detect async/sync)
+value = await cache.get("user:123")  # In async context
+value = cache.get("user:123")        # In sync context
+```
 
 ```python
 from fastapi import FastAPI, Depends

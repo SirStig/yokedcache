@@ -50,20 +50,20 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - Core Concepts: core-concepts.md
-  - Usage Patterns: usage-patterns.md
   - Configuration: configuration.md
-  - Backends: backends.md
-  - Redis Setup: redis-setup.md
-  - Vector Search: vector-search.md
-  - CLI: cli.md
-  - Performance: performance.md
-  - Security: security.md
-  - Monitoring: monitoring.md
-  - Testing: testing.md
-  - Troubleshooting & FAQ: troubleshooting.md
-  - Tutorials:
-      - FastAPI: tutorials/fastapi.md
-      - SQLAlchemy: tutorials/sqlalchemy.md
-  - API Reference:
-      - Overview: api/index.md
+  - Usage Guide:
+      - Usage Patterns: usage-patterns.md
+      - FastAPI Integration: tutorials/fastapi.md
+      - SQLAlchemy Integration: tutorials/sqlalchemy.md
+  - Advanced Features:
+      - Backends & Setup: backends.md
+      - Vector Search: vector-search.md
+      - Monitoring & Health: monitoring.md
+  - Reference:
+      - CLI Tool: cli.md
+      - Performance: performance.md
+      - Security: security.md
+      - Testing: testing.md
+      - Troubleshooting: troubleshooting.md
+      - API Reference: api/index.md
 

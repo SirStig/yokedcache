@@ -409,6 +409,202 @@ await migrate_cache_data(memory_backend, redis_backend)
 4. **Monitoring**: Use the monitoring features to track backend performance
 5. **Backup Strategies**: Plan for data backup with persistent backends
 
+## Redis Setup & Configuration
+
+### Local Development
+
+#### Using Docker (Recommended)
+
+```bash
+# Basic Redis setup
+docker run -d --name redis -p 6379:6379 redis:7
+
+# Redis with persistence
+docker run -d --name redis -p 6379:6379 \
+  -v redis-data:/data redis:7 redis-server --appendonly yes
+```
+
+Then connect with `redis://localhost:6379/0`.
+
+#### Native Installation
+
+**macOS:**
+```bash
+brew install redis
+brew services start redis
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt install redis-server
+sudo systemctl start redis-server
+```
+
+**Windows:**
+Use Docker or WSL2 with Linux installation.
+
+**Verify Installation:**
+```bash
+redis-cli ping
+# Should return: PONG
+```
+
+### Production Deployment
+
+#### Cloud Providers
+
+**AWS ElastiCache:**
+- Create Redis cluster in ElastiCache
+- Use cluster endpoint: `redis://cluster.abc123.cache.amazonaws.com:6379`
+- Enable encryption in transit: `rediss://cluster.abc123.cache.amazonaws.com:6380`
+
+**Azure Cache for Redis:**
+- Create Redis instance in Azure portal
+- Use primary connection string: `rediss://cache-name.redis.cache.windows.net:6380`
+
+**Google Cloud Memorystore:**
+- Create Redis instance in GCP console
+- Use internal IP: `redis://10.0.0.3:6379`
+
+#### TLS/SSL Configuration
+
+For encrypted connections, use the `rediss://` protocol:
+
+```python
+from yokedcache import YokedCache, CacheConfig
+
+# TLS configuration
+config = CacheConfig(
+    redis_url="rediss://user:pass@my-redis.example.com:6380/0",
+    connection_pool_kwargs={
+        "ssl_cert_reqs": "required",
+        "ssl_ca_certs": "/path/to/ca.crt",
+        "ssl_check_hostname": True
+    }
+)
+
+cache = YokedCache(config=config)
+```
+
+#### Authentication
+
+**Password Authentication:**
+```python
+config = CacheConfig(
+    redis_url="redis://:mypassword@localhost:6379/0"
+)
+```
+
+**Username/Password (Redis 6+):**
+```python
+config = CacheConfig(
+    redis_url="redis://username:password@localhost:6379/0"
+)
+```
+
+**ACL Configuration:**
+```redis
+# Create user for YokedCache
+ACL SETUSER yokedcache_user on >password123 +@all ~*
+```
+
+### Performance Tuning
+
+#### Redis Configuration
+
+Add these settings to `redis.conf`:
+
+```redis
+# Memory optimization
+maxmemory 2gb
+maxmemory-policy allkeys-lru
+
+# Network optimization  
+tcp-keepalive 300
+timeout 0
+
+# Persistence (optional)
+save 900 1
+save 300 10
+save 60 10000
+
+# Performance
+tcp-nodelay yes
+```
+
+#### Connection Pool Tuning
+
+```python
+config = CacheConfig(
+    redis_url="redis://localhost:6379/0",
+    max_connections=100,
+    connection_pool_kwargs={
+        "socket_keepalive": True,
+        "socket_keepalive_options": {
+            "TCP_KEEPIDLE": 1,
+            "TCP_KEEPINTVL": 3,
+            "TCP_KEEPCNT": 5
+        },
+        "socket_connect_timeout": 5,
+        "socket_timeout": 5,
+        "retry_on_timeout": True,
+        "health_check_interval": 30
+    }
+)
+```
+
+### Connectivity Troubleshooting
+
+#### Pre-deployment Checklist
+
+- [ ] **Network Access**: Security groups/firewalls allow Redis port (6379/6380)
+- [ ] **DNS Resolution**: Hostname resolves correctly from application servers
+- [ ] **Authentication**: Credentials are correct and user has necessary permissions
+- [ ] **TLS**: Certificate validation passes for SSL connections
+- [ ] **Latency**: Network latency is acceptable (<10ms preferred)
+- [ ] **Memory**: Redis has sufficient memory for expected cache size
+
+#### Connection Testing
+
+```python
+import redis
+import asyncio
+from yokedcache import YokedCache
+
+async def test_connection():
+    try:
+        cache = YokedCache(redis_url="redis://localhost:6379/0")
+        
+        # Test basic connectivity
+        health = await cache.health()
+        print(f"Health check: {health}")
+        
+        # Test operations
+        await cache.set("test_key", "test_value", ttl=60)
+        value = await cache.get("test_key")
+        print(f"Test operation: {value}")
+        
+        # Test detailed health check
+        detailed = await cache.detailed_health_check()
+        print(f"Detailed health: {detailed}")
+        
+    except Exception as e:
+        print(f"Connection failed: {e}")
+
+# Run test
+asyncio.run(test_connection())
+```
+
+#### Common Issues
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Connection refused | Redis not running | Start Redis service |
+| Authentication failed | Wrong credentials | Check username/password |
+| SSL handshake failed | Certificate issues | Verify TLS configuration |
+| Timeout errors | Network latency | Increase timeouts, check network |
+| Memory errors | Redis out of memory | Increase Redis memory limit |
+
 ---
 
-For more information about specific backend implementations, see the API documentation for each backend class.
+For more information about specific backend implementations and advanced configuration options, see the API documentation for each backend class.

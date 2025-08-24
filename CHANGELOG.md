@@ -7,26 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-08-23
+
 ### Added
 
-- Star request button prominently displayed in README
-- Documentation build verification with `mkdocs build --strict`
+- **Circuit Breaker Pattern**: Advanced resilience pattern to prevent cascading failures during Redis outages
+- **Connection Pool Management**: Enhanced Redis connection configuration with custom pool parameters
+- **Async/Sync Context Detection**: Smart handling to prevent Task object returns in mixed async/sync environments  
+- **Comprehensive Metrics System**: Real-time performance tracking with hit rates, error rates, and response times
+- **Enhanced Error Handling**: Graceful fallback mechanisms when cache operations fail
+- **Health Check Endpoint**: Detailed cache status monitoring including connection pool stats and performance metrics
+- **Retry Mechanism**: Exponential backoff retry logic for transient Redis failures
+- **Improved Configuration**: Extended `CacheConfig` with circuit breaker, retry, and resilience settings
+- **FastAPI Dependency Enhancement**: Better support for generator-based dependencies and database session handling
+- **Comprehensive Test Suite**: 240+ tests with 64% coverage including circuit breaker, configuration, and utilities
+- **Production-Ready Features**: Implementation of all critical priority items from real-world testing feedback
 
 ### Changed
 
-- Updated documentation dependencies to latest versions
-- Enhanced CONTRIBUTING.md with documentation build requirements
-- Updated development setup to include docs dependencies
+- **Enhanced `CacheConfig`**: Added `connection_pool_kwargs`, circuit breaker settings, and error handling options
+- **Improved Cache Methods**: Added explicit async (`aget`, `aset`) and sync (`get_sync`, `set_sync`) method variants
+- **Better Dependency Injection**: Enhanced `cached_dependency` decorator to properly handle FastAPI generator patterns
+- **Upgraded Serialization**: Fixed datetime handling to use timezone-aware `datetime.now(timezone.utc)`
+- **Performance Optimizations**: Improved cache key generation and data serialization efficiency
 
 ### Fixed
 
-- Fixed mkdocs navigation configuration to include all existing documentation files
-- Resolved relative link issues in documentation
-- Fixed missing file warnings in mkdocs build
+- **Critical Issue**: `CacheConfig` now properly accepts and validates `connection_pool_kwargs` parameter
+- **Async/Sync Handling**: Fixed Task object returns when sync methods called from async contexts
+- **FastAPI Integration**: Resolved generator dependency wrapping to return proper database session objects
+- **Environment Variables**: Enhanced parsing and validation of configuration overrides
+- **MyPy Compatibility**: Resolved all type checking errors for better code quality
+- **Test Stability**: Fixed file permission issues in Windows testing environment
 
-### Removed
+### Security
 
-- Acknowledgments section from README.md (streamlined for professional appearance)
+- **Error Resilience**: Circuit breaker prevents system overload during Redis failures
+- **Connection Management**: Proper connection pool configuration prevents resource exhaustion
+- **Graceful Degradation**: Fallback mechanisms ensure application stability during cache issues
+
+### Performance
+
+- **64% Test Coverage**: Significantly improved from 55% with comprehensive testing of critical paths
+- **Circuit Breaker Efficiency**: 92% test coverage for resilience patterns
+- **Configuration Validation**: 98% test coverage for robust configuration management
+- **Utility Functions**: 72% test coverage for core helper functions
+
+### Documentation
+
+- **Star request button prominently displayed in README**
+- **Documentation build verification with `mkdocs build --strict`**
+- **Updated documentation dependencies to latest versions**
+- **Enhanced CONTRIBUTING.md with documentation build requirements**
+- **Updated development setup to include docs dependencies**
 
 ## [0.2.0] - 2024-01-15
 

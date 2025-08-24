@@ -178,6 +178,7 @@ def cached_dependency(
     Wrap a FastAPI dependency with caching.
 
     This is specifically designed for database dependencies like get_db().
+    Properly handles both regular functions and generator functions.
 
     Args:
         dependency_func: Original dependency function
@@ -193,25 +194,170 @@ def cached_dependency(
     if cache is None:
         cache = YokedCache()
 
-    # Create a cached database wrapper
-    async def cached_db_dependency(*args, **kwargs):
-        # Get the original database session/connection
-        if inspect.iscoroutinefunction(dependency_func):
-            db_session = await dependency_func(*args, **kwargs)
-        else:
-            db_session = dependency_func(*args, **kwargs)
+    # Check if dependency is a generator function
+    is_generator = inspect.isgeneratorfunction(dependency_func)
+    is_async_generator = inspect.isasyncgenfunction(dependency_func)
 
-        # Wrap it with caching capabilities
-        return CachedDatabaseWrapper(
-            db_session,
-            cache=cache,
-            ttl=ttl,
-            key_prefix=key_prefix or "db",
-            table_name=table_name,
-            auto_invalidate=auto_invalidate,
+    if is_generator or is_async_generator:
+        # Handle generator dependencies (like database session managers)
+        return _wrap_generator_dependency(
+            dependency_func, cache, ttl, key_prefix, table_name, auto_invalidate
+        )
+    else:
+        # Handle regular dependencies
+        return _wrap_regular_dependency(
+            dependency_func, cache, ttl, key_prefix, table_name, auto_invalidate
         )
 
-    return cached_db_dependency
+
+def _wrap_generator_dependency(
+    dependency_func: Callable,
+    cache: YokedCache,
+    ttl: Optional[int],
+    key_prefix: Optional[str],
+    table_name: Optional[str],
+    auto_invalidate: bool,
+) -> Callable:
+    """Wrap generator dependency functions (like database session managers)."""
+
+    is_async_generator = inspect.isasyncgenfunction(dependency_func)
+
+    if is_async_generator:
+
+        @functools.wraps(dependency_func)
+        async def async_generator_wrapper(*args, **kwargs):
+            # Get the async generator
+            async_gen = dependency_func(*args, **kwargs)
+            try:
+                # Get the yielded value (database session)
+                db_session = await async_gen.__anext__()
+
+                # Wrap with caching
+                cached_session = CachedDatabaseWrapper(
+                    db_session,
+                    cache=cache,
+                    ttl=ttl,
+                    key_prefix=key_prefix or "db",
+                    table_name=table_name,
+                    auto_invalidate=auto_invalidate,
+                )
+
+                yield cached_session
+
+            except StopAsyncIteration:
+                # No value yielded, return None
+                yield None
+            finally:
+                # Clean up the generator
+                try:
+                    await async_gen.__anext__()
+                except StopAsyncIteration:
+                    pass
+                except Exception as e:
+                    # Handle cleanup exceptions
+                    import logging
+
+                    logging.getLogger(__name__).warning(
+                        f"Error during dependency cleanup: {e}"
+                    )
+
+        return async_generator_wrapper
+    else:
+
+        @functools.wraps(dependency_func)
+        def sync_generator_wrapper(*args, **kwargs):
+            # Get the generator
+            gen = dependency_func(*args, **kwargs)
+            try:
+                # Get the yielded value (database session)
+                db_session = next(gen)
+
+                # Wrap with caching
+                cached_session = CachedDatabaseWrapper(
+                    db_session,
+                    cache=cache,
+                    ttl=ttl,
+                    key_prefix=key_prefix or "db",
+                    table_name=table_name,
+                    auto_invalidate=auto_invalidate,
+                )
+
+                yield cached_session
+
+            except StopIteration:
+                # No value yielded, return None
+                yield None
+            finally:
+                # Clean up the generator
+                try:
+                    next(gen)
+                except StopIteration:
+                    pass
+                except Exception as e:
+                    # Handle cleanup exceptions
+                    import logging
+
+                    logging.getLogger(__name__).warning(
+                        f"Error during dependency cleanup: {e}"
+                    )
+
+        return sync_generator_wrapper
+
+
+def _wrap_regular_dependency(
+    dependency_func: Callable,
+    cache: YokedCache,
+    ttl: Optional[int],
+    key_prefix: Optional[str],
+    table_name: Optional[str],
+    auto_invalidate: bool,
+) -> Callable:
+    """Wrap regular (non-generator) dependency functions."""
+
+    if inspect.iscoroutinefunction(dependency_func):
+
+        @functools.wraps(dependency_func)
+        async def async_wrapper(*args, **kwargs):
+            # Get the dependency value
+            result = await dependency_func(*args, **kwargs)
+
+            # If it's a database session-like object, wrap it
+            if hasattr(result, "query") or hasattr(result, "execute"):
+                return CachedDatabaseWrapper(
+                    result,
+                    cache=cache,
+                    ttl=ttl,
+                    key_prefix=key_prefix or "db",
+                    table_name=table_name,
+                    auto_invalidate=auto_invalidate,
+                )
+            else:
+                # For non-database dependencies, just return as-is
+                return result
+
+        return async_wrapper
+    else:
+
+        @functools.wraps(dependency_func)
+        def sync_wrapper(*args, **kwargs):
+            # Get the dependency value
+            result = dependency_func(*args, **kwargs)
+
+            # If it's a database session-like object, wrap it
+            if hasattr(result, "query") or hasattr(result, "execute"):
+                return CachedDatabaseWrapper(
+                    result,
+                    cache=cache,
+                    ttl=ttl,
+                    key_prefix=key_prefix or "db",
+                    table_name=table_name,
+                    auto_invalidate=auto_invalidate,
+                )
+            else:
+                # For non-database dependencies, just return as-is
+                return result
+
+        return sync_wrapper
 
 
 class CachedDatabaseWrapper:

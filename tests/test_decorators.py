@@ -129,8 +129,8 @@ class TestCachedDependency:
         # Create cached dependency
         cached_get_db = cached_dependency(get_db, cache=cache)
 
-        # Get cached database wrapper
-        cached_db = await cached_get_db()
+        # Get cached database wrapper (regular dependency, not async)
+        cached_db = cached_get_db()
 
         assert isinstance(cached_db, CachedDatabaseWrapper)
         assert cached_db._db_session == mock_db

@@ -15,6 +15,8 @@ YokedCache is a powerful, async-first caching library that brings enterprise-gra
 - **🧠 Intelligent**: Auto-invalidation, vector search, and fuzzy matching
 - **📊 Observable**: Built-in metrics, monitoring, and comprehensive CLI tools
 - **🛡️ Production-Ready**: Health checks, error handling, and security features
+- **🔐 Resilient**: Circuit breaker, retry logic, and graceful fallbacks *(v0.2.1)*
+- **⚡ Enhanced**: Smart async/sync context handling and performance optimizations *(v0.2.1)*
 
 ## Quick Start
 
@@ -48,13 +50,7 @@ Perfect for newcomers and quick setups:
 - **[Core Concepts](core-concepts.md)** - Keys, TTL, tags, serialization, and architecture
 - **[Configuration Guide](configuration.md)** - Complete configuration reference and best practices
 
-### 🏗️ **Architecture & Backends**
-Choose and configure your caching infrastructure:
-
-- **[Backend Overview](backends.md)** - Memory, Redis, and Memcached backends
-- **[Redis Setup](redis-setup.md)** - Redis installation and configuration guide
-
-### 💻 **Usage Patterns**
+### 💻 **Usage Guide**
 Learn different ways to use YokedCache:
 
 - **[Usage Patterns](usage-patterns.md)** - Function caching, auto-invalidation, and fuzzy search
@@ -64,22 +60,19 @@ Learn different ways to use YokedCache:
 ### 🔍 **Advanced Features**
 Powerful capabilities for complex use cases:
 
+- **[Backends & Setup](backends.md)** - Memory, Redis, Memcached backends with setup guides
 - **[Vector Search](vector-search.md)** - Semantic similarity search capabilities
-- **[Production Monitoring](monitoring.md)** - Metrics, health checks, and observability
-
-### 🛠️ **Tools & CLI**
-Command-line tools and utilities:
-
-- **[CLI Reference](cli.md)** - Complete command-line interface guide
-- **[Testing Guide](testing.md)** - Testing patterns and best practices
+- **[Monitoring & Health](monitoring.md)** - Comprehensive monitoring, health checks, and alerting *(v0.2.1)*
 
 ### 📖 **Reference**
 Detailed technical documentation:
 
-- **[API Reference](api/index.md)** - Complete API documentation
-- **[Performance Guide](performance.md)** - Optimization and tuning
+- **[CLI Tool](cli.md)** - Complete command-line interface guide
+- **[Performance Guide](performance.md)** - Optimization and tuning  
 - **[Security Guide](security.md)** - Security best practices
+- **[Testing Guide](testing.md)** - Testing patterns and best practices
 - **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
+- **[API Reference](api/index.md)** - Complete API documentation
 
 ## Key Features
 

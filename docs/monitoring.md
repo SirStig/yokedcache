@@ -1,16 +1,20 @@
-# Production Monitoring
+# Production Monitoring & Health Checks
 
-YokedCache 0.2.0 includes comprehensive monitoring capabilities for production environments. Monitor cache performance, track metrics, and set up alerts using industry-standard tools like Prometheus and StatsD.
+YokedCache v0.2.1 includes comprehensive monitoring, health checking, and metrics collection capabilities for production environments. Monitor cache performance, track detailed metrics, and set up alerts using industry-standard tools like Prometheus and StatsD.
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Health Checks](#health-checks)
+- [Metrics Collection](#metrics-collection)
 - [Metrics Collectors](#metrics-collectors)
 - [Prometheus Integration](#prometheus-integration)
 - [StatsD Integration](#statsd-integration)
 - [Custom Metrics](#custom-metrics)
 - [Dashboards and Alerting](#dashboards-and-alerting)
 - [Performance Monitoring](#performance-monitoring)
+- [Real-time Performance Tracking](#real-time-performance-tracking)
+- [Alerting and Notifications](#alerting-and-notifications)
 
 ## Overview
 
@@ -39,6 +43,62 @@ The monitoring system provides real-time insights into your cache performance th
 | `cache.keys_count` | Gauge | Current number of cached keys |
 | `cache.operation_duration` | Histogram | Operation latency distribution |
 | `cache.invalidations.total` | Counter | Total number of invalidations |
+
+## Health Checks
+
+### Basic Health Check
+
+```python
+from yokedcache import YokedCache
+
+cache = YokedCache()
+
+# Simple health check
+is_healthy = await cache.health()
+print(f"Cache is healthy: {is_healthy}")
+```
+
+### Detailed Health Check *(v0.2.1+)*
+
+Get comprehensive health information including connection status, pool statistics, and performance metrics:
+
+```python
+# Detailed health check with full diagnostics
+health_info = await cache.detailed_health_check()
+
+print(f"Status: {health_info['status']}")
+print(f"Redis connected: {health_info['redis_connected']}")
+print(f"Connection pool: {health_info['connection_pool']}")
+print(f"Circuit breaker: {health_info['circuit_breaker']}")
+print(f"Performance metrics: {health_info['performance_metrics']}")
+```
+
+## Metrics Collection
+
+### Enabling Metrics
+
+```python
+from yokedcache import YokedCache, CacheConfig
+
+config = CacheConfig(
+    enable_metrics=True,
+    metrics_retention_days=7
+)
+
+cache = YokedCache(config=config)
+cache.start_metrics_collection()
+```
+
+### Accessing Metrics
+
+```python
+# Get current metrics snapshot
+metrics = cache.get_comprehensive_metrics()
+
+print(f"Hit rate: {metrics.hit_rate:.2%}")
+print(f"Average response time: {metrics.avg_response_time:.3f}s")
+print(f"Total operations: {metrics.total_operations}")
+```
 
 ## Metrics Collectors
 
@@ -603,6 +663,78 @@ async def safe_cache_get(key: str):
         return None
 ```
 
+## Real-time Performance Tracking
+
+Monitor performance in real-time and alert on issues:
+
+```python
+# Monitor performance in real-time
+async def monitor_cache_performance():
+    while True:
+        metrics = cache.get_comprehensive_metrics()
+        
+        # Alert on poor performance
+        if metrics.hit_rate < 0.70:
+            await send_alert(f"Low hit rate: {metrics.hit_rate:.2%}")
+        
+        if metrics.avg_response_time > 0.100:
+            await send_alert(f"High latency: {metrics.avg_response_time:.3f}s")
+        
+        if metrics.error_rate > 0.01:
+            await send_alert(f"High error rate: {metrics.error_rate:.3%}")
+        
+        await asyncio.sleep(30)  # Check every 30 seconds
+```
+
+## Alerting and Notifications
+
+### Configuring Alerts
+
+Set up automated alerting based on metrics thresholds:
+
+```python
+from yokedcache.monitoring import AlertManager
+
+alert_manager = AlertManager(cache)
+
+# Configure alert thresholds
+alert_manager.add_alert(
+    name="low_hit_rate",
+    metric="hit_rate",
+    threshold=0.70,
+    comparison="less_than",
+    webhook_url="https://your-webhook.com/alerts"
+)
+
+alert_manager.add_alert(
+    name="high_latency", 
+    metric="avg_response_time",
+    threshold=0.100,
+    comparison="greater_than",
+    email_recipients=["admin@yourcompany.com"]
+)
+
+# Start monitoring
+alert_manager.start()
+```
+
+### Common Alert Patterns
+
+**Performance Alerts:**
+- Hit rate below 70%
+- Average response time above 100ms
+- Error rate above 1%
+
+**Availability Alerts:**
+- Redis connection failures
+- Circuit breaker opened
+- Connection pool exhaustion
+
+**Capacity Alerts:**
+- Memory usage above 80%
+- Connection pool utilization above 90%
+- Cache eviction rate above threshold
+
 ---
 
-Production monitoring with YokedCache provides the visibility and insights needed to maintain high-performance caching systems. Use these tools to optimize performance, detect issues early, and ensure reliable operation in production environments.
+Production monitoring with YokedCache provides comprehensive visibility and insights needed to maintain high-performance caching systems. Use these tools to optimize performance, detect issues early, and ensure reliable operation in production environments.

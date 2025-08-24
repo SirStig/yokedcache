@@ -1,0 +1,119 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.2.1)'
+        required: true
+        type: string
+      create_tag:
+        description: 'Create git tag for this version'
+        required: true
+        type: boolean
+        default: true
+      draft:
+        description: 'Create as draft release'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  manual-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Verify version matches
+        run: |
+          PACKAGE_VERSION=$(python -c "from src.yokedcache import __version__; print(__version__)")
+          if [ "$PACKAGE_VERSION" != "${{ github.event.inputs.version }}" ]; then
+            echo "Package version ($PACKAGE_VERSION) doesn't match input version (${{ github.event.inputs.version }})"
+            echo "Please update src/yokedcache/__init__.py to version ${{ github.event.inputs.version }}"
+            exit 1
+          fi
+
+      - name: Create tag
+        if: github.event.inputs.create_tag == 'true'
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag -a "v${{ github.event.inputs.version }}" -m "Release v${{ github.event.inputs.version }}"
+          git push origin "v${{ github.event.inputs.version }}"
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          python << 'EOF'
+          import re
+          
+          version = "${{ github.event.inputs.version }}"
+          
+          try:
+              with open('CHANGELOG.md', 'r') as f:
+                  content = f.read()
+              
+              pattern = rf'## \[{re.escape(version)}\].*?\n(.*?)(?=\n## \[|\n---|\Z)'
+              match = re.search(pattern, content, re.DOTALL)
+              
+              if match:
+                  changelog_content = match.group(1).strip()
+                  changelog_content = re.sub(r'\n---+.*$', '', changelog_content, flags=re.MULTILINE)
+                  
+                  with open('release_notes.md', 'w') as f:
+                      f.write(changelog_content)
+                  print(f"Extracted changelog for version {version}")
+              else:
+                  print(f"No changelog found for version {version}")
+                  with open('release_notes.md', 'w') as f:
+                      f.write(f"Manual release {version}")
+          except Exception as e:
+              print(f"Error extracting changelog: {e}")
+              with open('release_notes.md', 'w') as f:
+                  f.write(f"Manual release {version}")
+          EOF
+
+      - name: Build package
+        run: |
+          python -m build
+
+      - name: Run tests
+        run: |
+          pip install -e .
+          pip install pytest pytest-cov pytest-asyncio
+          python -m pytest tests/ --tb=short
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          name: Release ${{ github.event.inputs.version }}
+          body_path: release_notes.md
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+          draft: ${{ github.event.inputs.draft }}
+          prerelease: ${{ contains(github.event.inputs.version, 'rc') || contains(github.event.inputs.version, 'beta') || contains(github.event.inputs.version, 'alpha') }}
+
+      - name: Publish to PyPI
+        if: github.event.inputs.draft == 'false'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          print-hash: true

@@ -7,15 +7,17 @@ and cache management operations.
 """
 
 import asyncio
+import inspect
 import logging
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Set, Union
 
 import redis.asyncio as redis
 from redis.asyncio.connection import ConnectionPool
 
+from .circuit_breaker import CircuitBreaker, CircuitBreakerError, RetryWithBackoff
 from .config import CacheConfig
 from .exceptions import (
     CacheConnectionError,
@@ -25,6 +27,7 @@ from .exceptions import (
     CacheTimeoutError,
     YokedCacheError,
 )
+from .metrics import CacheMetrics, OperationMetric, get_global_metrics
 from .models import (
     CacheEntry,
     CacheStats,
@@ -102,8 +105,74 @@ class YokedCache:
         self._connected = False
         self._shutdown = False
 
+        # Error handling and resilience
+        if self.config.enable_circuit_breaker:
+            self._circuit_breaker: Optional[CircuitBreaker] = CircuitBreaker(
+                failure_threshold=self.config.circuit_breaker_failure_threshold,
+                timeout=self.config.circuit_breaker_timeout,
+                expected_exception=(
+                    CacheConnectionError,
+                    CacheTimeoutError,
+                    redis.ConnectionError,
+                    redis.TimeoutError,
+                    Exception,  # Catch-all for Redis exceptions
+                ),
+            )
+        else:
+            self._circuit_breaker = None
+
+        # Retry mechanism
+        self._retry_handler = RetryWithBackoff(
+            max_retries=self.config.connection_retries,
+            base_delay=self.config.retry_delay,
+        )
+
+        # Metrics collection
+        if self.config.enable_metrics:
+            self._metrics: Optional[CacheMetrics] = CacheMetrics()
+        else:
+            self._metrics = None
+
         # Setup logging
         self._setup_logging()
+
+    def _is_running_in_async_context(self) -> bool:
+        """Check if we're currently running in an async context."""
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_running_loop()
+            return loop is not None
+        except RuntimeError:
+            # No event loop running
+            return False
+
+    def _warn_sync_in_async(self, method_name: str) -> None:
+        """Warn when sync methods are called in async contexts."""
+        if self._is_running_in_async_context():
+            frame = inspect.currentframe()
+            if frame and frame.f_back and frame.f_back.f_back:
+                caller_frame = frame.f_back.f_back
+                filename = caller_frame.f_code.co_filename
+                lineno = caller_frame.f_lineno
+                logger.warning(
+                    f"Sync method '{method_name}' called from async context at {filename}:{lineno}. "
+                    f"Consider using 'a{method_name}' for better performance."
+                )
+
+    async def _sync_fallback(self, coro_func, *args, **kwargs):
+        """Execute async function in sync context with proper error handling."""
+        try:
+            if self._is_running_in_async_context():
+                # We're already in an async context, just await
+                return await coro_func(*args, **kwargs)
+            else:
+                # We're in sync context, create new event loop
+                return asyncio.run(coro_func(*args, **kwargs))
+        except Exception as e:
+            if self.config.fallback_enabled:
+                logger.warning(f"Cache operation failed, returning None: {e}")
+                return None
+            raise
 
     def _setup_logging(self) -> None:
         """Configure logging based on configuration."""
@@ -115,15 +184,9 @@ class YokedCache:
             return
 
         try:
-            # Create connection pool
-            self._pool = ConnectionPool.from_url(
-                self.config.redis_url,
-                max_connections=self.config.max_connections,
-                retry_on_timeout=self.config.retry_on_timeout,
-                health_check_interval=self.config.health_check_interval,
-                socket_connect_timeout=self.config.socket_connect_timeout,
-                socket_timeout=self.config.socket_timeout,
-            )
+            # Create connection pool with full configuration
+            pool_config = self.config.get_connection_pool_config()
+            self._pool = ConnectionPool.from_url(self.config.redis_url, **pool_config)
 
             # Create Redis client
             self._redis = redis.Redis(connection_pool=self._pool)
@@ -166,6 +229,171 @@ class YokedCache:
             logger.warning(f"Redis health check failed: {e}")
             return False
 
+    async def detailed_health_check(self) -> Dict[str, Any]:
+        """
+        Comprehensive health check for monitoring.
+
+        Returns detailed information about cache health, performance,
+        and system status suitable for monitoring dashboards.
+        """
+        health_info: Dict[str, Any] = {
+            "status": "healthy",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "cache": {
+                "connected": self._connected,
+                "redis_available": False,
+                "connection_pool_stats": None,
+                "circuit_breaker_stats": None,
+            },
+            "performance": {
+                "total_operations": 0,
+                "hit_rate": 0.0,
+                "average_response_time_ms": 0.0,
+            },
+            "errors": [],
+            "warnings": [],
+        }
+
+        # Test Redis connectivity
+        try:
+            if self._redis:
+                start_time = time.time()
+                await self._redis.ping()
+                ping_time = (time.time() - start_time) * 1000
+                health_info["cache"]["redis_available"] = True
+                health_info["cache"]["ping_time_ms"] = round(ping_time, 2)
+            else:
+                health_info["cache"]["redis_available"] = False
+                health_info["errors"].append("Redis client not initialized")
+        except Exception as e:
+            health_info["cache"]["redis_available"] = False
+            health_info["errors"].append(f"Redis connection failed: {str(e)}")
+            health_info["status"] = "unhealthy"
+
+        # Get connection pool stats
+        try:
+            if self._pool:
+                pool_stats = {
+                    "max_connections": self.config.max_connections,
+                    "created_connections": getattr(
+                        self._pool, "created_connections", 0
+                    ),
+                    "available_connections": getattr(
+                        self._pool, "available_connections", 0
+                    ),
+                    "in_use_connections": getattr(self._pool, "in_use_connections", 0),
+                }
+                health_info["cache"]["connection_pool_stats"] = pool_stats
+
+                # Check for connection pool issues
+                in_use_ratio = (
+                    pool_stats.get("in_use_connections", 0)
+                    / pool_stats["max_connections"]
+                )
+                if in_use_ratio > 0.8:
+                    health_info["warnings"].append(
+                        f"High connection pool usage: {in_use_ratio:.1%}"
+                    )
+        except Exception as e:
+            health_info["warnings"].append(
+                f"Could not get connection pool stats: {str(e)}"
+            )
+
+        # Get circuit breaker stats
+        if self._circuit_breaker:
+            try:
+                cb_stats = self._circuit_breaker.get_stats()
+                health_info["cache"]["circuit_breaker_stats"] = cb_stats
+
+                if cb_stats["state"] == "open":
+                    health_info["status"] = "degraded"
+                    health_info["errors"].append("Circuit breaker is open")
+                elif cb_stats["failure_rate"] > 0.1:  # 10% failure rate
+                    health_info["warnings"].append(
+                        f"High failure rate: {cb_stats['failure_rate']:.1%}"
+                    )
+            except Exception as e:
+                health_info["warnings"].append(
+                    f"Could not get circuit breaker stats: {str(e)}"
+                )
+
+        # Get performance stats
+        try:
+            stats = await self.get_stats()
+            health_info["performance"]["total_operations"] = (
+                stats.total_hits
+                + stats.total_misses
+                + stats.total_sets
+                + stats.total_deletes
+            )
+            health_info["performance"]["hit_rate"] = stats.hit_rate
+            health_info["performance"]["total_keys"] = stats.total_keys
+            health_info["performance"]["memory_usage_mb"] = round(
+                stats.total_memory_bytes / (1024 * 1024), 2
+            )
+            health_info["performance"]["uptime_seconds"] = stats.uptime_seconds
+
+            # Performance warnings
+            if stats.hit_rate < 50.0:  # Less than 50% hit rate
+                health_info["warnings"].append(f"Low hit rate: {stats.hit_rate:.1f}%")
+
+        except Exception as e:
+            health_info["warnings"].append(f"Could not get performance stats: {str(e)}")
+
+        # Test basic operations
+        try:
+            test_key = f"health_check_{int(time.time())}"
+            test_value = "health_check_value"
+
+            # Test set operation
+            start_time = time.time()
+            set_result = await self.set(test_key, test_value, ttl=60)
+            set_time = (time.time() - start_time) * 1000
+
+            if not set_result:
+                health_info["errors"].append("Failed to set test key")
+                health_info["status"] = "unhealthy"
+
+            # Test get operation
+            start_time = time.time()
+            get_result = await self.get(test_key)
+            get_time = (time.time() - start_time) * 1000
+
+            if get_result != test_value:
+                health_info["errors"].append("Failed to retrieve test key")
+                health_info["status"] = "unhealthy"
+
+            # Test delete operation
+            start_time = time.time()
+            delete_result = await self.delete(test_key)
+            delete_time = (time.time() - start_time) * 1000
+
+            if not delete_result:
+                health_info["warnings"].append("Failed to delete test key")
+
+            # Average operation time
+            avg_time = (set_time + get_time + delete_time) / 3
+            health_info["performance"]["average_response_time_ms"] = round(avg_time, 2)
+
+            # Performance warnings
+            if avg_time > 100:  # Slower than 100ms
+                health_info["warnings"].append(
+                    f"Slow operations: {avg_time:.1f}ms average"
+                )
+
+        except Exception as e:
+            health_info["errors"].append(f"Operation test failed: {str(e)}")
+            health_info["status"] = "unhealthy"
+
+        # Determine overall status
+        if health_info["errors"]:
+            health_info["status"] = "unhealthy"
+        elif health_info["warnings"]:
+            if health_info["status"] == "healthy":
+                health_info["status"] = "degraded"
+
+        return health_info
+
     @asynccontextmanager
     async def _get_redis(self) -> AsyncGenerator[redis.Redis, None]:
         """Get Redis client with automatic connection management."""
@@ -176,6 +404,61 @@ class YokedCache:
             raise CacheConnectionError("Redis client not available")
 
         yield self._redis
+
+    def _record_operation_metric(
+        self,
+        operation_type: str,
+        key: str,
+        duration_ms: float,
+        success: bool,
+        error_type: Optional[str] = None,
+        cache_hit: Optional[bool] = None,
+        table: Optional[str] = None,
+        tags: Optional[Set[str]] = None,
+    ) -> None:
+        """Record an operation metric if metrics are enabled."""
+        if self._metrics:
+            metric = OperationMetric(
+                operation_type=operation_type,
+                key=key,
+                duration_ms=duration_ms,
+                success=success,
+                error_type=error_type,
+                cache_hit=cache_hit,
+                table=table,
+                tags=tags or set(),
+            )
+            self._metrics.record_operation(metric)
+
+    async def _execute_with_resilience(
+        self, operation: Callable, *args, **kwargs
+    ) -> Any:
+        """Execute Redis operation with circuit breaker and retry logic."""
+
+        async def _execute():
+            if self._circuit_breaker:
+                return await self._circuit_breaker.call_async(
+                    operation, *args, **kwargs
+                )
+            else:
+                return await operation(*args, **kwargs)
+
+        try:
+            if self.config.connection_retries > 0:
+                return await self._retry_handler.execute_async(_execute)
+            else:
+                return await _execute()
+
+        except CircuitBreakerError as e:
+            logger.warning(f"Circuit breaker prevented operation: {e}")
+            if self.config.fallback_enabled:
+                return None
+            raise
+        except Exception as e:
+            logger.error(f"Redis operation failed: {e}")
+            if self.config.fallback_enabled:
+                return None
+            raise
 
     async def get(
         self,
@@ -195,50 +478,75 @@ class YokedCache:
             Cached value or default
         """
         sanitized_key = self._build_key(key)
+        start_time = time.time()
+        cache_hit = False
+        success = False
+        error_type = None
 
         try:
-            async with self._get_redis() as r:
-                # Get value from Redis
-                data = await r.get(sanitized_key)
 
-                if data is None:
-                    self._stats.add_miss()
-                    if self.config.log_cache_misses:
-                        logger.debug(f"Cache miss: {sanitized_key}")
-                    return default
+            async def _get_operation():
+                nonlocal cache_hit
 
-                # Deserialize value
-                try:
-                    value = deserialize_data(data, SerializationMethod.JSON)
-                except CacheSerializationError:
-                    # Try pickle as fallback
-                    try:
-                        value = deserialize_data(data, SerializationMethod.PICKLE)
-                    except CacheSerializationError:
-                        logger.warning(
-                            f"Failed to deserialize data for key: {sanitized_key}"
-                        )
+                async with self._get_redis() as r:
+                    # Get value from Redis
+                    data = await r.get(sanitized_key)
+
+                    if data is None:
+                        self._stats.add_miss()
+                        if self.config.log_cache_misses:
+                            logger.debug(f"Cache miss: {sanitized_key}")
+                        cache_hit = False
                         return default
 
-                # Update statistics
-                self._stats.add_hit()
-
-                # Update access time if requested
-                if touch:
+                    # Deserialize value
                     try:
-                        await r.touch(sanitized_key)
-                    except Exception:
-                        # touch command might not be supported (e.g., in fakeredis)
-                        pass
+                        value = deserialize_data(data, SerializationMethod.JSON)
+                    except CacheSerializationError:
+                        # Try pickle as fallback
+                        try:
+                            value = deserialize_data(data, SerializationMethod.PICKLE)
+                        except CacheSerializationError:
+                            logger.warning(
+                                f"Failed to deserialize data for key: {sanitized_key}"
+                            )
+                            return default
 
-                if self.config.log_cache_hits:
-                    logger.debug(f"Cache hit: {sanitized_key}")
+                    # Update statistics
+                    self._stats.add_hit()
+                    cache_hit = True
 
-                return value
+                    # Update access time if requested
+                    if touch:
+                        try:
+                            await r.touch(sanitized_key)
+                        except Exception:
+                            # touch command might not be supported (e.g., in fakeredis)
+                            pass
+
+                    if self.config.log_cache_hits:
+                        logger.debug(f"Cache hit: {sanitized_key}")
+
+                    return value
+
+            result = await self._execute_with_resilience(_get_operation)
+            success = True
+            return result if result is not None else default
 
         except Exception as e:
-            logger.error(f"Error getting cache key {sanitized_key}: {e}")
-            return default
+            error_type = type(e).__name__
+            raise
+        finally:
+            # Record metrics
+            duration_ms = (time.time() - start_time) * 1000
+            self._record_operation_metric(
+                operation_type="get",
+                key=sanitized_key,
+                duration_ms=duration_ms,
+                success=success,
+                error_type=error_type,
+                cache_hit=cache_hit,
+            )
 
     async def set(
         self,
@@ -266,33 +574,54 @@ class YokedCache:
         actual_ttl = calculate_ttl_with_jitter(actual_ttl)
         serialization = serialization or self.config.default_serialization
 
+        start_time = time.time()
+        success = False
+        error_type = None
+        normalized_tags = normalize_tags(tags) if tags else set()
+
         try:
-            # Serialize value
-            serialized_data = serialize_data(value, serialization)
 
-            async with self._get_redis() as r:
-                # Start pipeline for atomic operations
-                async with r.pipeline() as pipe:
-                    # Set the main key
-                    await pipe.setex(sanitized_key, actual_ttl, serialized_data)
+            async def _set_operation():
+                # Serialize value
+                serialized_data = serialize_data(value, serialization)
 
-                    # Handle tags
-                    if tags:
-                        normalized_tags = normalize_tags(tags)
-                        await self._add_tags_to_key(
-                            pipe, sanitized_key, normalized_tags, actual_ttl
-                        )
+                async with self._get_redis() as r:
+                    # Start pipeline for atomic operations
+                    async with r.pipeline() as pipe:
+                        # Set the main key
+                        await pipe.setex(sanitized_key, actual_ttl, serialized_data)
 
-                    # Execute pipeline
-                    await pipe.execute()
+                        # Handle tags
+                        if tags:
+                            await self._add_tags_to_key(
+                                pipe, sanitized_key, normalized_tags, actual_ttl
+                            )
 
-            self._stats.total_sets += 1
-            logger.debug(f"Cache set: {sanitized_key} (TTL: {actual_ttl}s)")
-            return True
+                        # Execute pipeline
+                        await pipe.execute()
+
+                self._stats.total_sets += 1
+                logger.debug(f"Cache set: {sanitized_key} (TTL: {actual_ttl}s)")
+                return True
+
+            result = await self._execute_with_resilience(_set_operation)
+            success = result is not None and result
+            return result if result is not None else False
 
         except Exception as e:
-            logger.error(f"Error setting cache key {sanitized_key}: {e}")
-            return False
+            error_type = type(e).__name__
+            raise
+        finally:
+            # Record metrics
+            duration_ms = (time.time() - start_time) * 1000
+            self._record_operation_metric(
+                operation_type="set",
+                key=sanitized_key,
+                duration_ms=duration_ms,
+                success=success,
+                error_type=error_type,
+                tags=normalized_tags,
+            )
 
     async def delete(self, key: str) -> bool:
         """
@@ -468,6 +797,41 @@ class YokedCache:
 
         return self._stats
 
+    async def get_comprehensive_metrics(self) -> Dict[str, Any]:
+        """Get comprehensive metrics including enhanced performance data."""
+        if self._metrics:
+            return self._metrics.get_comprehensive_stats()
+        else:
+            # Fall back to basic stats if metrics not enabled
+            stats = await self.get_stats()
+            return {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "metrics_enabled": False,
+                "basic_stats": {
+                    "total_hits": stats.total_hits,
+                    "total_misses": stats.total_misses,
+                    "total_sets": stats.total_sets,
+                    "total_deletes": stats.total_deletes,
+                    "hit_rate": stats.hit_rate,
+                    "total_keys": stats.total_keys,
+                    "uptime_seconds": stats.uptime_seconds,
+                },
+            }
+
+    def start_metrics_collection(self) -> None:
+        """Start background metrics collection if enabled."""
+        if self._metrics and self.config.enable_metrics:
+            asyncio.create_task(
+                self._metrics.start_background_collection(
+                    interval_seconds=self.config.metrics_interval
+                )
+            )
+
+    async def stop_metrics_collection(self) -> None:
+        """Stop background metrics collection."""
+        if self._metrics:
+            await self._metrics.stop_background_collection()
+
     async def fuzzy_search(
         self,
         query: str,
@@ -534,23 +898,29 @@ class YokedCache:
                 )
 
                 # Get values for matching keys
-                for matched_key, score in matches:
+                for match_result in matches:
+                    if len(match_result) >= 2:
+                        matched_key, score = match_result[0], match_result[1]
+                    else:
+                        continue
                     if score >= threshold:
                         try:
                             value = await self.get(matched_key, touch=False)
                             if value is not None:
-                                from .models import CacheEntry
+                                # Create cache entry
+                                cache_entry = CacheEntry(
+                                    key=matched_key,
+                                    value=value,
+                                    created_at=datetime.now(timezone.utc),
+                                )
 
+                                # Create fuzzy search result
                                 result = FuzzySearchResult(
                                     key=matched_key,
                                     value=value,
                                     score=score,
                                     matched_term=query,
-                                    cache_entry=CacheEntry(
-                                        key=matched_key,
-                                        value=value,
-                                        created_at=datetime.utcnow(),
-                                    ),
+                                    cache_entry=cache_entry,
                                 )
                                 results.append(result)
                         except Exception as e:
@@ -587,6 +957,104 @@ class YokedCache:
             tag_key = self._build_tag_key(tag)
             await pipe.sadd(tag_key, key)
             await pipe.expire(tag_key, ttl + 60)  # Tag sets live slightly longer
+
+    # Add sync wrapper methods for easier use in sync contexts
+    def get_sync(
+        self,
+        key: str,
+        default: Any = None,
+        touch: bool = True,
+    ) -> Any:
+        """
+        Sync version of get() with proper async context detection.
+
+        Warns when used in async context and suggests using aget() instead.
+        """
+        self._warn_sync_in_async("get")
+
+        try:
+            return asyncio.run(self.get(key, default, touch))
+        except RuntimeError as e:
+            if "cannot be called from a running event loop" in str(e):
+                logger.error(
+                    "Cannot use sync methods from async context. Use await cache.get() instead."
+                )
+                if self.config.fallback_enabled:
+                    return default
+                raise
+            raise
+
+    def set_sync(
+        self,
+        key: str,
+        value: Any,
+        ttl: Optional[int] = None,
+        tags: Optional[Union[str, List[str], Set[str]]] = None,
+        serialization: Optional[SerializationMethod] = None,
+    ) -> bool:
+        """Sync version of set()."""
+        self._warn_sync_in_async("set")
+
+        try:
+            return asyncio.run(self.set(key, value, ttl, tags, serialization))
+        except RuntimeError as e:
+            if "cannot be called from a running event loop" in str(e):
+                logger.error(
+                    "Cannot use sync methods from async context. Use await cache.set() instead."
+                )
+                if self.config.fallback_enabled:
+                    return False
+                raise
+            raise
+
+    def delete_sync(self, key: str) -> bool:
+        """Sync version of delete()."""
+        self._warn_sync_in_async("delete")
+
+        try:
+            return asyncio.run(self.delete(key))
+        except RuntimeError as e:
+            if "cannot be called from a running event loop" in str(e):
+                logger.error(
+                    "Cannot use sync methods from async context. Use await cache.delete() instead."
+                )
+                if self.config.fallback_enabled:
+                    return False
+                raise
+            raise
+
+    def exists_sync(self, key: str) -> bool:
+        """Sync version of exists()."""
+        self._warn_sync_in_async("exists")
+
+        try:
+            return asyncio.run(self.exists(key))
+        except RuntimeError as e:
+            if "cannot be called from a running event loop" in str(e):
+                logger.error(
+                    "Cannot use sync methods from async context. Use await cache.exists() instead."
+                )
+                if self.config.fallback_enabled:
+                    return False
+                raise
+            raise
+
+    # Add aliases for clarity
+    async def aget(self, *args, **kwargs) -> Any:
+        """Explicitly async version of get."""
+        return await self.get(*args, **kwargs)
+
+    async def aset(self, *args, **kwargs) -> bool:
+        """Explicitly async version of set."""
+        return await self.set(*args, **kwargs)
+
+    async def adelete(self, *args, **kwargs) -> bool:
+        """Explicitly async version of delete."""
+        return await self.delete(*args, **kwargs)
+
+    async def aexists(self, *args, **kwargs) -> bool:
+        """Explicitly async version of exists."""
+        return await self.exists(*args, **kwargs)
 
     # Context manager support
     async def __aenter__(self):

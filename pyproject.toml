@@ -148,6 +148,10 @@ addopts = [
     "--cov-report=html",
 ]
 asyncio_mode = "auto"
+markers = [
+    "integration: marks tests as integration tests",
+    "slow: marks tests as slow running",
+]
 
 [tool.coverage.run]
 source = ["src/yokedcache"]

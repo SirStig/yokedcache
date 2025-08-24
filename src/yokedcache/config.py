@@ -44,6 +44,15 @@ class CacheConfig:
     health_check_interval: int = 30
     socket_connect_timeout: float = 5.0
     socket_timeout: float = 5.0
+    connection_pool_kwargs: Dict[str, Any] = field(default_factory=dict)
+
+    # Error handling and resilience settings
+    enable_circuit_breaker: bool = True
+    circuit_breaker_failure_threshold: int = 5
+    circuit_breaker_timeout: float = 60.0
+    fallback_enabled: bool = True
+    connection_retries: int = 3
+    retry_delay: float = 0.1
 
     # Cache behavior settings
     default_ttl: int = 300  # 5 minutes
@@ -102,6 +111,11 @@ class CacheConfig:
             "YOKEDCACHE_FUZZY_THRESHOLD": "fuzzy_threshold",
             "YOKEDCACHE_LOG_LEVEL": "log_level",
             "YOKEDCACHE_MAX_CONNECTIONS": "max_connections",
+            "YOKEDCACHE_SOCKET_TIMEOUT": "socket_timeout",
+            "YOKEDCACHE_SOCKET_CONNECT_TIMEOUT": "socket_connect_timeout",
+            "YOKEDCACHE_ENABLE_CIRCUIT_BREAKER": "enable_circuit_breaker",
+            "YOKEDCACHE_FALLBACK_ENABLED": "fallback_enabled",
+            "YOKEDCACHE_CONNECTION_RETRIES": "connection_retries",
         }
 
         for env_var, attr_name in env_mappings.items():
@@ -139,6 +153,27 @@ class CacheConfig:
 
         if self.pipeline_size <= 0:
             raise CacheConfigurationError("pipeline_size", "must be greater than 0")
+
+        if self.socket_connect_timeout <= 0:
+            raise CacheConfigurationError(
+                "socket_connect_timeout", "must be greater than 0"
+            )
+
+        if self.socket_timeout <= 0:
+            raise CacheConfigurationError("socket_timeout", "must be greater than 0")
+
+        if self.connection_retries < 0:
+            raise CacheConfigurationError("connection_retries", "must be >= 0")
+
+        if self.circuit_breaker_failure_threshold <= 0:
+            raise CacheConfigurationError(
+                "circuit_breaker_failure_threshold", "must be greater than 0"
+            )
+
+        if self.circuit_breaker_timeout <= 0:
+            raise CacheConfigurationError(
+                "circuit_breaker_timeout", "must be greater than 0"
+            )
 
     def _parse_redis_url(self) -> None:
         """Parse Redis URL to extract connection components."""
@@ -185,6 +220,21 @@ class CacheConfig:
     def add_table_config(self, config: TableCacheConfig) -> None:
         """Add or update table-specific configuration."""
         self.table_configs[config.table_name] = config
+
+    def get_connection_pool_config(self) -> Dict[str, Any]:
+        """Get complete connection pool configuration including custom kwargs."""
+        base_config = {
+            "max_connections": self.max_connections,
+            "retry_on_timeout": self.retry_on_timeout,
+            "health_check_interval": self.health_check_interval,
+            "socket_connect_timeout": self.socket_connect_timeout,
+            "socket_timeout": self.socket_timeout,
+        }
+
+        # Merge custom connection pool kwargs
+        base_config.update(self.connection_pool_kwargs)
+
+        return base_config
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary."""

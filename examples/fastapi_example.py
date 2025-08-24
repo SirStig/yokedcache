@@ -6,7 +6,7 @@ application for automatic database query caching.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Type
 
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, create_engine
@@ -21,7 +21,7 @@ engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+Base: Type = declarative_base()
 
 
 # Models
@@ -124,9 +124,9 @@ async def update_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     if name:
-        user.name = name
+        user.name = name  # type: ignore[assignment]
     if email:
-        user.email = email
+        user.email = email  # type: ignore[assignment]
 
     db.commit()  # This will trigger cache invalidation
 

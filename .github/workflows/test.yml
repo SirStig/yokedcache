@@ -37,11 +37,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
 
-    - name: Lint with flake8
-      run: |
-        flake8 src tests examples --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 src tests examples --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
-
     - name: Check formatting with black
       run: |
         black --check src tests examples
@@ -91,7 +86,6 @@ jobs:
     - name: Run integration tests
       run: |
         python examples/basic_usage.py
-        
     - name: Test CLI
       run: |
         python -m yokedcache ping

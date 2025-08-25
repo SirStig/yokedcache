@@ -108,7 +108,6 @@ jobs:
             git push origin HEAD:$(git rev-parse --abbrev-ref HEAD)
             git push origin "v$VERSION"
             CREATED_TAG=true
-            # Avoid double release work in this run; a new tag-triggered run will process.
             SKIP_REST=true
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -261,20 +260,20 @@ jobs:
       - name: Create / Update GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-            tag_name: ${{ needs.prepare.outputs.tag }}
-            name: Release ${{ needs.prepare.outputs.version }}
-            body_path: release_notes.md
-            files: |
-              dist/*.whl
-              dist/*.tar.gz
-            draft: ${{ needs.prepare.outputs.draft == 'true' }}
-            prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Release ${{ needs.prepare.outputs.version }}
+          body_path: release_notes.md
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+          draft: ${{ needs.prepare.outputs.draft == 'true' }}
+          prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
 
   publish:
     name: Publish PyPI
     runs-on: ubuntu-latest
     needs: [release, prepare]
-  if: needs.prepare.outputs.draft == 'false'
+    if: needs.prepare.outputs.draft == 'false'
     permissions:
       id-token: write
       contents: read
@@ -288,24 +287,3 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           print-hash: true
-
-  docs:
-    name: Deploy Docs
-    runs-on: ubuntu-latest
-    needs: [publish]
-  if: needs.prepare.outputs.draft == 'false'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install docs deps
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e '.[docs]'
-      - name: Build docs
-        run: mkdocs build --strict
-      - name: Deploy
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mkdocs gh-deploy --force --clean --message "docs: deploy ${GITHUB_SHA}"

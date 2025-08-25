@@ -620,9 +620,19 @@ class CachedDatabaseWrapper:
         @functools.wraps(method)
         def sync_cached_method(*args, **kwargs):
             # For sync methods, we need to run the async cache operations
-            return asyncio.run(
-                self._execute_cached_query(method, args, kwargs, method_name)
-            )
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                # No running loop, safe to use asyncio.run
+                return asyncio.run(
+                    self._execute_cached_query(method, args, kwargs, method_name)
+                )
+            else:
+                # Running loop exists, use asyncio.create_task
+                # and wait for result
+                return loop.run_until_complete(
+                    self._execute_cached_query(method, args, kwargs, method_name)
+                )
 
         # Return appropriate wrapper based on whether original method is async
         if inspect.iscoroutinefunction(method):

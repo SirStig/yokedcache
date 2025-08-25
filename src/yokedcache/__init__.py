@@ -6,21 +6,21 @@ featuring automatic cache invalidation, fuzzy search capabilities, and intellige
 database integration.
 """
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 __author__ = "Project Yoked LLC"
 __email__ = "twogoodgamer2@gmail.com"
 __license__ = "MIT"
 
 try:
     from .cache import YokedCache
-except ImportError as e:
+except ImportError:
     # If Redis is not available, create a placeholder that gives helpful error
     class YokedCache:  # type: ignore
         def __init__(self, *args, **kwargs):
             raise ImportError(
                 "Redis is required for YokedCache. Please install with: "
                 "pip install redis>=4.0.0"
-            ) from e
+            )
 
 
 from .config import CacheConfig

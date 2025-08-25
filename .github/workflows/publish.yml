@@ -1,17 +1,29 @@
 name: Publish to PyPI
 
 on:
-  release:
-    types: [published]
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (must match package version)'
+        required: true
+        type: string
+      environment:
+        description: 'PyPI environment to publish to'
+        required: true
+        type: choice
+        options:
+          - pypi
+          - testpypi
+        default: pypi
+
+permissions:
+  id-token: write  # For trusted publishing
+  contents: read
 
 jobs:
-  test:
+  verify-and-test:
+    name: Verify Version and Run Tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
-
     services:
       redis:
         image: redis:7-alpine
@@ -24,68 +36,124 @@ jobs:
           --health-retries 5
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev]"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
 
-    - name: Run tests
-      run: |
-        pytest --cov=yokedcache --cov-report=xml
+      - name: Verify version matches package
+        run: |
+          PACKAGE_VERSION=$(python -c "
+          import sys
+          sys.path.insert(0, 'src')
+          import yokedcache
+          print(yokedcache.__version__)
+          ")
 
-  build:
-    needs: test
+          echo "Package version: $PACKAGE_VERSION"
+          echo "Input version: ${{ github.event.inputs.version }}"
+
+          if [ "$PACKAGE_VERSION" != "${{ github.event.inputs.version }}" ]; then
+            echo "❌ Version mismatch!"
+            echo "Package version ($PACKAGE_VERSION) doesn't match input version (${{ github.event.inputs.version }})"
+            echo "Please update src/yokedcache/__init__.py to version ${{ github.event.inputs.version }}"
+            exit 1
+          fi
+
+          echo "✅ Version verified: $PACKAGE_VERSION"
+
+      - name: Check if version tag exists
+        run: |
+          TAG="v${{ github.event.inputs.version }}"
+          if ! git tag --list | grep -q "^${TAG}$"; then
+            echo "❌ Tag $TAG does not exist!"
+            echo "Please create a GitHub release first using the release.yml workflow"
+            echo "or manually create the tag: git tag $TAG && git push origin $TAG"
+            exit 1
+          fi
+          echo "✅ Tag $TAG exists"
+
+      - name: Run tests
+        run: |
+          pytest --cov=yokedcache --cov-report=xml --cov-report=term-missing
+
+      - name: Check formatting
+        run: |
+          black --check src tests examples
+
+      - name: Check import sorting
+        run: |
+          isort --check-only --diff src tests examples
+
+      - name: Type check
+        run: |
+          mypy src --ignore-missing-imports
+
+  build-and-publish:
+    name: Build and Publish to PyPI
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.11"
-
-    - name: Install build dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine
-
-    - name: Build package
-      run: python -m build
-
-    - name: Check package
-      run: twine check dist/*
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: dist
-        path: dist/
-
-  publish:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+    needs: verify-and-test
     environment:
-      name: pypi
-      url: https://pypi.org/p/yokedcache
-    permissions:
-      id-token: write  # For trusted publishing
+      name: ${{ github.event.inputs.environment }}
+      url: ${{ github.event.inputs.environment == 'pypi' && 'https://pypi.org/p/yokedcache' || 'https://test.pypi.org/p/yokedcache' }}
 
     steps:
-    - name: Download build artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: dist
-        path: dist/
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build package
+        run: |
+          python -m build
+
+      - name: Check package
+        run: |
+          twine check dist/*
+
+          # Show package info
+          echo "📦 Built packages:"
+          ls -la dist/
+
+          echo "📋 Package contents:"
+          python -m tarfile -l dist/*.tar.gz | head -20
+
+      - name: Publish to PyPI
+        if: github.event.inputs.environment == 'pypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          print-hash: true
+
+      - name: Publish to Test PyPI
+        if: github.event.inputs.environment == 'testpypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          print-hash: true
+
+      - name: Verify publication
+        run: |
+          echo "✅ Successfully published yokedcache v${{ github.event.inputs.version }} to ${{ github.event.inputs.environment }}!"
+          if [ "${{ github.event.inputs.environment }}" = "pypi" ]; then
+            echo "🎉 Package is now available at: https://pypi.org/project/yokedcache/${{ github.event.inputs.version }}/"
+            echo "📦 Install with: pip install yokedcache==${{ github.event.inputs.version }}"
+          else
+            echo "🧪 Test package is available at: https://test.pypi.org/project/yokedcache/${{ github.event.inputs.version }}/"
+            echo "📦 Install with: pip install --index-url https://test.pypi.org/simple/ yokedcache==${{ github.event.inputs.version }}"
+          fi

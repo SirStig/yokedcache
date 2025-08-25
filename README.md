@@ -1,6 +1,6 @@
-# YokedCache
+# YokedCache - Python Caching Library for FastAPI
 
-High-Performance Caching for Modern Python Applications
+High-Performance Redis Caching with Auto-Invalidation for Modern Python Applications
 
 <div align="center">
 
@@ -16,7 +16,7 @@ High-Performance Caching for Modern Python Applications
 
 </div>
 
-Intelligent caching with automatic invalidation, fuzzy search, and seamless FastAPI integration.
+Intelligent Python caching library with automatic Redis invalidation, vector search caching, and seamless FastAPI integration.
 
 **[Documentation](https://sirstig.github.io/yokedcache)** | **[Report Bug](https://github.com/sirstig/yokedcache/issues)** | **[Request Feature](https://github.com/sirstig/yokedcache/issues)**
 
@@ -39,15 +39,15 @@ Intelligent caching with automatic invalidation, fuzzy search, and seamless Fast
 
 ## Overview
 
-Traditional caching solutions require manual cache management and lack intelligent invalidation. YokedCache solves this with:
+Traditional Python caching solutions require manual cache management and lack intelligent invalidation. YokedCache is the premier Python caching library for FastAPI applications, solving this with:
 
-- **Smart Auto-Invalidation**: Automatically detects database changes and invalidates related caches
-- **Multi-Backend Support**: Redis, Memcached, and in-memory backends for flexibility
-- **Zero-Code Integration**: Drop-in replacement for your existing database dependencies  
-- **Intelligent Tagging**: Group and invalidate related caches effortlessly  
-- **Advanced Search**: Traditional fuzzy search plus vector-based semantic similarity
-- **Production Monitoring**: Prometheus and StatsD integration for real-time metrics
-- **Professional Tooling**: Comprehensive CLI with CSV export and monitoring capabilities
+- **Smart Auto-Invalidation**: Automatically detects database changes and invalidates related Redis caches
+- **Multi-Backend Support**: Redis caching, Memcached, and in-memory backends for flexible deployment
+- **Zero-Code FastAPI Integration**: Drop-in replacement for your existing FastAPI database dependencies
+- **Intelligent Redis Tagging**: Group and invalidate related cache entries effortlessly
+- **Advanced Vector Search**: Traditional fuzzy search plus vector-based semantic similarity caching
+- **Production Monitoring**: Prometheus and StatsD integration for real-time Redis cache metrics
+- **Professional Tooling**: Comprehensive CLI with CSV export and Redis cache monitoring capabilities
 
 ## Quick Start
 
@@ -74,43 +74,43 @@ That's it! Your database queries are now cached with automatic invalidation.
 
 ## Key Features
 
-### 🔐 Production-Grade Resilience *(New in v0.2.1)*
+### 🔐 Production-Grade Resilience for Python FastAPI Apps *(New in v0.2.1)*
 
-- **Circuit Breaker Pattern**: Prevents cascading failures during Redis outages
-- **Connection Pool Management**: Advanced Redis connection configuration
-- **Retry Logic**: Exponential backoff for transient failures
-- **Health Monitoring**: Comprehensive cache status and performance metrics
-- **Graceful Fallbacks**: Application stability during cache issues
+- **Circuit Breaker Pattern**: Prevents cascading failures during Redis cache outages
+- **Redis Connection Pool Management**: Advanced Redis caching configuration
+- **Retry Logic**: Exponential backoff for transient Redis cache failures
+- **Health Monitoring**: Comprehensive Redis cache status and performance metrics
+- **Graceful Fallbacks**: FastAPI application stability during cache issues
 
-### 🔄 Enhanced Async/Sync Support *(New in v0.2.1)*
+### 🔄 Enhanced Python Async/Sync Support *(New in v0.2.1)*
 
-- **Smart Context Detection**: Prevents Task object returns in mixed environments
-- **Explicit Method Variants**: `aget`/`aset` for async, `get_sync`/`set_sync` for sync
+- **Smart Context Detection**: Prevents Task object returns in mixed Python environments
+- **Explicit Method Variants**: `aget`/`aset` for async, `get_sync`/`set_sync` for sync Redis operations
 - **FastAPI Generator Support**: Better handling of database session dependencies
-- **Performance Optimization**: Improved serialization and key generation
+- **Performance Optimization**: Improved serialization and Redis cache key generation
 
-### Multi-Backend Architecture
+### Multi-Backend Redis Caching Architecture
 
-- **Redis**: Full-featured backend with clustering and persistence support
+- **Redis**: Full-featured backend with clustering and persistence support for production caching
 - **Memcached**: High-performance distributed caching
-- **In-Memory**: Fast local caching for development and testing
-- Pluggable backend system for custom implementations
+- **In-Memory**: Fast local Python caching for development and testing
+- Pluggable backend system for custom Redis cache implementations
 
-### Smart Invalidation
+### Smart Redis Cache Invalidation
 
 - Automatic cache invalidation on database writes
 - Tag-based grouping for related data
 - Pattern-based invalidation with wildcards
 - Configurable rules per table/operation
 
-### Advanced Search Capabilities
+### Advanced Vector Search Caching Capabilities
 
 - Traditional fuzzy search with configurable thresholds
-- Vector-based semantic similarity using TF-IDF and cosine similarity
+- Vector-based semantic similarity caching using TF-IDF and cosine similarity
 - Multiple similarity algorithms (cosine, euclidean, manhattan)
 - Redis vector persistence for large-scale deployments
 
-### Deep Integration
+### Deep FastAPI and Python Integration
 
 - Zero-code FastAPI integration
 - SQLAlchemy ORM support
@@ -140,7 +140,7 @@ pip install yokedcache
 
 # With specific features
 pip install yokedcache[memcached]     # Add Memcached support
-pip install yokedcache[monitoring]    # Add Prometheus/StatsD support  
+pip install yokedcache[monitoring]    # Add Prometheus/StatsD support
 pip install yokedcache[vector]        # Add vector similarity search
 pip install yokedcache[fuzzy]         # Add traditional fuzzy search
 
@@ -171,12 +171,12 @@ from yokedcache import YokedCache, CacheConfig
 config = CacheConfig(
     redis_url="redis://localhost:6379",
     max_connections=50,
-    
+
     # Circuit breaker for Redis failures
     enable_circuit_breaker=True,
     circuit_breaker_failure_threshold=5,
     circuit_breaker_timeout=60.0,
-    
+
     # Enhanced connection pool settings
     connection_pool_kwargs={
         "socket_connect_timeout": 5.0,
@@ -185,7 +185,7 @@ config = CacheConfig(
         "retry_on_timeout": True,
         "health_check_interval": 30
     },
-    
+
     # Error handling and fallbacks
     fallback_enabled=True,
     connection_retries=3,
@@ -295,7 +295,7 @@ from yokedcache.monitoring import PrometheusCollector, StatsDCollector, CacheMet
 prometheus = PrometheusCollector(namespace="myapp")
 cache_metrics = CacheMetrics([prometheus])
 
-# Set up StatsD monitoring  
+# Set up StatsD monitoring
 statsd = StatsDCollector(host="statsd.example.com", prefix="myapp.cache")
 cache_metrics.add_collector(statsd)
 
@@ -346,7 +346,7 @@ yokedcache stats --watch
 # Export stats to CSV for analysis
 yokedcache stats --format csv --output cache_stats.csv
 
-# Export stats to JSON for dashboards  
+# Export stats to JSON for dashboards
 yokedcache stats --format json --output stats.json
 
 # Test connection to different backends

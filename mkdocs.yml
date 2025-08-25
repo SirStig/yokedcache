@@ -1,30 +1,81 @@
-site_name: YokedCache
-site_description: High-performance caching for modern Python applications
+site_name: YokedCache - Python Caching Library for FastAPI
+site_description: High-performance Python caching library with Redis auto-invalidation, vector search caching, and seamless FastAPI integration. Enterprise-grade Redis caching solution for Python applications.
 site_url: https://sirstig.github.io/yokedcache
 repo_url: https://github.com/sirstig/yokedcache
 repo_name: sirstig/yokedcache
 
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sirstig/yokedcache
+      name: GitHub Repository
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/yokedcache/
+      name: PyPI Package
+    - icon: fontawesome/solid/book
+      link: https://sirstig.github.io/yokedcache
+      name: Documentation
+  generator: false
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX  # Replace with your Google Analytics ID
+  consent:
+    title: Cookie consent
+    description: >-
+      We use cookies to recognize your repeated visits and preferences, as well
+      as to measure the effectiveness of our documentation and whether users
+      find what they're searching for. With your consent, you're helping us to
+      make our documentation better.
+
+# Schema.org structured data
+extra_javascript:
+  - javascripts/schema.js
+
+copyright: Copyright &copy; 2025 Project Yoked LLC - YokedCache Python FastAPI Redis Caching Library
+
 theme:
   name: material
+  language: en
   features:
     - navigation.instant
     - navigation.tracking
     - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - search.highlight
+    - search.share
     - content.code.copy
     - content.code.annotate
+    - content.action.edit
+    - content.action.view
     - toc.follow
+    - toc.integrate
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: indigo
       accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: indigo
       accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+  logo: assets/logo.png
+  favicon: assets/favicon.png
 
 plugins:
-  - search
+  - search:
+      lang: en
   - mkdocstrings:
       handlers:
         python:
@@ -33,6 +84,7 @@ plugins:
             show_signature_annotations: true
             show_source: false
             filters: ["!^_", "!^__"]
+  - meta
 
 markdown_extensions:
   - admonition
@@ -45,6 +97,9 @@ markdown_extensions:
   - pymdownx.snippets
   - pymdownx.tabbed:
       alternate_style: true
+  - meta
+  - attr_list
+  - md_in_html
 
 nav:
   - Home: index.md
@@ -54,6 +109,7 @@ nav:
   - Usage Guide:
       - Usage Patterns: usage-patterns.md
       - FastAPI Integration: tutorials/fastapi.md
+      - FastAPI Redis Caching Tutorial: tutorials/fastapi-redis-caching.md
       - SQLAlchemy Integration: tutorials/sqlalchemy.md
   - Advanced Features:
       - Backends & Setup: backends.md
@@ -66,4 +122,3 @@ nav:
       - Testing: testing.md
       - Troubleshooting: troubleshooting.md
       - API Reference: api/index.md
-

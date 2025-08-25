@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+# Allow all search engines to crawl the documentation
+Sitemap: https://sirstig.github.io/yokedcache/sitemap.xml
+
+# Encourage crawling of key pages
+Crawl-delay: 1
+
+# Allow specific bots
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /

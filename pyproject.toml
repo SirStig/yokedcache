@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "yokedcache"
 dynamic = ["version"]
-description = "A robust, performance-focused caching library for Python backends with FastAPI integration"
+description = "Python caching library for FastAPI with Redis auto-invalidation, vector search caching, and intelligent cache management"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
@@ -13,6 +13,15 @@ authors = [
     { name = "Project Yoked LLC" },
 ]
 keywords = [
+    "python caching library",
+    "fastapi caching",
+    "redis caching",
+    "cache auto-invalidation",
+    "vector search caching",
+    "python redis",
+    "fastapi redis",
+    "intelligent caching",
+    "database caching",
     "cache",
     "caching",
     "fastapi",
@@ -21,6 +30,10 @@ keywords = [
     "orm",
     "sqlalchemy",
     "performance",
+    "async caching",
+    "cache invalidation",
+    "memcached",
+    "cache management",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -33,9 +46,17 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Database",
+    "Topic :: Database :: Front-Ends",
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Distributed Computing",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Framework :: FastAPI",
+    "Framework :: AsyncIO",
+    "Environment :: Web Environment",
+    "Intended Audience :: System Administrators",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
     "redis>=4.0.0",

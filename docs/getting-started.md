@@ -1,43 +1,49 @@
-# Getting Started
+---
+title: Getting Started with YokedCache - Python FastAPI Redis Caching
+description: Complete installation and setup guide for YokedCache, the Python caching library for FastAPI with Redis auto-invalidation and vector search.
+keywords: yokedcache installation, python fastapi redis setup, cache library installation, redis caching tutorial
+---
 
-This guide will walk you through installing YokedCache and setting up your first caching implementation. By the end, you'll have a working cache that dramatically improves your application's performance.
+# Getting Started with YokedCache - Python FastAPI Redis Caching
 
-## Installation
+This guide will walk you through installing YokedCache and setting up your first Redis caching implementation in a FastAPI application. By the end, you'll have a working cache that dramatically improves your application's performance with automatic invalidation.
+
+## Installation - Python FastAPI Redis Caching Library
 
 ### Basic Installation
 
 ```bash
-# Install the core package
+# Install the core YokedCache package for Python FastAPI Redis caching
 pip install yokedcache
 ```
 
-### Recommended Installation
+### Recommended Installation for Production FastAPI Applications
 
-For production use, install with all features:
+For production FastAPI applications, install YokedCache with all Redis caching features:
 
 ```bash
-# Install with all features (recommended)
+# Install with all Redis caching features (recommended for FastAPI)
 pip install yokedcache[full]
 ```
 
-### Feature-Specific Installation
+### Feature-Specific Installation for Custom Python Setups
 
-Install only the features you need:
+Install only the Redis caching features you need for your Python application:
 
 ```bash
-# Vector similarity search
+# Vector similarity search caching
 pip install yokedcache[vector]
 
-# Production monitoring (Prometheus, StatsD)
+# Production monitoring for Redis cache (Prometheus, StatsD)
 pip install yokedcache[monitoring]
 
 # Memcached backend support
 pip install yokedcache[memcached]
 
-# Fuzzy search capabilities
+# Fuzzy search capabilities for cached data
 pip install yokedcache[fuzzy]
 
-# Combine multiple features
+# Combine multiple caching features
 pip install yokedcache[vector,monitoring,fuzzy]
 ```
 
@@ -106,10 +112,10 @@ cache = YokedCache()
 async def fetch_user_data(user_id: int):
     """Simulate an expensive API call or database query"""
     print(f"Fetching user {user_id} from database...")  # You'll see this only once
-    
+
     # Simulate slow operation
     await asyncio.sleep(1)
-    
+
     return {
         "id": user_id,
         "name": f"User {user_id}",
@@ -121,12 +127,12 @@ async def main():
     print("First call:")
     user = await fetch_user_data(123)
     print(f"Result: {user}")
-    
+
     # Second call - returns cached result (fast)
     print("\nSecond call:")
     user = await fetch_user_data(123)
     print(f"Result: {user}")
-    
+
     # Check cache statistics
     stats = await cache.get_stats()
     print(f"\nCache statistics: {stats}")
@@ -154,27 +160,27 @@ from yokedcache import YokedCache
 
 async def main():
     cache = YokedCache()
-    
+
     # Store data in cache
     await cache.set("user:123", {"name": "Alice", "age": 30}, ttl=300)
     print("Data stored in cache")
-    
+
     # Retrieve data from cache
     user = await cache.get("user:123")
     print(f"Retrieved from cache: {user}")
-    
+
     # Check if key exists
     exists = await cache.exists("user:123")
     print(f"Key exists: {exists}")
-    
+
     # Store with tags for grouping
-    await cache.set("product:456", {"name": "Laptop", "price": 999}, 
+    await cache.set("product:456", {"name": "Laptop", "price": 999},
                    ttl=600, tags=["products", "electronics"])
-    
+
     # Invalidate by tags
     await cache.invalidate_tags(["products"])
     print("Products cache cleared")
-    
+
     # Verify product was removed
     product = await cache.get("product:456")
     print(f"Product after invalidation: {product}")  # Should be None
@@ -210,7 +216,7 @@ async def get_user_from_db(user_id: int):
     """Simulate database query"""
     print(f"Querying database for user {user_id}")
     await asyncio.sleep(0.5)  # Simulate DB latency
-    
+
     user = USERS_DB.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -325,7 +331,7 @@ async def update_user(user_id: int, name: str, email: str, db: Session = Depends
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     user.name = name
     user.email = email
     await db.commit()  # This triggers cache invalidation
@@ -417,13 +423,13 @@ from yokedcache import YokedCache
 
 async def monitor_cache():
     cache = YokedCache()
-    
+
     # Get basic statistics
     stats = await cache.get_stats()
     print(f"Hit rate: {stats.hit_rate:.2%}")
     print(f"Total keys: {stats.key_count}")
     print(f"Memory usage: {stats.memory_usage_mb:.2f} MB")
-    
+
     # Health check
     health = await cache.health_check()
     print(f"Cache healthy: {health.is_healthy}")

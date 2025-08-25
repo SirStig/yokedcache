@@ -1,24 +1,26 @@
 ---
-title: YokedCache Documentation
+title: YokedCache - Python Caching Library for FastAPI with Redis Auto-Invalidation
+description: High-performance Python caching library with Redis auto-invalidation, vector search caching, and seamless FastAPI integration. Enterprise-grade caching solution.
+keywords: python caching, fastapi caching, redis caching, cache invalidation, vector search caching, python redis, fastapi redis, cache library python
 ---
 
-# YokedCache
+# YokedCache - Python Caching Library for FastAPI
 
-**High-Performance Caching for Modern Python Applications**
+**High-Performance Redis Caching with Auto-Invalidation for Modern Python Applications**
 
-YokedCache is a powerful, async-first caching library that brings enterprise-grade caching capabilities to Python applications. With multi-backend support, intelligent invalidation, and production-ready monitoring, it's designed to scale from development to enterprise deployment.
+YokedCache is a powerful, async-first Python caching library that brings enterprise-grade Redis caching capabilities to FastAPI applications. With multi-backend support, intelligent auto-invalidation, and production-ready monitoring, it's designed to scale from development to enterprise deployment.
 
-## Why YokedCache?
+## Why Choose YokedCache for Python FastAPI Development?
 
-- **🚀 Performance**: Async-first design with connection pooling and batch operations
-- **🔧 Flexible**: Multiple backends (Memory, Redis, Memcached) with unified API
-- **🧠 Intelligent**: Auto-invalidation, vector search, and fuzzy matching
+- **🚀 Performance**: Async-first design with Redis connection pooling and batch operations
+- **🔧 Flexible**: Multiple backends (Memory, Redis, Memcached) with unified Python API
+- **🧠 Intelligent**: Auto-invalidation, vector search caching, and fuzzy matching
 - **📊 Observable**: Built-in metrics, monitoring, and comprehensive CLI tools
 - **🛡️ Production-Ready**: Health checks, error handling, and security features
 - **🔐 Resilient**: Circuit breaker, retry logic, and graceful fallbacks *(v0.2.1)*
 - **⚡ Enhanced**: Smart async/sync context handling and performance optimizations *(v0.2.1)*
 
-## Quick Start
+## Quick Start - Python FastAPI Redis Caching
 
 ```bash
 # Install with all features
@@ -68,7 +70,7 @@ Powerful capabilities for complex use cases:
 Detailed technical documentation:
 
 - **[CLI Tool](cli.md)** - Complete command-line interface guide
-- **[Performance Guide](performance.md)** - Optimization and tuning  
+- **[Performance Guide](performance.md)** - Optimization and tuning
 - **[Security Guide](security.md)** - Security best practices
 - **[Testing Guide](testing.md)** - Testing patterns and best practices
 - **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
@@ -118,7 +120,7 @@ pip install yokedcache[fuzzy]       # Fuzzy search
 ## What's New in 0.2.0
 
 - **🆕 Multi-Backend Support**: Memory, Redis, and Memcached backends
-- **🔍 Vector Search**: Semantic similarity search capabilities  
+- **🔍 Vector Search**: Semantic similarity search capabilities
 - **📊 Production Monitoring**: Prometheus and StatsD integration
 - **🛠️ Enhanced CLI**: CSV export, file output, and improved UX
 - **✅ Comprehensive Testing**: 200+ tests with complete coverage
@@ -126,5 +128,3 @@ pip install yokedcache[fuzzy]       # Fuzzy search
 ---
 
 **Ready to get started?** Begin with our [Getting Started Guide](getting-started.md) for a step-by-step introduction.
-
-

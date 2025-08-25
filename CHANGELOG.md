@@ -1,3 +1,40 @@
+## [0.2.3] - 2025-08-25
+
+
+_Changes since v0.2.0_
+
+
+### Features
+- feat: update manual release workflow to include prerelease option and version verification (
+74e17d)
+
+### Fixes
+- fix: improve version retrieval method and enhance error handling for CacheConfig (6581eb7)
+- fix: improve type annotations and enhance error handling in FastAPI example (
+8e8680)
+
+### Chores
+- chore: remove flake8 linting step from test workflow (
+a52e34)
+- chore: ensure newline at EOF in pre-commit config (
+ffd948)
+- chore: release version 0.2.1 with enhanced resilience and performance features (
+e04b78)
+- chore: update Codecov action in CI workflow (
+ab4405)
+- chore: enhance documentation and streamline project structure (
+9e5470)
+- chore: update dependencies and enhance configuration options (
+29d7ec)
+
+### Other
+- Add extensive test 2 (
+33ed60)
+- Add extensive test coverage (
+4f3a62)
+- Add comprehensive tests, configuration files, and Prometheus setup for YokedCache (
+43ec50)
+
 # Changelog
 
 All notable changes to the YokedCache project will be documented in this file.

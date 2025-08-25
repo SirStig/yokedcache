@@ -23,7 +23,18 @@ except ImportError:
             )
 
 
-from .config import CacheConfig
+try:
+    from .config import CacheConfig
+except ImportError:
+    # If PyYAML is not available, create a placeholder that gives helpful error
+    class CacheConfig:  # type: ignore
+        def __init__(self, *args, **kwargs):
+            raise ImportError(
+                "PyYAML is required for CacheConfig. Please install with: "
+                "pip install pyyaml>=6.0"
+            )
+
+
 from .decorators import cached, cached_dependency
 from .exceptions import (
     CacheConnectionError,

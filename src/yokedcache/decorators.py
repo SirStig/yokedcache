@@ -628,11 +628,19 @@ class CachedDatabaseWrapper:
                     self._execute_cached_query(method, args, kwargs, method_name)
                 )
             else:
-                # Running loop exists, use asyncio.create_task
-                # and wait for result
-                return loop.run_until_complete(
-                    self._execute_cached_query(method, args, kwargs, method_name)
-                )
+                # Running loop exists, we can't use run_until_complete
+                # Instead, we'll run in a new thread with its own event loop
+                import concurrent.futures
+
+                # Run the coroutine in a new thread with its own event loop
+                def _run_in_thread():
+                    return asyncio.run(
+                        self._execute_cached_query(method, args, kwargs, method_name)
+                    )
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(_run_in_thread)
+                    return future.result()
 
         # Return appropriate wrapper based on whether original method is async
         if inspect.iscoroutinefunction(method):
@@ -668,7 +676,8 @@ class CachedDatabaseWrapper:
             result = method(*args, **kwargs)
 
         # For read operations, cache the result
-        if method_name in ("query", "get", "first", "all") and result is not None:
+        read_ops = ("query", "get", "first", "all")
+        if method_name in read_ops and result is not None:
             try:
                 # Determine TTL and tags
                 actual_ttl = self._ttl or self._cache.config.default_ttl

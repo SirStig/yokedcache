@@ -30,13 +30,8 @@ jobs:
       - name: Check version change
         id: version-check
         run: |
-          # Get current version from package
-          CURRENT_VERSION=$(python -c "
-          import sys
-          sys.path.insert(0, 'src')
-          import yokedcache
-          print(yokedcache.__version__)
-          ")
+          # Get current version from __init__.py without importing (safer)
+          CURRENT_VERSION=$(grep '__version__ = ' src/yokedcache/__init__.py | sed 's/__version__ = "\(.*\)"/\1/')
 
           echo "Current version: $CURRENT_VERSION"
 

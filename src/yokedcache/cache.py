@@ -14,8 +14,15 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Set, Union
 
-import redis.asyncio as redis
-from redis.asyncio.connection import ConnectionPool
+try:
+    import redis.asyncio as redis
+    from redis.asyncio.connection import ConnectionPool
+
+    REDIS_AVAILABLE = True
+except ImportError:
+    redis = None  # type: ignore
+    ConnectionPool = None  # type: ignore
+    REDIS_AVAILABLE = False
 
 from .circuit_breaker import CircuitBreaker, CircuitBreakerError, RetryWithBackoff
 from .config import CacheConfig
@@ -70,6 +77,7 @@ class YokedCache:
         config: Optional[CacheConfig] = None,
         redis_url: Optional[str] = None,
         config_file: Optional[str] = None,
+        **kwargs,
     ) -> None:
         """
         Initialize YokedCache.
@@ -78,6 +86,7 @@ class YokedCache:
             config: CacheConfig instance
             redis_url: Redis connection URL (overrides config)
             config_file: Path to configuration file
+            **kwargs: Additional configuration parameters to override
         """
         # Load configuration
         if config:
@@ -92,6 +101,13 @@ class YokedCache:
         # Override Redis URL if provided
         if redis_url:
             self.config.redis_url = redis_url
+
+        # Apply any additional keyword arguments to override config
+        for key, value in kwargs.items():
+            if hasattr(self.config, key):
+                setattr(self.config, key, value)
+            else:
+                logger.warning(f"Unknown configuration parameter: {key}")
 
         # Initialize Redis connection
         self._pool: Optional[ConnectionPool] = None
@@ -209,7 +225,11 @@ class YokedCache:
         self._shutdown = True
 
         if self._redis:
-            await self._redis.close()
+            # Use aclose() if available (Redis 5.0+), otherwise use close()
+            if hasattr(self._redis, "aclose"):
+                await self._redis.aclose()
+            else:
+                await self._redis.close()
 
         if self._pool:
             await self._pool.disconnect()
@@ -973,7 +993,9 @@ class YokedCache:
         self._warn_sync_in_async("get")
 
         try:
-            return asyncio.run(self.get(key, default, touch))
+            # Create the coroutine
+            coro = self.get(key, default, touch)
+            return asyncio.run(coro)
         except RuntimeError as e:
             if "cannot be called from a running event loop" in str(e):
                 logger.error(
@@ -996,7 +1018,9 @@ class YokedCache:
         self._warn_sync_in_async("set")
 
         try:
-            return asyncio.run(self.set(key, value, ttl, tags, serialization))
+            # Create the coroutine
+            coro = self.set(key, value, ttl, tags, serialization)
+            return asyncio.run(coro)
         except RuntimeError as e:
             if "cannot be called from a running event loop" in str(e):
                 logger.error(
@@ -1012,7 +1036,9 @@ class YokedCache:
         self._warn_sync_in_async("delete")
 
         try:
-            return asyncio.run(self.delete(key))
+            # Create the coroutine
+            coro = self.delete(key)
+            return asyncio.run(coro)
         except RuntimeError as e:
             if "cannot be called from a running event loop" in str(e):
                 logger.error(
@@ -1028,7 +1054,9 @@ class YokedCache:
         self._warn_sync_in_async("exists")
 
         try:
-            return asyncio.run(self.exists(key))
+            # Create the coroutine
+            coro = self.exists(key)
+            return asyncio.run(coro)
         except RuntimeError as e:
             if "cannot be called from a running event loop" in str(e):
                 logger.error(
@@ -1064,4 +1092,36 @@ class YokedCache:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
+        await self.close()
+
+    async def close(self) -> None:
+        """Close the cache connection."""
         await self.disconnect()
+
+    async def health(self) -> bool:
+        """Check if the cache is healthy."""
+        try:
+            async with self._get_redis() as r:
+                await r.ping()
+                return True
+        except Exception:
+            return False
+
+    async def ping(self) -> bool:
+        """Ping the cache backend."""
+        try:
+            async with self._get_redis() as r:
+                await r.ping()
+                return True
+        except Exception:
+            return False
+
+    async def flush(self) -> bool:
+        """Flush all cache data."""
+        try:
+            async with self._get_redis() as r:
+                await r.flushdb()
+                return True
+        except Exception as e:
+            logger.error(f"Failed to flush cache: {e}")
+            return False

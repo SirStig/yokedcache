@@ -1,0 +1,172 @@
+{
+  "name": "YokedCache Development",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "yokedcache-dev",
+  "workspaceFolder": "/workspace",
+  
+  // VS Code settings and extensions
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Python development
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.flake8",
+        "ms-python.mypy-type-checker",
+        
+        // Testing
+        "ms-python.pytest",
+        
+        // Git and version control
+        "eamodio.gitlens",
+        
+        // YAML and JSON
+        "redhat.vscode-yaml",
+        "ms-vscode.vscode-json",
+        
+        // Markdown
+        "yzhang.markdown-all-in-one",
+        "davidanson.vscode-markdownlint",
+        
+        // Docker
+        "ms-vscode-remote.remote-containers",
+        "ms-azuretools.vscode-docker",
+        
+        // Redis
+        "cweijan.vscode-redis-client",
+        
+        // General utilities
+        "ms-vscode.vscode-typescript-next",
+        "gruntfuggly.todo-tree",
+        "streetsidesoftware.code-spell-checker",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        // Python configuration
+        "python.defaultInterpreterPath": "/opt/conda/bin/python",
+        "python.analysis.typeCheckingMode": "basic",
+        "python.analysis.autoImportCompletions": true,
+        "python.analysis.completeFunctionParens": true,
+        
+        // Formatting
+        "python.formatting.provider": "black",
+        "python.formatting.blackArgs": ["--line-length=88"],
+        "python.sortImports.args": ["--profile", "black"],
+        
+        // Linting
+        "python.linting.enabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.linting.mypyEnabled": true,
+        "python.linting.pylintEnabled": false,
+        
+        // Testing
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "python.testing.pytestArgs": ["tests"],
+        
+        // Format on save
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        },
+        
+        // Terminal
+        "terminal.integrated.defaultProfile.linux": "bash",
+        
+        // Files
+        "files.exclude": {
+          "**/__pycache__": true,
+          "**/*.pyc": true,
+          ".pytest_cache": true,
+          ".coverage": true,
+          "htmlcov": true,
+          "*.egg-info": true
+        },
+        
+        // YAML
+        "yaml.schemas": {
+          "https://json.schemastore.org/github-workflow.json": "/.github/workflows/*.yml"
+        }
+      }
+    }
+  },
+  
+  // Post-create command to set up the development environment
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  
+  // Forward ports for services
+  "forwardPorts": [
+    56379,  // Redis
+    51211,  // Memcached
+    58000,  // Prometheus metrics (if enabled)
+    58080,  // Development server
+    58001,  // Redis Insight
+    59090,  // Prometheus
+    53000,  // Grafana
+    58888   // Jupyter Lab
+  ],
+  
+  // Port attributes
+  "portsAttributes": {
+    "56379": {
+      "label": "Redis",
+      "onAutoForward": "silent"
+    },
+    "51211": {
+      "label": "Memcached", 
+      "onAutoForward": "silent"
+    },
+    "58000": {
+      "label": "Prometheus Metrics",
+      "onAutoForward": "silent"
+    },
+    "58080": {
+      "label": "Development Server",
+      "onAutoForward": "notify"
+    },
+    "58001": {
+      "label": "Redis Insight",
+      "onAutoForward": "silent"
+    },
+    "59090": {
+      "label": "Prometheus",
+      "onAutoForward": "silent"
+    },
+    "53000": {
+      "label": "Grafana",
+      "onAutoForward": "silent"
+    },
+    "58888": {
+      "label": "Jupyter Lab",
+      "onAutoForward": "notify"
+    }
+  },
+  
+  // Enable features
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "latest"
+    }
+  },
+  
+  // Environment variables
+  "containerEnv": {
+    "YOKEDCACHE_REDIS_URL": "redis://redis:56379/0",
+    "YOKEDCACHE_DEFAULT_TTL": "300",
+    "YOKEDCACHE_KEY_PREFIX": "dev_yokedcache",
+    "YOKEDCACHE_LOG_LEVEL": "DEBUG",
+    "YOKEDCACHE_ENABLE_METRICS": "true",
+    "YOKEDCACHE_PROMETHEUS_PORT": "58000",
+    "PYTHONPATH": "/workspace/src"
+  },
+  
+  // Mount the source code
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+  ]
+}

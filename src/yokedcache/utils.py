@@ -307,7 +307,7 @@ def timing_decorator(func):
     return wrapper
 
 
-async def timing_decorator_async(func):
+def timing_decorator_async(func):
     """Async decorator to measure function execution time."""
 
     @wraps(func)

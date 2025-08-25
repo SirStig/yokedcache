@@ -6,7 +6,7 @@ and similarity calculations for more accurate and semantic search results.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from .models import CacheEntry, FuzzySearchResult
@@ -239,7 +239,7 @@ class VectorSimilaritySearch:
                             cache_entry=CacheEntry(
                                 key=key,
                                 value=value,
-                                created_at=datetime.utcnow(),
+                                created_at=datetime.now(timezone.utc),
                             ),
                         )
                         results.append(result)

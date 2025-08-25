@@ -48,6 +48,12 @@ def get_cache_instance(
     return _cache_instance
 
 
+def reset_cache_instance():
+    """Reset the global cache instance. Used for testing."""
+    global _cache_instance
+    _cache_instance = None
+
+
 def async_command(f):
     """Decorator to handle async commands."""
 

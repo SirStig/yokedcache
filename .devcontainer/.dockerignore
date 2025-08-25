@@ -1,0 +1,71 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.pytest_cache
+htmlcov
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.mypy_cache
+.dmypy.json
+dmypy.json
+
+# Build artifacts
+build
+dist
+*.egg-info
+.eggs
+
+# Virtual environments
+venv
+env
+ENV
+.venv
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation build
+site
+docs/_build
+
+# Test artifacts
+.pytest_cache
+htmlcov
+
+# Temporary files
+*.tmp
+*.temp
+
+# Node modules (if any)
+node_modules
+
+# Jupyter
+.ipynb_checkpoints
+
+# Exclude devcontainer from build context
+.devcontainer/docker-compose.yml
+.devcontainer/.dockerignore

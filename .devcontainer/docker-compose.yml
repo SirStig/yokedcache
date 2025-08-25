@@ -1,0 +1,118 @@
+services:
+  # Main development container
+  yokedcache-dev:
+    build:
+      context: ../
+      dockerfile: .devcontainer/Dockerfile
+    container_name: yokedcache-dev
+    volumes:
+      - ../:/workspace:cached
+    working_dir: /workspace
+    command: sleep infinity
+    environment:
+      - YOKEDCACHE_REDIS_URL=redis://redis:56379/0
+      - YOKEDCACHE_DEFAULT_TTL=300
+      - YOKEDCACHE_KEY_PREFIX=dev_yokedcache
+      - YOKEDCACHE_LOG_LEVEL=DEBUG
+      - YOKEDCACHE_ENABLE_METRICS=true
+      - YOKEDCACHE_PROMETHEUS_PORT=58000
+      - PYTHONPATH=/workspace/src
+    depends_on:
+      - redis
+      - memcached
+    networks:
+      - yokedcache-network
+
+  # Redis service for caching
+  redis:
+    image: redis:7-alpine
+    container_name: yokedcache-redis
+    ports:
+      - "56379:56379"
+    volumes:
+      - redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - yokedcache-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "56379", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Memcached service for alternative backend testing
+  memcached:
+    image: memcached:1.6-alpine
+    container_name: yokedcache-memcached
+    ports:
+      - "51211:51211"
+    command: ["memcached", "-m", "64", "-v", "-p", "51211"]
+    networks:
+      - yokedcache-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "51211"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Redis Insight for Redis GUI (optional)
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: yokedcache-redisinsight
+    ports:
+      - "58001:8001"
+    volumes:
+      - redisinsight-data:/db
+    networks:
+      - yokedcache-network
+    profiles:
+      - tools
+
+  # Prometheus for metrics monitoring (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: yokedcache-prometheus
+    ports:
+      - "59090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - yokedcache-network
+    profiles:
+      - monitoring
+
+  # Grafana for metrics visualization (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: yokedcache-grafana
+    ports:
+      - "53000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - yokedcache-network
+    profiles:
+      - monitoring
+
+volumes:
+  redis-data:
+  redisinsight-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  yokedcache-network:
+    driver: bridge

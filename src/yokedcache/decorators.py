@@ -28,6 +28,8 @@ def cached(
     serialization: Optional[SerializationMethod] = None,
     skip_cache_on_error: bool = True,
     key_builder: Optional[Callable] = None,
+    key_func: Optional[Callable] = None,  # Alias for key_builder
+    condition: Optional[Callable] = None,  # Conditional caching
 ) -> Callable[[F], F]:
     """
     Decorator to cache function results.
@@ -41,6 +43,8 @@ def cached(
         serialization: Serialization method
         skip_cache_on_error: If True, skip cache on errors and call original function
         key_builder: Custom function to build cache keys
+        key_func: Alias for key_builder (for backward compatibility)
+        condition: Function to determine if result should be cached
 
     Returns:
         Decorated function
@@ -49,6 +53,9 @@ def cached(
     def decorator(func: F) -> F:
         # Get cache instance
         actual_cache = cache if cache is not None else YokedCache()
+
+        # Handle key_func alias
+        actual_key_builder = key_builder or key_func
 
         # Determine if function is async
         is_async = inspect.iscoroutinefunction(func)
@@ -68,7 +75,8 @@ def cached(
                     table=table,
                     serialization=serialization,
                     skip_cache_on_error=skip_cache_on_error,
-                    key_builder=key_builder,
+                    key_builder=actual_key_builder,
+                    condition=condition,
                 )
 
             return async_wrapper  # type: ignore
@@ -77,21 +85,28 @@ def cached(
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
                 # For sync functions, we need to handle the async cache operations
-                return asyncio.run(
-                    _cached_call(
-                        func,
-                        actual_cache,
-                        args,
-                        kwargs,
-                        ttl=ttl,
-                        key_prefix=key_prefix or func.__name__,
-                        tags=tags,
-                        table=table,
-                        serialization=serialization,
-                        skip_cache_on_error=skip_cache_on_error,
-                        key_builder=key_builder,
+                try:
+                    return asyncio.run(
+                        _cached_call(
+                            func,
+                            actual_cache,
+                            args,
+                            kwargs,
+                            ttl=ttl,
+                            key_prefix=key_prefix or func.__name__,
+                            tags=tags,
+                            table=table,
+                            serialization=serialization,
+                            skip_cache_on_error=skip_cache_on_error,
+                            key_builder=actual_key_builder,
+                            condition=condition,
+                        )
                     )
-                )
+                except RuntimeError as e:
+                    if "cannot be called from a running event loop" in str(e):
+                        # Fall back to calling the function directly without caching
+                        return func(*args, **kwargs)
+                    raise
 
             return sync_wrapper  # type: ignore
 
@@ -110,13 +125,14 @@ async def _cached_call(
     serialization: Optional[SerializationMethod] = None,
     skip_cache_on_error: bool = True,
     key_builder: Optional[Callable] = None,
+    condition: Optional[Callable] = None,
 ) -> Any:
     """Internal function to handle cached function calls."""
 
     try:
         # Build cache key
         if key_builder:
-            cache_key = key_builder(func, args, kwargs)
+            cache_key = key_builder(*args, **kwargs)
         else:
             cache_key = _build_function_cache_key(func, args, kwargs, key_prefix)
 
@@ -136,22 +152,31 @@ async def _cached_call(
         else:
             result = func(*args, **kwargs)
 
-        # Cache the result
-        try:
-            await cache.set(
-                cache_key,
-                result,
-                ttl=ttl,
-                tags=tags,
-                serialization=serialization,
-            )
-        except Exception as e:
-            if not skip_cache_on_error:
-                raise
-            # Just log and continue
-            import logging
+        # Check condition before caching
+        should_cache = True
+        if condition:
+            try:
+                should_cache = condition(result, *args, **kwargs)
+            except Exception:
+                should_cache = True  # Default to caching if condition fails
 
-            logging.getLogger(__name__).warning(f"Failed to cache result: {e}")
+        # Cache the result if condition allows
+        if should_cache:
+            try:
+                await cache.set(
+                    cache_key,
+                    result,
+                    ttl=ttl,
+                    tags=tags,
+                    serialization=serialization,
+                )
+            except Exception as e:
+                if not skip_cache_on_error:
+                    raise
+                # Just log and continue
+                import logging
+
+                logging.getLogger(__name__).warning(f"Failed to cache result: {e}")
 
         return result
 
@@ -173,6 +198,7 @@ def cached_dependency(
     key_prefix: Optional[str] = None,
     table_name: Optional[str] = None,
     auto_invalidate: bool = True,
+    dependencies: Optional[Union[str, List[str]]] = None,
 ) -> Callable:
     """
     Wrap a FastAPI dependency with caching.
@@ -187,6 +213,7 @@ def cached_dependency(
         key_prefix: Custom key prefix
         table_name: Table name for auto-invalidation
         auto_invalidate: Enable auto-invalidation on writes
+        dependencies: Cache dependencies for invalidation
 
     Returns:
         Cached dependency function
@@ -387,6 +414,21 @@ class CachedDatabaseWrapper:
         # Track queries for invalidation
         self._write_operations: Set[str] = set()
 
+    @property
+    def session(self):
+        """Access to the underlying database session."""
+        return self._db_session
+
+    @property
+    def cache(self):
+        """Access to the cache instance."""
+        return self._cache
+
+    @property
+    def pending_invalidations(self):
+        """Get pending write operations that will trigger invalidation."""
+        return self._write_operations.copy()
+
     def __getattr__(self, name):
         """Delegate attribute access to the underlying database session."""
         attr = getattr(self._db_session, name)
@@ -524,6 +566,11 @@ class CachedDatabaseWrapper:
 
         # Invalidate caches for any write operations
         if self._auto_invalidate and self._write_operations:
+            await self.invalidate_pending()
+
+    async def invalidate_pending(self):
+        """Invalidate pending cache entries based on write operations."""
+        if self._write_operations:
             await self._invalidate_for_writes()
             self._write_operations.clear()
 

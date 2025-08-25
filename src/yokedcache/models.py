@@ -96,6 +96,11 @@ class CacheStats:
         """Calculate cache miss rate as a percentage."""
         return 100.0 - self.hit_rate
 
+    @property
+    def memory_usage(self) -> int:
+        """Alias for total_memory_bytes for backward compatibility."""
+        return self.total_memory_bytes
+
     def add_hit(
         self, table: Optional[str] = None, tags: Optional[Set[str]] = None
     ) -> None:

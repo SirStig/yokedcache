@@ -413,7 +413,7 @@ tables:
       - profiles
     enable_fuzzy: true
     fuzzy_threshold: 90
-  
+
   products:
     ttl: 1200
     max_entries: 1000

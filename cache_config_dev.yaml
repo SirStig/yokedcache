@@ -17,11 +17,11 @@ tables:
     ttl: 600
     tags: ["user_data"]
     enable_fuzzy: true
-    
+
   products:
     ttl: 1800
     tags: ["product_data"]
-    
+
   sessions:
     ttl: 300
     tags: ["session_data"]

@@ -76,20 +76,20 @@ jobs:
         run: |
           python << 'EOF'
           import re
-          
+
           version = "${{ github.event.inputs.version }}"
-          
+
           try:
               with open('CHANGELOG.md', 'r') as f:
                   content = f.read()
-              
+
               pattern = rf'## \[{re.escape(version)}\].*?\n(.*?)(?=\n## \[|\n---|\Z)'
               match = re.search(pattern, content, re.DOTALL)
-              
+
               if match:
                   changelog_content = match.group(1).strip()
                   changelog_content = re.sub(r'\n---+.*$', '', changelog_content, flags=re.MULTILINE)
-                  
+
                   with open('release_notes.md', 'w') as f:
                       f.write(changelog_content)
                   print(f"Extracted changelog for version {version}")
@@ -122,4 +122,3 @@ jobs:
           draft: ${{ github.event.inputs.draft }}
           prerelease: ${{ contains(github.event.inputs.version, 'rc') || contains(github.event.inputs.version, 'beta') || contains(github.event.inputs.version, 'alpha') }}
   # Publication to PyPI is performed by publish.yml upon release publication to avoid duplication.
-

@@ -1,11 +1,11 @@
 """
 Tests for YokedCache backend implementations.
 
-This module tests all backend implementations including Redis, Memory, and Memcached.
+This module tests Redis, Memory, and Memcached backends.
 """
 
 import asyncio
-import time
+import os
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -248,13 +248,16 @@ class TestMemoryBackend:
         assert len(all_keys) == 3
 
 
+REDIS_TEST_URL = os.environ.get("YOKEDCACHE_REDIS_URL", "redis://localhost:6379/0")
+
+
 class TestRedisBackend:
     """Test the Redis backend implementation."""
 
     @pytest.fixture
     async def redis_backend(self):
         """Create a Redis backend for testing with fake Redis."""
-        backend = RedisBackend(redis_url="redis://localhost:6379/0", key_prefix="test")
+        backend = RedisBackend(redis_url=REDIS_TEST_URL, key_prefix="test")
 
         # Mock Redis connection
         # Create proper async mocks
@@ -262,7 +265,10 @@ class TestRedisBackend:
         mock_pool.disconnect = AsyncMock()
 
         with (
-            patch("redis.asyncio.ConnectionPool.from_url", return_value=mock_pool),
+            patch(
+                "redis.asyncio.ConnectionPool.from_url",
+                return_value=mock_pool,
+            ),
             patch("redis.asyncio.Redis") as mock_redis_class,
         ):
 

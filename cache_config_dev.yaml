@@ -1,0 +1,31 @@
+# YokedCache Development Configuration
+redis_url: redis://redis:56379/0
+default_ttl: 300
+key_prefix: dev_yokedcache
+max_connections: 25
+enable_fuzzy: true
+fuzzy_threshold: 80
+log_level: DEBUG
+
+# Development-specific settings
+enable_metrics: true
+prometheus_port: 58000
+
+# Table configurations for testing
+tables:
+  users:
+    ttl: 600
+    tags: ["user_data"]
+    enable_fuzzy: true
+    
+  products:
+    ttl: 1800
+    tags: ["product_data"]
+    
+  sessions:
+    ttl: 300
+    tags: ["session_data"]
+
+monitoring:
+  enable_metrics: true
+  prometheus_port: 58000

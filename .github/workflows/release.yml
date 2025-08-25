@@ -1,141 +1,311 @@
-name: Create Release
+name: Unified Release Pipeline
 
+# Triggers:
+# 1. Tag push (vX.Y.Z) -> full release flow
+# 2. Manual dispatch -> can bump version & create tag automatically
 on:
   push:
     tags:
-      - 'v*'  # Triggers on version tags like v0.2.1, v1.0.0, etc.
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Explicit version to release (e.g. 0.3.0)'
+        required: false
+        type: string
+      bump:
+        description: 'If version not provided, bump last version (patch|minor|major)'
+        required: false
+        default: 'patch'
+        type: choice
+        options: [patch, minor, major]
+      prerelease_tag:
+        description: 'Optional prerelease tag (e.g. rc1, beta1, alpha1) appended to version'
+        required: false
+        type: string
+      draft:
+        description: 'Create draft GitHub release (skip PyPI)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
-  contents: write  # Required for creating releases
-  id-token: write  # Required for PyPI trusted publishing
+  contents: write   # create tag & release, push changelog
+  id-token: write   # trusted PyPI publishing
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  PACKAGE_DIR: src/yokedcache
 
 jobs:
-  create-release:
+  prepare:
+    name: Prepare / Version
     runs-on: ubuntu-latest
-
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
+    if: github.repository == 'sirstig/yokedcache'
+    outputs:
+      version: ${{ steps.set-version.outputs.version }}
+      tag: ${{ steps.set-version.outputs.tag }}
+      created_tag: ${{ steps.set-version.outputs.created_tag }}
+      prerelease: ${{ steps.set-version.outputs.prerelease }}
+      draft: ${{ steps.compute-flags.outputs.draft }}
+      skip_rest: ${{ steps.set-version.outputs.skip_rest }}
     steps:
-      - name: Checkout code
+      - name: Checkout (full)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Get full history for changelog generation
+          fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Determine / bump version
+        id: set-version
         run: |
-          python -m pip install --upgrade pip
-          pip install build twine
-          pip install -e .
+          set -euo pipefail
+          INPUT_VERSION='${{ github.event.inputs.version }}'
+          BUMP='${{ github.event.inputs.bump }}'
+          PRERELEASE_TAG='${{ github.event.inputs.prerelease_tag }}'
+          CREATED_TAG=false
+          SKIP_REST=false
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            # Tag push path
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            if [[ -n "${INPUT_VERSION}" ]]; then
+              VERSION=${INPUT_VERSION}
+            else
+              # derive from last tag
+              LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo 'v0.0.0')
+              LAST_VERSION=${LAST_TAG#v}
+              IFS='.' read -r MAJ MIN PAT <<<"$LAST_VERSION"
+              case "$BUMP" in
+                major) ((MAJ+=1)); MIN=0; PAT=0 ;;
+                minor) ((MIN+=1)); PAT=0 ;;
+                *) ((PAT+=1)) ;;
+              esac
+              VERSION="${MAJ}.${MIN}.${PAT}"
+            fi
+            if [[ -n "$PRERELEASE_TAG" ]]; then
+              VERSION+="-${PRERELEASE_TAG}"
+            fi
+            git config user.name 'github-actions'
+            git config user.email 'github-actions@users.noreply.github.com'
+            # Update version in package __init__
+            INIT_FILE=${PACKAGE_DIR}/__init__.py
+            if grep -q '__version__' "$INIT_FILE"; then
+              sed -i -E "s/__version__\s*=\s*\".*\"/__version__ = \"$VERSION\"/" "$INIT_FILE"
+            else
+              echo "__version__ = \"$VERSION\"" >> "$INIT_FILE"
+            fi
+            git add "$INIT_FILE"
+            git commit -m "chore(release): version $VERSION" || echo "No changes to commit"
+            git tag "v$VERSION"
+            git push origin HEAD:$(git rev-parse --abbrev-ref HEAD)
+            git push origin "v$VERSION"
+            CREATED_TAG=true
+            # Avoid double release work in this run; a new tag-triggered run will process.
+            SKIP_REST=true
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          if [[ "$VERSION" == *-* ]]; then echo 'prerelease=true' >> $GITHUB_OUTPUT; else echo 'prerelease=false' >> $GITHUB_OUTPUT; fi
+          echo "created_tag=$CREATED_TAG" >> $GITHUB_OUTPUT
+          echo "skip_rest=$SKIP_REST" >> $GITHUB_OUTPUT
 
-      - name: Extract version from tag
-        id: version
+      - name: Verify version matches package (tag push only)
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
-          TAG=${GITHUB_REF#refs/tags/v}
-          echo "version=$TAG" >> $GITHUB_OUTPUT
-          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-      - name: Verify version matches
-        run: |
-          PACKAGE_VERSION=$(python -c "from src.yokedcache import __version__; print(__version__)")
-          if [ "$PACKAGE_VERSION" != "${{ steps.version.outputs.version }}" ]; then
-            echo "Package version ($PACKAGE_VERSION) doesn't match tag version (${{ steps.version.outputs.version }})"
+          PKG_VER=$(python -c "import importlib.util, pathlib, sys; sys.path.insert(0,'src'); import yokedcache; print(yokedcache.__version__)")
+          if [ "$PKG_VER" != "${{ steps.set-version.outputs.version }}" ]; then
+            echo "Tag version mismatch: package=$PKG_VER tag=${{ steps.set-version.outputs.version }}" >&2
             exit 1
           fi
 
-      - name: Extract changelog for this version
+      - name: Compute flags
+        id: compute-flags
+        run: |
+          if [[ '${{ github.event.inputs.draft }}' == 'true' ]]; then echo 'draft=true' >> $GITHUB_OUTPUT; else echo 'draft=false' >> $GITHUB_OUTPUT; fi
+
+  test:
+    name: Test (matrix)
+    runs-on: ubuntu-latest
+    needs: prepare
+    if: needs.prepare.outputs.skip_rest != 'true'
+    strategy:
+      matrix:
+        python-version: ['3.9','3.10','3.11','3.12']
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+      memcached:
+        image: memcached:1.6-alpine
+        ports: ['11211:11211']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: ${{ runner.os }}-pip-
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[dev,sqlalchemy,fuzzy]'
+      - name: Run tests
+        run: pytest --cov=yokedcache --cov-report=xml
+      - name: Upload coverage
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
+  build:
+    name: Build dist
+    runs-on: ubuntu-latest
+    needs: test
+    if: needs.prepare.outputs.skip_rest != 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: ${{ runner.os }}-pip-
+      - name: Install build deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+          pip install -e '.[dev,sqlalchemy,fuzzy]'
+      - name: Build package
+        run: python -m build
+      - name: Check artifacts
+        run: twine check dist/*
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+  release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build, prepare]
+    if: needs.prepare.outputs.skip_rest != 'true'
+    outputs:
+      notes: ${{ steps.write-notes.outputs.notes_path }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Generate changelog (since last tag)
         id: changelog
         run: |
-          # Extract changelog section for this version
-          python << 'EOF'
-          import re
-          import sys
-          
-          version = "${{ steps.version.outputs.version }}"
-          
-          try:
-              with open('CHANGELOG.md', 'r') as f:
-                  content = f.read()
-              
-              # Find the section for this version
-              pattern = rf'## \[{re.escape(version)}\].*?\n(.*?)(?=\n## \[|\n---|\Z)'
-              match = re.search(pattern, content, re.DOTALL)
-              
-              if match:
-                  changelog_content = match.group(1).strip()
-                  # Remove any trailing dashes or separators
-                  changelog_content = re.sub(r'\n---+.*$', '', changelog_content, flags=re.MULTILINE)
-                  
-                  # Write to file for GitHub Actions
-                  with open('release_notes.md', 'w') as f:
-                      f.write(changelog_content)
-                  print(f"Extracted changelog for version {version}")
-              else:
-                  print(f"No changelog found for version {version}")
-                  with open('release_notes.md', 'w') as f:
-                      f.write(f"Release {version}")
-          except Exception as e:
-              print(f"Error extracting changelog: {e}")
-              with open('release_notes.md', 'w') as f:
-                  f.write(f"Release {version}")
-          EOF
-
-      - name: Build package
+          set -euo pipefail
+          CURRENT_TAG='${{ needs.prepare.outputs.tag }}'
+          if git describe --tags --abbrev=0 2>/dev/null; then
+            PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${CURRENT_TAG}$" | head -n1 || echo '')
+          else
+            PREV_TAG=''
+          fi
+          echo "Previous tag: $PREV_TAG" >&2
+          if [[ -n "$PREV_TAG" ]]; then
+            RANGE="$PREV_TAG..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+          export CURRENT_TAG PREV_TAG RANGE
+          python scripts/gen_changelog.py > release_notes.md
+      - name: Write notes path
+        id: write-notes
+        run: echo "notes_path=release_notes.md" >> $GITHUB_OUTPUT
+      - name: Update CHANGELOG.md
+        if: ${{ success() }}
         run: |
-          python -m build
-
-      - name: Create GitHub Release
+          if [ -f CHANGELOG.md ]; then
+            TAG='${{ needs.prepare.outputs.tag }}'
+            if ! grep -q "^## $TAG$" CHANGELOG.md; then
+              { printf "## $TAG\n\n"; cat release_notes.md; printf "\n"; cat CHANGELOG.md; } > CHANGELOG.new
+              mv CHANGELOG.new CHANGELOG.md
+              git config user.name 'github-actions'
+              git config user.email 'github-actions@users.noreply.github.com'
+              git add CHANGELOG.md
+              git commit -m "docs(changelog): add $TAG" || true
+              git push || true
+            fi
+          fi
+      - name: Create / Update GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: Release ${{ steps.version.outputs.version }}
-          body_path: release_notes.md
-          files: |
-            dist/*.whl
-            dist/*.tar.gz
-          draft: false
-          prerelease: ${{ contains(steps.version.outputs.version, 'rc') || contains(steps.version.outputs.version, 'beta') || contains(steps.version.outputs.version, 'alpha') }}
+            tag_name: ${{ needs.prepare.outputs.tag }}
+            name: Release ${{ needs.prepare.outputs.version }}
+            body_path: release_notes.md
+            files: |
+              dist/*.whl
+              dist/*.tar.gz
+            draft: ${{ needs.prepare.outputs.draft == 'true' }}
+            prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
 
-      - name: Publish to PyPI
+  publish:
+    name: Publish PyPI
+    runs-on: ubuntu-latest
+    needs: [release, prepare]
+  if: needs.prepare.outputs.draft == 'false'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Publish to PyPI (trusted publishing)
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           print-hash: true
 
-  update-docs:
-    needs: create-release
+  docs:
+    name: Deploy Docs
     runs-on: ubuntu-latest
-    if: github.repository == 'sirstig/yokedcache'  # Only run on main repo
+    needs: [publish]
+  if: needs.prepare.outputs.draft == 'false'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install documentation dependencies
+      - name: Install docs deps
         run: |
-          pip install -r requirements-dev.txt
-          pip install mkdocs mkdocs-material mkdocstrings[python]
-
-      - name: Build documentation
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[docs]'
+      - name: Build docs
         run: mkdocs build --strict
-
-      - name: Deploy documentation
-        run: mkdocs gh-deploy --force
+      - name: Deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mkdocs gh-deploy --force --clean --message "docs: deploy ${GITHUB_SHA}"

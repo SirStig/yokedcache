@@ -326,7 +326,7 @@ class TestCacheConfig:
 
     def test_default_config(self):
         """Test default configuration values."""
-        config = CacheConfig()
+        config = CacheConfig(enable_env_overrides=False)
 
         assert config.redis_url == "redis://localhost:6379/0"
         assert config.default_ttl == 300
@@ -342,6 +342,7 @@ class TestCacheConfig:
             key_prefix="myapp",
             enable_fuzzy=True,
             fuzzy_threshold=90,
+            enable_env_overrides=False,  # Disable env overrides for test
         )
 
         assert config.redis_url == "redis://custom:6380/1"

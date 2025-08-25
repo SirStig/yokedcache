@@ -7,7 +7,7 @@ based on real-world production feedback.
 
 import asyncio
 import logging
-from typing import Generator
+from typing import Any, Callable, Generator, cast
 
 from yokedcache import YokedCache
 from yokedcache.config import CacheConfig
@@ -33,16 +33,17 @@ def demo_connection_pool_kwargs():
     config = CacheConfig(
         redis_url="redis://localhost:6379/0",
         max_connections=20,
-        connection_pool_kwargs=connection_pool_kwargs,  # This parameter now works!
+        # This parameter previously failed; now supported
+        connection_pool_kwargs=connection_pool_kwargs,
         enable_circuit_breaker=True,
         fallback_enabled=True,
     )
 
-    print(f"✅ CacheConfig successfully accepts connection_pool_kwargs")
+    print("✅ CacheConfig successfully accepts connection_pool_kwargs")
     print(f"✅ Connection pool config: {config.get_connection_pool_config()}")
 
     cache = YokedCache(config)
-    print(f"✅ YokedCache initialized with custom connection pool settings")
+    print("✅ YokedCache initialized with custom connection pool settings")
     return cache
 
 
@@ -73,7 +74,7 @@ async def demo_async_sync_handling():
             print(f"✅ Sync methods work with fallback: {sync_value}")
         except RuntimeError as e:
             if "cannot be called from a running event loop" in str(e):
-                print(f"✅ Proper error handling for sync methods in async context")
+                print("✅ Proper error handling for sync methods in async context")
             else:
                 raise
 
@@ -100,7 +101,10 @@ def demo_fastapi_dependency_fixes():
 
     # This now works correctly - was returning generator objects before
     cache = YokedCache()
-    cached_get_db = cached_dependency(get_db, cache=cache)
+    cached_get_db = cast(
+        Callable[[], Generator[Any, None, None]],
+        cached_dependency(get_db, cache=cache),
+    )
 
     print("✅ cached_dependency correctly handles generator functions")
 
@@ -193,14 +197,13 @@ async def demo_metrics_collection():
         # Get comprehensive metrics
         metrics = await cache.get_comprehensive_metrics()
 
-        print(f"✅ Metrics collected successfully")
-        print(f"Total operations: {metrics.get('operations', {}).get('total', 0)}")
-        print(
-            f"Hit rate: {metrics.get('cache_performance', {}).get('hit_rate_percent', 0):.1f}%"
-        )
-        print(
-            f"Average response time: {metrics.get('response_times', {}).get('average_ms', 0):.2f}ms"
-        )
+        print("✅ Metrics collected successfully")
+        total_ops = metrics.get("operations", {}).get("total", 0)
+        print(f"Total operations: {total_ops}")
+        hit_rate = metrics.get("cache_performance", {}).get("hit_rate_percent", 0)
+        print(f"Hit rate: {hit_rate:.1f}%")
+        avg_ms = metrics.get("response_times", {}).get("average_ms", 0)
+        print(f"Average response time: {avg_ms:.2f}ms")
 
     except Exception as e:
         print(f"⚠️  Metrics demo failed (Redis might not be available): {e}")

@@ -29,8 +29,13 @@ async def fake_redis():
 @pytest_asyncio.fixture
 async def test_config():
     """Provide a test configuration."""
+    import os
+
+    # Use environment variable or default to CI Redis (localhost:6379)
+    # Dev container sets YOKEDCACHE_REDIS_URL=redis://redis:56379/0
+    redis_url = os.getenv("YOKEDCACHE_REDIS_URL", "redis://localhost:6379/0")
     return CacheConfig(
-        redis_url="redis://localhost:6379/0",
+        redis_url=redis_url,
         default_ttl=300,
         key_prefix="test",
         enable_fuzzy=True,
@@ -55,6 +60,23 @@ async def cache(test_config, fake_redis):
         await cache_instance.disconnect()
 
 
+@pytest_asyncio.fixture
+async def real_cache():
+    """Provide a YokedCache instance that connects to real Redis."""
+    import os
+
+    redis_url = os.getenv("YOKEDCACHE_REDIS_URL", "redis://localhost:6379/0")
+    config = CacheConfig(redis_url=redis_url, key_prefix="test_real")
+    cache_instance = YokedCache(config=config)
+
+    try:
+        await cache_instance.connect()
+        yield cache_instance
+    finally:
+        if cache_instance._connected:
+            await cache_instance.disconnect()
+
+
 @pytest.fixture
 def sample_data():
     """Provide sample data for testing."""
@@ -64,8 +86,18 @@ def sample_data():
             {"id": 2, "name": "Bob", "email": "bob@example.com"},
         ],
         "posts": [
-            {"id": 1, "title": "Test Post", "user_id": 1, "content": "Test content"},
-            {"id": 2, "title": "Another Post", "user_id": 2, "content": "More content"},
+            {
+                "id": 1,
+                "title": "Test Post",
+                "user_id": 1,
+                "content": "Test content",
+            },
+            {
+                "id": 2,
+                "title": "Another Post",
+                "user_id": 2,
+                "content": "More content",
+            },
         ],
     }
 
@@ -141,10 +173,18 @@ def mock_memcached():
 def sample_vector_data():
     """Provide sample data for vector search testing."""
     return {
-        "doc:python": "Python is a programming language that lets you work quickly",
-        "doc:java": "Java is a high-level, class-based, object-oriented programming language",
-        "doc:javascript": "JavaScript is a programming language that conforms to the ECMAScript specification",
-        "user:alice": {"name": "Alice Smith", "skills": ["python", "machine learning"]},
+        "doc:python": ("Python is a programming language that lets you work quickly"),
+        "doc:java": (
+            "Java is a high-level, class-based, object-oriented programming " "language"
+        ),
+        "doc:javascript": (
+            "JavaScript is a programming language that conforms to the "
+            "ECMAScript specification"
+        ),
+        "user:alice": {
+            "name": "Alice Smith",
+            "skills": ["python", "machine learning"],
+        },
         "user:bob": {"name": "Bob Johnson", "skills": ["java", "spring boot"]},
         "post:ml": {
             "title": "Machine Learning Basics",

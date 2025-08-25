@@ -207,7 +207,9 @@ class TestRedisUrlParsing:
 
     def test_basic_redis_url(self):
         """Test parsing basic Redis URL."""
-        config = CacheConfig(redis_url="redis://localhost:6379/0")
+        config = CacheConfig(
+            redis_url="redis://localhost:6379/0", enable_env_overrides=False
+        )
         assert config.redis_host == "localhost"
         assert config.redis_port == 6379
         assert config.redis_db == 0
@@ -215,7 +217,9 @@ class TestRedisUrlParsing:
 
     def test_redis_url_with_password(self):
         """Test parsing Redis URL with password."""
-        config = CacheConfig(redis_url="redis://:mypassword@localhost:6379/1")
+        config = CacheConfig(
+            redis_url="redis://:mypassword@localhost:6379/1", enable_env_overrides=False
+        )
         assert config.redis_host == "localhost"
         assert config.redis_port == 6379
         assert config.redis_db == 1

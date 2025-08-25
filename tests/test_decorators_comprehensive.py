@@ -374,7 +374,8 @@ class TestDecoratorUtilities:
 
         # Function should preserve its name and docstring
         assert test_function.__name__ == "test_function"
-        assert "Test function docstring" in test_function.__doc__
+        doc = test_function.__doc__
+        assert doc is not None and "Test function docstring" in doc
 
     def test_cached_dependency_function_inspection(self):
         """Test that cached_dependency preserves function metadata."""
@@ -387,4 +388,5 @@ class TestDecoratorUtilities:
 
         # Function should preserve its name and docstring
         assert test_dependency.__name__ == "test_dependency"
-        assert "Test dependency docstring" in test_dependency.__doc__
+        dep_doc = test_dependency.__doc__
+        assert dep_doc is not None and "Test dependency docstring" in dep_doc

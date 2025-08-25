@@ -16,13 +16,15 @@ class TestYokedCacheInitialization:
 
     def test_init_with_default_config(self):
         """Test initialization with default configuration."""
-        cache = YokedCache()
+        cache = YokedCache(enable_env_overrides=False)
         assert cache.config is not None
         assert cache.config.redis_url == "redis://localhost:6379/0"
 
     def test_init_with_custom_config(self):
         """Test initialization with custom configuration."""
-        config = CacheConfig(redis_url="redis://custom:6380/1")
+        config = CacheConfig(
+            redis_url="redis://custom:6380/1", enable_env_overrides=False
+        )
         cache = YokedCache(config)
         assert cache.config.redis_url == "redis://custom:6380/1"
 

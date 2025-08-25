@@ -8,7 +8,7 @@ environment variables, and programmatic settings.
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlparse
 
 import yaml
@@ -53,6 +53,9 @@ class CacheConfig:
     fallback_enabled: bool = True
     connection_retries: int = 3
     retry_delay: float = 0.1
+    # Backwards compatibility: older tests referenced max_retries.
+    # If provided, map it onto connection_retries during initialization.
+    max_retries: Optional[int] = None
 
     # Cache behavior settings
     default_ttl: int = 300  # 5 minutes
@@ -87,9 +90,19 @@ class CacheConfig:
 
     # Environment overrides
     enable_env_overrides: bool = True
+    # Whether to create an in-memory fallback backend when Redis is down.
+    # Disabled by default so explicit connection attempts raise errors
+    # (tests expect this behavior by default).
+    enable_memory_fallback: bool = False
 
     def __post_init__(self) -> None:
         """Post-initialization processing."""
+        # Support legacy max_retries alias if supplied
+        if self.max_retries is not None:
+            # Ensure non-negative
+            if self.max_retries < 0:
+                raise CacheConfigurationError("max_retries", "must be >= 0")
+            self.connection_retries = self.max_retries
         self._apply_env_overrides()
         self._validate_config()
         self._parse_redis_url()
@@ -118,22 +131,60 @@ class CacheConfig:
             "YOKEDCACHE_CONNECTION_RETRIES": "connection_retries",
         }
 
+        # Retrieve dataclass defaults for comparison so we only override
+        # values that the user did NOT explicitly set. This prevents
+        # environment variables from clobbering explicit constructor arguments
+        # used in tests (many tests rely on being able to pass redis_url etc.).
+        from dataclasses import MISSING
+
+        defaults: Dict[str, Any] = {}
+        for (
+            field_name,
+            field_def,
+        ) in type(self).__dataclass_fields__.items():
+            if field_def.default is not MISSING:
+                defaults[field_name] = field_def.default
+            # We intentionally ignore default_factory based fields because
+            # they are typically mutable containers (we always allow env to
+            # set if desired)
+
         for env_var, attr_name in env_mappings.items():
             env_str = os.getenv(env_var)
-            if env_str is not None:
-                # Type conversion based on current attribute type
-                current_value = getattr(self, attr_name)
-                converted_value: Union[str, int, float, bool]
-                if isinstance(current_value, bool):
-                    converted_value = env_str.lower() in ("true", "1", "yes", "on")
-                elif isinstance(current_value, int):
-                    converted_value = int(env_str)
-                elif isinstance(current_value, float):
-                    converted_value = float(env_str)
-                else:
-                    converted_value = env_str
+            if env_str is None:
+                continue
 
-                setattr(self, attr_name, converted_value)
+            # Skip override if the current value differs from the default –
+            # user supplied it.
+            try:
+                current_value = getattr(self, attr_name)
+            except AttributeError:
+                continue
+
+            # Only apply override when current value still equals the dataclass
+            # default
+            # (or when no default recorded – defensive fallback).
+            if attr_name in defaults and current_value != defaults[attr_name]:
+                continue
+
+            converted_value: Union[str, int, float, bool]
+            if isinstance(current_value, bool):
+                converted_value = env_str.lower() in ("true", "1", "yes", "on")
+            elif isinstance(current_value, int):
+                # Some int-like fields might be passed as strings later (tests
+                # allow either)
+                try:
+                    converted_value = int(env_str)
+                except ValueError:
+                    continue  # Skip invalid value
+            elif isinstance(current_value, float):
+                try:
+                    converted_value = float(env_str)
+                except ValueError:
+                    continue
+            else:
+                converted_value = env_str
+
+            setattr(self, attr_name, converted_value)
 
     def _validate_config(self) -> None:
         """Validate configuration values."""
@@ -222,7 +273,7 @@ class CacheConfig:
         self.table_configs[config.table_name] = config
 
     def get_connection_pool_config(self) -> Dict[str, Any]:
-        """Get complete connection pool configuration including custom kwargs."""
+        """Get connection pool configuration including custom kwargs."""
         base_config = {
             "max_connections": self.max_connections,
             "retry_on_timeout": self.retry_on_timeout,
@@ -387,7 +438,7 @@ def _parse_invalidation_rule(data: Dict[str, Any]) -> InvalidationRule:
 
 def create_default_config() -> CacheConfig:
     """Create a default configuration instance."""
-    return CacheConfig()
+    return CacheConfig(enable_env_overrides=False)
 
 
 def save_config_to_file(config: CacheConfig, file_path: Union[str, Path]) -> None:

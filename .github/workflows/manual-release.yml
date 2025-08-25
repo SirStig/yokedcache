@@ -44,18 +44,19 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install build & dev dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install -e .[dev]
           pip install build twine
 
       - name: Verify version matches
         run: |
-          PACKAGE_VERSION=$(python -c "from src.yokedcache import __version__; print(__version__)")
+          PACKAGE_VERSION=$(python -c "import yokedcache; print(yokedcache.__version__)")
           if [ "$PACKAGE_VERSION" != "${{ github.event.inputs.version }}" ]; then
             echo "Package version ($PACKAGE_VERSION) doesn't match input version (${{ github.event.inputs.version }})"
             echo "Please update src/yokedcache/__init__.py to version ${{ github.event.inputs.version }}"
@@ -102,15 +103,12 @@ jobs:
                   f.write(f"Manual release {version}")
           EOF
 
-      - name: Build package
-        run: |
-          python -m build
-
       - name: Run tests
         run: |
-          pip install -e .
-          pip install pytest pytest-cov pytest-asyncio
-          python -m pytest tests/ --tb=short
+          pytest -q --disable-warnings
+
+      - name: Build package
+        run: python -m build
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -123,9 +121,5 @@ jobs:
             dist/*.tar.gz
           draft: ${{ github.event.inputs.draft }}
           prerelease: ${{ contains(github.event.inputs.version, 'rc') || contains(github.event.inputs.version, 'beta') || contains(github.event.inputs.version, 'alpha') }}
+  # Publication to PyPI is performed by publish.yml upon release publication to avoid duplication.
 
-      - name: Publish to PyPI
-        if: github.event.inputs.draft == 'false'
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          print-hash: true

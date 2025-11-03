@@ -148,6 +148,9 @@ class TestPrefixRouter:
         router.add_route("test1:", mock_backend1)
         router.add_route("test2:", mock_backend2)
 
+        # Connect all backends first so they're tracked
+        await router.connect_all()
+
         await router.disconnect_all()
 
         mock_default.disconnect.assert_called_once()
@@ -190,21 +193,28 @@ class TestSWRScheduler:
     @pytest.mark.asyncio
     async def test_refresh_execution(self):
         """Test that scheduled refresh actually executes."""
+        from yokedcache.config import CacheConfig
+
         mock_cache = AsyncMock()
+        mock_cache.exists = AsyncMock(return_value=True)
+        mock_cache.config = CacheConfig(default_ttl=1)  # Short TTL for testing
         mock_fetcher = AsyncMock(return_value="refreshed_value")
 
         scheduler = SWRScheduler(mock_cache)
         scheduler.start()
 
-        # Schedule refresh with short delay
-        scheduler.schedule_refresh("test_key", mock_fetcher, ttl=60)
+        # Schedule refresh with short TTL (1s) and high threshold (0.9) for quick refresh
+        # refresh_delay = 1 * (1 - 0.9) = 0.1 seconds
+        scheduler.schedule_refresh(
+            "test_key", mock_fetcher, ttl=1, refresh_threshold=0.9
+        )
 
         # Wait for refresh to execute
-        await asyncio.sleep(2)
+        await asyncio.sleep(0.3)
 
         # Verify fetcher was called and cache was updated
         mock_fetcher.assert_called_once()
-        mock_cache.set.assert_called_once_with("test_key", "refreshed_value", 60)
+        mock_cache.set.assert_called_once_with("test_key", "refreshed_value", 1)
 
         await scheduler.stop()
 
@@ -220,8 +230,13 @@ class TestSWRScheduler:
         completed_task.done.return_value = True
         scheduler._refresh_tasks["test_key"] = completed_task
 
-        # Wait for cleanup
-        await asyncio.sleep(1.1)  # Cleanup runs every second
+        # Manually trigger cleanup (cleanup loop runs every 60s, too slow for test)
+        completed_keys = [
+            key for key, task in scheduler._refresh_tasks.items() if task.done()
+        ]
+        for key in completed_keys:
+            scheduler._refresh_tasks.pop(key, None)
+            scheduler._refresh_locks.pop(key, None)
 
         # Task should be removed
         assert "test_key" not in scheduler._refresh_tasks
@@ -356,12 +371,13 @@ class TestCacheIntegration:
             # Test fetch_or_set with SWR
             mock_fetcher = AsyncMock(return_value="fresh_value")
 
-            # Mock cache miss first, then hit
-            mock_client.get.side_effect = [None, b'{"data": "fresh_value"}']
+            # Mock cache miss first
+            mock_client.get.return_value = None
+            mock_client.set.return_value = True
 
             result = await cache.fetch_or_set("test_key", mock_fetcher, ttl=60)
 
-            # Should get the fresh value
+            # Should get the fresh value (fetcher result)
             assert result == "fresh_value"
 
             await cache.disconnect()

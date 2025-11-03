@@ -195,7 +195,8 @@ class TestYokedCacheBasicOperations:
 
             result = await cache.delete("test_key")
             assert result is True
-            mock_redis.delete.assert_called_once_with("test_key")
+            # Keys are prefixed with default prefix "yokedcache:"
+            mock_redis.delete.assert_called_once_with("yokedcache:test_key")
 
     @pytest.mark.asyncio
     async def test_exists_operation(self):

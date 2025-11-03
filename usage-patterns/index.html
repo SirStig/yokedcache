@@ -1,0 +1,2256 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="High-performance Python caching library with Redis auto-invalidation, vector search caching, and seamless FastAPI integration. Enterprise-grade Redis caching solution for Python applications.">
+      
+      
+      
+        <link rel="canonical" href="https://sirstig.github.io/yokedcache/usage-patterns/">
+      
+      
+        <link rel="prev" href="../configuration/">
+      
+      
+        <link rel="next" href="../tutorials/fastapi/">
+      
+      
+      <link rel="icon" href="../assets/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>Usage Patterns - YokedCache - Python Caching Library for FastAPI</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-XXXXXXXXXX"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-XXXXXXXXXX",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  
+    <script>if("undefined"!=typeof __md_analytics){var consent=__md_get("__consent");consent&&consent.analytics&&__md_analytics()}</script>
+  
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#usage-patterns" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="YokedCache - Python Caching Library for FastAPI" class="md-header__button md-logo" aria-label="YokedCache - Python Caching Library for FastAPI" data-md-component="logo">
+      
+  <img src="../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            YokedCache - Python Caching Library for FastAPI
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Usage Patterns
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/sirstig/yokedcache" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sirstig/yokedcache
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../core-concepts/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Core Concepts
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Usage Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../backends/" class="md-tabs__link">
+          
+  
+  
+  Advanced Features
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../cli/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="YokedCache - Python Caching Library for FastAPI" class="md-nav__button md-logo" aria-label="YokedCache - Python Caching Library for FastAPI" data-md-component="logo">
+      
+  <img src="../assets/logo.png" alt="logo">
+
+    </a>
+    YokedCache - Python Caching Library for FastAPI
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/sirstig/yokedcache" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sirstig/yokedcache
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../core-concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Core Concepts
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Usage Guide
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Usage Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Usage Patterns
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Usage Patterns
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#function-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      Function Caching
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Function Caching">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-function-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Function Caching
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-function-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      Advanced Function Caching
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conditional-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conditional Caching
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#manual-cache-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Manual Cache Operations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Manual Cache Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Operations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Batch Operations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tag-based-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tag-Based Operations
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fastapi-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      FastAPI Integration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FastAPI Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#database-dependency-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      Database Dependency Caching
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Dependencies
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auto-invalidation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Auto-Invalidation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Auto-Invalidation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-auto-invalidation-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      How Auto-Invalidation Works
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#database-write-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Database Write Tracking
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#automatic-table-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      Automatic Table Detection
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-invalidation-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      Manual Invalidation Control
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cross-service-invalidation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cross-Service Invalidation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fuzzy-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fuzzy Search
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Fuzzy Search">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enabling-fuzzy-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enabling Fuzzy Search
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#basic-fuzzy-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Fuzzy Search
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-fuzzy-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      Advanced Fuzzy Search
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cli-fuzzy-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      CLI Fuzzy Search
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search-within-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      Search Within Values
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fuzzy-search-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fuzzy Search Best Practices
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cache-warming" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache Warming
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cache Warming">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#programmatic-cache-warming" class="md-nav__link">
+    <span class="md-ellipsis">
+      Programmatic Cache Warming
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-based-warming" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration-Based Warming
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cli-cache-warming" class="md-nav__link">
+    <span class="md-ellipsis">
+      CLI Cache Warming
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-handling-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error Handling Patterns
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Error Handling Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#graceful-degradation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Graceful Degradation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#circuit-breaker-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      Circuit Breaker Pattern
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-caching-patterns-v030" class="md-nav__link">
+    <span class="md-ellipsis">
+      Advanced Caching Patterns v0.3.0
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Caching Patterns v0.3.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#http-response-middleware" class="md-nav__link">
+    <span class="md-ellipsis">
+      HTTP Response Middleware
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#single-flight-protection" class="md-nav__link">
+    <span class="md-ellipsis">
+      Single-Flight Protection
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stale-while-revalidate-swr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Stale-While-Revalidate (SWR)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stale-if-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      Stale-If-Error
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-prefix-backend-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-Prefix Backend Routing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opentelemetry-distributed-tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      OpenTelemetry Distributed Tracing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-optimization-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Optimization Patterns
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Optimization Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#connection-reuse" class="md-nav__link">
+    <span class="md-ellipsis">
+      Connection Reuse
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-operations_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Batch Operations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimal-ttl-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optimal TTL Strategy
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/fastapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FastAPI Integration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/fastapi-redis-caching/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FastAPI Redis Caching Tutorial
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/sqlalchemy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    SQLAlchemy Integration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Advanced Features
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Advanced Features
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backends/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Backends & Setup
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vector-search/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Vector Search
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Monitoring & Health
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CLI Tool
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Performance
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Security
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Testing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/sirstig/yokedcache/edit/master/docs/usage-patterns.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/sirstig/yokedcache/raw/master/docs/usage-patterns.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
+    </a>
+  
+
+
+<h1 id="usage-patterns">Usage Patterns<a class="headerlink" href="#usage-patterns" title="Permanent link">&para;</a></h1>
+<p>YokedCache offers several patterns for caching data in your applications. Choose the approach that best fits your use case and architectural needs.</p>
+<h2 id="function-caching">Function Caching<a class="headerlink" href="#function-caching" title="Permanent link">&para;</a></h2>
+<p>The most straightforward way to add caching to your application is through function decorators.</p>
+<h3 id="basic-function-caching">Basic Function Caching<a class="headerlink" href="#basic-function-caching" title="Permanent link">&para;</a></h3>
+<p>Use the <code>@cached</code> decorator to cache function results:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache</span><span class="w"> </span><span class="kn">import</span> <span class="n">cached</span>
+
+<span class="nd">@cached</span><span class="p">(</span><span class="n">ttl</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;products&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_products</span><span class="p">(</span><span class="n">category</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">active_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Expensive database query or API call&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">database</span><span class="o">.</span><span class="n">fetch_products</span><span class="p">(</span><span class="n">category</span><span class="p">,</span> <span class="n">active_only</span><span class="p">)</span>
+
+<span class="c1"># First call hits the database</span>
+<span class="n">products</span> <span class="o">=</span> <span class="k">await</span> <span class="n">get_products</span><span class="p">(</span><span class="s2">&quot;electronics&quot;</span><span class="p">,</span> <span class="n">active_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Second call returns cached result</span>
+<span class="n">products</span> <span class="o">=</span> <span class="k">await</span> <span class="n">get_products</span><span class="p">(</span><span class="s2">&quot;electronics&quot;</span><span class="p">,</span> <span class="n">active_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="advanced-function-caching">Advanced Function Caching<a class="headerlink" href="#advanced-function-caching" title="Permanent link">&para;</a></h3>
+<p>Customize caching behavior with additional parameters:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache</span><span class="w"> </span><span class="kn">import</span> <span class="n">cached</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">SerializationMethod</span>
+
+<span class="nd">@cached</span><span class="p">(</span>
+    <span class="n">ttl</span><span class="o">=</span><span class="mi">1800</span><span class="p">,</span>                                    <span class="c1"># 30 minutes</span>
+    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;user_data&quot;</span><span class="p">,</span> <span class="s2">&quot;api_v1&quot;</span><span class="p">],</span>              <span class="c1"># Multiple tags</span>
+    <span class="n">serialization</span><span class="o">=</span><span class="n">SerializationMethod</span><span class="o">.</span><span class="n">PICKLE</span><span class="p">,</span>   <span class="c1"># Custom serialization</span>
+    <span class="n">cache_key_prefix</span><span class="o">=</span><span class="s2">&quot;api&quot;</span>                      <span class="c1"># Custom key prefix</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user_profile</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">include_permissions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="n">profile</span> <span class="o">=</span> <span class="k">await</span> <span class="n">database</span><span class="o">.</span><span class="n">get_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">include_permissions</span><span class="p">:</span>
+        <span class="n">profile</span><span class="o">.</span><span class="n">permissions</span> <span class="o">=</span> <span class="k">await</span> <span class="n">database</span><span class="o">.</span><span class="n">get_user_permissions</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">profile</span>
+</code></pre></div>
+<h3 id="conditional-caching">Conditional Caching<a class="headerlink" href="#conditional-caching" title="Permanent link">&para;</a></h3>
+<p>Skip caching based on runtime conditions:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@cached</span><span class="p">(</span><span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;search_results&quot;</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">search_products</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">use_cache</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">use_cache</span><span class="p">:</span>
+        <span class="c1"># Skip cache for this call</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="n">perform_live_search</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="k">await</span> <span class="n">database</span><span class="o">.</span><span class="n">search_products</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+
+<span class="c1"># Force fresh data</span>
+<span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">search_products</span><span class="p">(</span><span class="s2">&quot;laptop&quot;</span><span class="p">,</span> <span class="n">use_cache</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="manual-cache-operations">Manual Cache Operations<a class="headerlink" href="#manual-cache-operations" title="Permanent link">&para;</a></h2>
+<p>For more control, use YokedCache directly for manual cache operations.</p>
+<h3 id="basic-operations">Basic Operations<a class="headerlink" href="#basic-operations" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache</span><span class="w"> </span><span class="kn">import</span> <span class="n">YokedCache</span>
+
+<span class="n">cache</span> <span class="o">=</span> <span class="n">YokedCache</span><span class="p">()</span>
+
+<span class="c1"># Store data</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;user:123&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;John&quot;</span><span class="p">,</span> <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;john@example.com&quot;</span><span class="p">},</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+
+<span class="c1"># Retrieve data</span>
+<span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;user:123&quot;</span><span class="p">)</span>
+
+<span class="c1"># Check if key exists</span>
+<span class="n">exists</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s2">&quot;user:123&quot;</span><span class="p">)</span>
+
+<span class="c1"># Delete specific key</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;user:123&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="batch-operations">Batch Operations<a class="headerlink" href="#batch-operations" title="Permanent link">&para;</a></h3>
+<p>Perform multiple operations efficiently:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set multiple keys at once</span>
+<span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;user:123&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;John&quot;</span><span class="p">},</span>
+    <span class="s2">&quot;user:124&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Jane&quot;</span><span class="p">},</span>
+    <span class="s2">&quot;user:125&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Bob&quot;</span><span class="p">}</span>
+<span class="p">}</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">set_many</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;user_data&quot;</span><span class="p">])</span>
+
+<span class="c1"># Get multiple keys</span>
+<span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;user:123&quot;</span><span class="p">,</span> <span class="s2">&quot;user:124&quot;</span><span class="p">,</span> <span class="s2">&quot;user:125&quot;</span><span class="p">]</span>
+<span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">get_many</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
+
+<span class="c1"># Delete multiple keys</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">delete_many</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="tag-based-operations">Tag-Based Operations<a class="headerlink" href="#tag-based-operations" title="Permanent link">&para;</a></h3>
+<p>Use tags to group and manage related cache entries:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Store with tags</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;product:1&quot;</span><span class="p">,</span> <span class="n">product_data</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;products&quot;</span><span class="p">,</span> <span class="s2">&quot;category:electronics&quot;</span><span class="p">])</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;product:2&quot;</span><span class="p">,</span> <span class="n">product_data</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;products&quot;</span><span class="p">,</span> <span class="s2">&quot;category:books&quot;</span><span class="p">])</span>
+
+<span class="c1"># Invalidate by tags</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">invalidate_tags</span><span class="p">([</span><span class="s2">&quot;products&quot;</span><span class="p">])</span>           <span class="c1"># Clear all products</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">invalidate_tags</span><span class="p">([</span><span class="s2">&quot;category:electronics&quot;</span><span class="p">])</span> <span class="c1"># Clear electronics only</span>
+
+<span class="c1"># Pattern-based invalidation</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">invalidate_pattern</span><span class="p">(</span><span class="s2">&quot;user:*&quot;</span><span class="p">)</span>           <span class="c1"># Clear all user data</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">invalidate_pattern</span><span class="p">(</span><span class="s2">&quot;session:temp:*&quot;</span><span class="p">)</span>   <span class="c1"># Clear temporary sessions</span>
+</code></pre></div>
+<h2 id="fastapi-integration">FastAPI Integration<a class="headerlink" href="#fastapi-integration" title="Permanent link">&para;</a></h2>
+<p>YokedCache integrates seamlessly with FastAPI through dependency caching.</p>
+<h3 id="database-dependency-caching">Database Dependency Caching<a class="headerlink" href="#database-dependency-caching" title="Permanent link">&para;</a></h3>
+<p>Replace your database dependencies with cached versions:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">Depends</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache</span><span class="w"> </span><span class="kn">import</span> <span class="n">YokedCache</span><span class="p">,</span> <span class="n">cached_dependency</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="n">YokedCache</span><span class="p">()</span>
+
+<span class="c1"># Original database dependency</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_db</span><span class="p">():</span>
+    <span class="n">db</span> <span class="o">=</span> <span class="n">SessionLocal</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">db</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="c1"># Cached version</span>
+<span class="n">cached_get_db</span> <span class="o">=</span> <span class="n">cached_dependency</span><span class="p">(</span><span class="n">get_db</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">table_name</span><span class="o">=</span><span class="s2">&quot;users&quot;</span><span class="p">)</span>
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{user_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">cached_get_db</span><span class="p">)):</span>
+    <span class="c1"># Database queries are automatically cached</span>
+    <span class="k">return</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">User</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">user_id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="custom-dependencies">Custom Dependencies<a class="headerlink" href="#custom-dependencies" title="Permanent link">&para;</a></h3>
+<p>Cache any dependency, not just database connections:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache</span><span class="w"> </span><span class="kn">import</span> <span class="n">cached_dependency</span>
+
+<span class="c1"># Cache external API client</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_external_api</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">ExternalAPIClient</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">api_key</span><span class="p">)</span>
+
+<span class="n">cached_api</span> <span class="o">=</span> <span class="n">cached_dependency</span><span class="p">(</span><span class="n">get_external_api</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">3600</span><span class="p">)</span>
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/external-data/</span><span class="si">{resource_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_external_data</span><span class="p">(</span><span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">cached_api</span><span class="p">)):</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">api</span><span class="o">.</span><span class="n">fetch_resource</span><span class="p">(</span><span class="n">resource_id</span><span class="p">)</span>
+
+<span class="c1"># Cache configuration objects</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_config</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">load_configuration_from_database</span><span class="p">()</span>
+
+<span class="n">cached_config</span> <span class="o">=</span> <span class="n">cached_dependency</span><span class="p">(</span><span class="n">get_config</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">600</span><span class="p">)</span>
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/settings&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_settings</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">cached_config</span><span class="p">)):</span>
+    <span class="k">return</span> <span class="n">config</span><span class="o">.</span><span class="n">public_settings</span>
+</code></pre></div>
+<h2 id="auto-invalidation">Auto-Invalidation<a class="headerlink" href="#auto-invalidation" title="Permanent link">&para;</a></h2>
+<p>Auto-invalidation automatically clears cache entries when related data changes, ensuring you never serve stale data.</p>
+<h3 id="how-auto-invalidation-works">How Auto-Invalidation Works<a class="headerlink" href="#how-auto-invalidation-works" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Read Operations</strong>: Cached with appropriate tags based on tables/entities</li>
+<li><strong>Write Operations</strong>: Tracked and queued for invalidation</li>
+<li><strong>Transaction Commit</strong>: Triggers invalidation of affected tags</li>
+<li><strong>Cache Cleared</strong>: Related entries automatically removed</li>
+</ol>
+<h3 id="database-write-tracking">Database Write Tracking<a class="headerlink" href="#database-write-tracking" title="Permanent link">&para;</a></h3>
+<p>YokedCache automatically tracks database writes and invalidates related cache entries:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache</span><span class="w"> </span><span class="kn">import</span> <span class="n">YokedCache</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache.decorators</span><span class="w"> </span><span class="kn">import</span> <span class="n">cached_dependency</span>
+
+<span class="n">cache</span> <span class="o">=</span> <span class="n">YokedCache</span><span class="p">()</span>
+<span class="n">cached_get_db</span> <span class="o">=</span> <span class="n">cached_dependency</span><span class="p">(</span><span class="n">get_db</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">table_name</span><span class="o">=</span><span class="s2">&quot;users&quot;</span><span class="p">)</span>
+
+<span class="c1"># Read operations are cached with &quot;table:users&quot; tag</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{user_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">cached_get_db</span><span class="p">)):</span>
+    <span class="c1"># This query result is cached with tag &quot;table:users&quot;</span>
+    <span class="k">return</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">User</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">user_id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+
+<span class="c1"># Write operations trigger automatic invalidation</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_user</span><span class="p">(</span><span class="n">user</span><span class="p">:</span> <span class="n">UserCreate</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">cached_get_db</span><span class="p">)):</span>
+    <span class="n">new_user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="o">**</span><span class="n">user</span><span class="o">.</span><span class="n">dict</span><span class="p">())</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">new_user</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>  <span class="c1"># Automatically invalidates &quot;table:users&quot; tag</span>
+    <span class="k">return</span> <span class="n">new_user</span>
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{user_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">user</span><span class="p">:</span> <span class="n">UserUpdate</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">cached_get_db</span><span class="p">)):</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">User</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">user_id</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">user</span><span class="o">.</span><span class="n">dict</span><span class="p">())</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>  <span class="c1"># Automatically invalidates &quot;table:users&quot; tag</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;updated&quot;</span><span class="p">}</span>
+</code></pre></div>
+<h3 id="automatic-table-detection">Automatic Table Detection<a class="headerlink" href="#automatic-table-detection" title="Permanent link">&para;</a></h3>
+<p>YokedCache extracts table names from SQL queries automatically:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># These patterns are automatically detected:</span>
+<span class="s2">&quot;SELECT * FROM users WHERE id = ?&quot;</span>           <span class="c1"># → table: users</span>
+<span class="s2">&quot;INSERT INTO products (name) VALUES (?)&quot;</span>     <span class="c1"># → table: products</span>
+<span class="s2">&quot;UPDATE orders SET status = ? WHERE id = ?&quot;</span>  <span class="c1"># → table: orders</span>
+<span class="s2">&quot;DELETE FROM sessions WHERE expired &lt; ?&quot;</span>     <span class="c1"># → table: sessions</span>
+
+<span class="c1"># Complex JOIN queries</span>
+<span class="s2">&quot;SELECT u.*, p.name FROM users u JOIN profiles p ON u.id = p.user_id&quot;</span>  <span class="c1"># → tables: users, profiles</span>
+</code></pre></div>
+<h3 id="manual-invalidation-control">Manual Invalidation Control<a class="headerlink" href="#manual-invalidation-control" title="Permanent link">&para;</a></h3>
+<p>For complex scenarios, manually control invalidation:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Specify table explicitly</span>
+<span class="n">cached_get_db</span> <span class="o">=</span> <span class="n">cached_dependency</span><span class="p">(</span>
+    <span class="n">get_db</span><span class="p">,</span>
+    <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">,</span>
+    <span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+    <span class="n">table_name</span><span class="o">=</span><span class="s2">&quot;users&quot;</span>  <span class="c1"># Explicit table specification</span>
+<span class="p">)</span>
+
+<span class="c1"># Multiple table invalidation</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{user_id}</span><span class="s2">/change-role&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">change_user_role</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">cached_get_db</span><span class="p">)):</span>
+    <span class="c1"># This operation affects both users and permissions</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;UPDATE users SET role = ? WHERE id = ?&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">role</span><span class="p">,</span> <span class="n">user_id</span><span class="p">))</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DELETE FROM user_permissions WHERE user_id = ?&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,))</span>
+
+    <span class="c1"># Manually invalidate multiple tables</span>
+    <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">invalidate_tags</span><span class="p">([</span><span class="s2">&quot;table:users&quot;</span><span class="p">,</span> <span class="s2">&quot;table:user_permissions&quot;</span><span class="p">])</span>
+
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;role_changed&quot;</span><span class="p">}</span>
+</code></pre></div>
+<h3 id="cross-service-invalidation">Cross-Service Invalidation<a class="headerlink" href="#cross-service-invalidation" title="Permanent link">&para;</a></h3>
+<p>Invalidate cache across multiple services:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Service A: User management</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{user_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">user</span><span class="p">:</span> <span class="n">UserUpdate</span><span class="p">):</span>
+    <span class="c1"># Update user in database</span>
+    <span class="k">await</span> <span class="n">update_user_in_db</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">user</span><span class="p">)</span>
+
+    <span class="c1"># Invalidate user-related cache across all services</span>
+    <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">invalidate_tags</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;user:</span><span class="si">{</span><span class="n">user_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;table:users&quot;</span><span class="p">])</span>
+
+    <span class="c1"># Optionally publish event for other services</span>
+    <span class="k">await</span> <span class="n">publish_user_updated_event</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+
+<span class="c1"># Service B: Order management</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/orders/user/</span><span class="si">{user_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user_orders</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">cached_get_db</span><span class="p">)):</span>
+    <span class="c1"># This will use fresh user data after the update in Service A</span>
+    <span class="k">return</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Order</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">Order</span><span class="o">.</span><span class="n">user_id</span> <span class="o">==</span> <span class="n">user_id</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="fuzzy-search">Fuzzy Search<a class="headerlink" href="#fuzzy-search" title="Permanent link">&para;</a></h2>
+<p>Find approximate matches across cached keys and optionally search within cached values.</p>
+<h3 id="enabling-fuzzy-search">Enabling Fuzzy Search<a class="headerlink" href="#enabling-fuzzy-search" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install the fuzzy search dependencies</span>
+<span class="c1"># pip install &quot;yokedcache[fuzzy]&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache</span><span class="w"> </span><span class="kn">import</span> <span class="n">YokedCache</span><span class="p">,</span> <span class="n">CacheConfig</span>
+
+<span class="c1"># Enable fuzzy search in configuration</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">CacheConfig</span><span class="p">(</span>
+    <span class="n">enable_fuzzy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">fuzzy_threshold</span><span class="o">=</span><span class="mi">80</span>  <span class="c1"># Minimum similarity score (0-100)</span>
+<span class="p">)</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="n">YokedCache</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="basic-fuzzy-search">Basic Fuzzy Search<a class="headerlink" href="#basic-fuzzy-search" title="Permanent link">&para;</a></h3>
+<p>Search for approximate matches in cache keys:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Store some user data</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;user:alice_johnson&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Alice Johnson&quot;</span><span class="p">},</span> <span class="n">tags</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;users&quot;</span><span class="p">})</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;user:bob_alice&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Bob Alice&quot;</span><span class="p">},</span> <span class="n">tags</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;users&quot;</span><span class="p">})</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;user:charlie_brown&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Charlie Brown&quot;</span><span class="p">},</span> <span class="n">tags</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;users&quot;</span><span class="p">})</span>
+
+<span class="c1"># Search for keys containing &quot;alice&quot; (case-insensitive, approximate)</span>
+<span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">fuzzy_search</span><span class="p">(</span><span class="s2">&quot;alice&quot;</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mi">70</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Key: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">key</span><span class="si">}</span><span class="s2">, Score: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">score</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># Output:</span>
+<span class="c1"># Key: user:alice_johnson, Score: 85</span>
+<span class="c1"># Key: user:bob_alice, Score: 78</span>
+</code></pre></div>
+<h3 id="advanced-fuzzy-search">Advanced Fuzzy Search<a class="headerlink" href="#advanced-fuzzy-search" title="Permanent link">&para;</a></h3>
+<p>Customize search parameters for better results:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Search with filtering and limits</span>
+<span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">fuzzy_search</span><span class="p">(</span>
+    <span class="n">query</span><span class="o">=</span><span class="s2">&quot;alice&quot;</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span>           <span class="c1"># Higher threshold for more precise matches</span>
+    <span class="n">max_results</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>         <span class="c1"># Limit number of results</span>
+    <span class="n">tags</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;users&quot;</span><span class="p">}</span>          <span class="c1"># Only search within user-tagged entries</span>
+<span class="p">)</span>
+
+<span class="c1"># Search with custom similarity method</span>
+<span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">fuzzy_search</span><span class="p">(</span>
+    <span class="n">query</span><span class="o">=</span><span class="s2">&quot;alice&quot;</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="o">=</span><span class="mi">75</span><span class="p">,</span>
+    <span class="n">similarity_method</span><span class="o">=</span><span class="s2">&quot;partial_ratio&quot;</span>  <span class="c1"># Better for substring matches</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="cli-fuzzy-search">CLI Fuzzy Search<a class="headerlink" href="#cli-fuzzy-search" title="Permanent link">&para;</a></h3>
+<p>Use the command line for interactive fuzzy search:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Basic search</span>
+yokedcache<span class="w"> </span>search<span class="w"> </span><span class="s2">&quot;alice&quot;</span><span class="w"> </span>--threshold<span class="w"> </span><span class="m">80</span>
+
+<span class="c1"># Search with filters</span>
+yokedcache<span class="w"> </span>search<span class="w"> </span><span class="s2">&quot;alice&quot;</span><span class="w"> </span>--threshold<span class="w"> </span><span class="m">80</span><span class="w"> </span>--max-results<span class="w"> </span><span class="m">5</span>
+
+<span class="c1"># Search specific tags</span>
+yokedcache<span class="w"> </span>search<span class="w"> </span><span class="s2">&quot;alice&quot;</span><span class="w"> </span>--tags<span class="w"> </span>users,active
+
+<span class="c1"># Export results to file</span>
+yokedcache<span class="w"> </span>search<span class="w"> </span><span class="s2">&quot;alice&quot;</span><span class="w"> </span>--threshold<span class="w"> </span><span class="m">80</span><span class="w"> </span>--output<span class="w"> </span>results.json
+</code></pre></div>
+<h3 id="search-within-values">Search Within Values<a class="headerlink" href="#search-within-values" title="Permanent link">&para;</a></h3>
+<p>Search not just keys, but also cached values:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Store structured data</span>
+<span class="n">user_data</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Alice Johnson&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;alice@example.com&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;department&quot;</span><span class="p">:</span> <span class="s2">&quot;Engineering&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;skills&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Python&quot;</span><span class="p">,</span> <span class="s2">&quot;JavaScript&quot;</span><span class="p">,</span> <span class="s2">&quot;Machine Learning&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;user:123&quot;</span><span class="p">,</span> <span class="n">user_data</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;users&quot;</span><span class="p">})</span>
+
+<span class="c1"># Search within cached values (requires additional configuration)</span>
+<span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">fuzzy_search_values</span><span class="p">(</span>
+    <span class="n">query</span><span class="o">=</span><span class="s2">&quot;Machine Learning&quot;</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span>
+    <span class="n">search_fields</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;skills&quot;</span><span class="p">,</span> <span class="s2">&quot;department&quot;</span><span class="p">]</span>  <span class="c1"># Specify which fields to search</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="fuzzy-search-best-practices">Fuzzy Search Best Practices<a class="headerlink" href="#fuzzy-search-best-practices" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Meaningful Keys</strong>: Use descriptive keys that benefit from fuzzy matching</li>
+<li><strong>Appropriate Thresholds</strong>: Start with 80, adjust based on your data</li>
+<li><strong>Tag Filtering</strong>: Use tags to limit search scope and improve performance</li>
+<li><strong>Index Management</strong>: Fuzzy search maintains an index; consider rebuild frequency</li>
+<li><strong>Performance</strong>: Fuzzy search is slower than exact lookups; use judiciously</li>
+</ul>
+<h2 id="cache-warming">Cache Warming<a class="headerlink" href="#cache-warming" title="Permanent link">&para;</a></h2>
+<p>Pre-populate cache with frequently accessed data to improve initial performance.</p>
+<h3 id="programmatic-cache-warming">Programmatic Cache Warming<a class="headerlink" href="#programmatic-cache-warming" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache.decorators</span><span class="w"> </span><span class="kn">import</span> <span class="n">warm_cache</span>
+
+<span class="c1"># Define warming functions</span>
+<span class="n">warming_tasks</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="n">get_products</span><span class="p">,</span> <span class="s2">&quot;args&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;electronics&quot;</span><span class="p">],</span> <span class="s2">&quot;ttl&quot;</span><span class="p">:</span> <span class="mi">600</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="n">get_products</span><span class="p">,</span> <span class="s2">&quot;args&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;books&quot;</span><span class="p">],</span> <span class="s2">&quot;ttl&quot;</span><span class="p">:</span> <span class="mi">600</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="n">get_user_profile</span><span class="p">,</span> <span class="s2">&quot;args&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">123</span><span class="p">],</span> <span class="s2">&quot;kwargs&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;include_permissions&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="s2">&quot;ttl&quot;</span><span class="p">:</span> <span class="mi">300</span><span class="p">},</span>
+<span class="p">]</span>
+
+<span class="c1"># Warm the cache</span>
+<span class="n">warmed_count</span> <span class="o">=</span> <span class="k">await</span> <span class="n">warm_cache</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">warming_tasks</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warmed </span><span class="si">{</span><span class="n">warmed_count</span><span class="si">}</span><span class="s2"> cache entries&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="configuration-based-warming">Configuration-Based Warming<a class="headerlink" href="#configuration-based-warming" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># cache_warming.yaml</span>
+<span class="nt">warming_tasks</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">function</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">get_products</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;electronics&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">600</span>
+<span class="w">    </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;products&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;category:electronics&quot;</span><span class="p p-Indicator">]</span>
+
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">function</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">get_popular_items</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+<span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1800</span>
+<span class="w">    </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;popular&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;homepage&quot;</span><span class="p p-Indicator">]</span>
+
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">function</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">get_user_preferences</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">123</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">456</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">789</span><span class="p p-Indicator">]</span><span class="w">  </span><span class="c1"># Warm for multiple users</span>
+<span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">300</span>
+<span class="w">    </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;user_data&quot;</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># Load and execute warming configuration</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;cache_warming.yaml&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">warming_config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+<span class="k">await</span> <span class="n">execute_warming_config</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">warming_config</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="cli-cache-warming">CLI Cache Warming<a class="headerlink" href="#cli-cache-warming" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Warm cache using configuration file</span>
+yokedcache<span class="w"> </span>warm<span class="w"> </span>--config-file<span class="w"> </span>cache_warming.yaml
+
+<span class="c1"># Warm specific functions</span>
+yokedcache<span class="w"> </span>warm<span class="w"> </span>--function<span class="w"> </span>get_products<span class="w"> </span>--args<span class="w"> </span>electronics<span class="w"> </span>--ttl<span class="w"> </span><span class="m">600</span>
+
+<span class="c1"># Monitor warming progress</span>
+yokedcache<span class="w"> </span>warm<span class="w"> </span>--config-file<span class="w"> </span>cache_warming.yaml<span class="w"> </span>--verbose
+</code></pre></div>
+<h2 id="error-handling-patterns">Error Handling Patterns<a class="headerlink" href="#error-handling-patterns" title="Permanent link">&para;</a></h2>
+<p>Implement robust error handling for cache operations.</p>
+<h3 id="graceful-degradation">Graceful Degradation<a class="headerlink" href="#graceful-degradation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user_data</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Try cache first</span>
+        <span class="n">cached_data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;user:</span><span class="si">{</span><span class="n">user_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cached_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cached_data</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="c1"># Cache error - log but continue</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache read failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Fallback to database</span>
+    <span class="n">user_data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">database</span><span class="o">.</span><span class="n">get_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Try to cache for next time</span>
+        <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;user:</span><span class="si">{</span><span class="n">user_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">user_data</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="c1"># Cache write error - log but return data</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache write failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">user_data</span>
+</code></pre></div>
+<h3 id="circuit-breaker-pattern">Circuit Breaker Pattern<a class="headerlink" href="#circuit-breaker-pattern" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CacheCircuitBreaker</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">failure_threshold</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">failure_threshold</span> <span class="o">=</span> <span class="n">failure_threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">failure_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_failure</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="s2">&quot;CLOSED&quot;</span>  <span class="c1"># CLOSED, OPEN, HALF_OPEN</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">call_with_fallback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_operation</span><span class="p">,</span> <span class="n">fallback_operation</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="s2">&quot;OPEN&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_failure</span> <span class="o">&gt;</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="s2">&quot;HALF_OPEN&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="k">await</span> <span class="n">fallback_operation</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cache_operation</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="s2">&quot;HALF_OPEN&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="s2">&quot;CLOSED&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">failure_count</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">failure_count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_failure</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">failure_count</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">failure_threshold</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="s2">&quot;OPEN&quot;</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache operation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="n">fallback_operation</span><span class="p">()</span>
+
+<span class="c1"># Usage</span>
+<span class="n">circuit_breaker</span> <span class="o">=</span> <span class="n">CacheCircuitBreaker</span><span class="p">()</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_with_fallback</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">circuit_breaker</span><span class="o">.</span><span class="n">call_with_fallback</span><span class="p">(</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="n">database</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+    <span class="p">)</span>
+</code></pre></div>
+<h2 id="advanced-caching-patterns-v030">Advanced Caching Patterns v0.3.0<a class="headerlink" href="#advanced-caching-patterns-v030" title="Permanent link">&para;</a></h2>
+<p>YokedCache 0.3.0 introduces powerful advanced caching patterns designed for high-performance, production-ready applications.</p>
+<h3 id="http-response-middleware">HTTP Response Middleware<a class="headerlink" href="#http-response-middleware" title="Permanent link">&para;</a></h3>
+<p>Add HTTP caching middleware to FastAPI applications for automatic ETag and Cache-Control header management:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache</span><span class="w"> </span><span class="kn">import</span> <span class="n">YokedCache</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPCacheMiddleware</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="n">YokedCache</span><span class="p">()</span>
+
+<span class="c1"># Add HTTP caching middleware</span>
+<span class="n">app</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span>
+    <span class="n">HTTPCacheMiddleware</span><span class="p">,</span>
+    <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">,</span>
+    <span class="n">default_ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+    <span class="n">include_query</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">cache_control</span><span class="o">=</span><span class="s2">&quot;public, max-age=300&quot;</span>
+<span class="p">)</span>
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/users/</span><span class="si">{user_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="c1"># Response automatically cached with ETag headers</span>
+    <span class="c1"># Returns 304 Not Modified for unchanged data</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;John Doe&quot;</span><span class="p">}</span>
+</code></pre></div>
+<h3 id="single-flight-protection">Single-Flight Protection<a class="headerlink" href="#single-flight-protection" title="Permanent link">&para;</a></h3>
+<p>Prevent cache stampede by ensuring only one request computes a value while others wait:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache</span><span class="w"> </span><span class="kn">import</span> <span class="n">YokedCache</span><span class="p">,</span> <span class="n">CacheConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">CacheConfig</span><span class="p">(</span>
+    <span class="n">redis_url</span><span class="o">=</span><span class="s2">&quot;redis://localhost:6379&quot;</span><span class="p">,</span>
+    <span class="n">enable_single_flight</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="n">YokedCache</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">expensive_computation</span><span class="p">():</span>
+    <span class="c1"># This will only run once, even with concurrent requests</span>
+    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">compute_expensive_data</span><span class="p">()</span>
+
+<span class="c1"># Multiple concurrent requests - only one computation runs</span>
+<span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span>
+    <span class="n">cache</span><span class="o">.</span><span class="n">fetch_or_set</span><span class="p">(</span><span class="s2">&quot;expensive_key&quot;</span><span class="p">,</span> <span class="n">expensive_computation</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">),</span>
+    <span class="n">cache</span><span class="o">.</span><span class="n">fetch_or_set</span><span class="p">(</span><span class="s2">&quot;expensive_key&quot;</span><span class="p">,</span> <span class="n">expensive_computation</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">),</span>
+    <span class="n">cache</span><span class="o">.</span><span class="n">fetch_or_set</span><span class="p">(</span><span class="s2">&quot;expensive_key&quot;</span><span class="p">,</span> <span class="n">expensive_computation</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="c1"># All results are identical, but computation only ran once</span>
+</code></pre></div>
+<h3 id="stale-while-revalidate-swr">Stale-While-Revalidate (SWR)<a class="headerlink" href="#stale-while-revalidate-swr" title="Permanent link">&para;</a></h3>
+<p>Serve stale cached data immediately while refreshing in the background:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache</span><span class="w"> </span><span class="kn">import</span> <span class="n">YokedCache</span><span class="p">,</span> <span class="n">CacheConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">CacheConfig</span><span class="p">(</span>
+    <span class="n">redis_url</span><span class="o">=</span><span class="s2">&quot;redis://localhost:6379&quot;</span><span class="p">,</span>
+    <span class="n">enable_stale_while_revalidate</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="n">YokedCache</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<span class="c1"># Function that returns stale data immediately and refreshes in background</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user_data</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">fetch_or_set</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;user:</span><span class="si">{</span><span class="n">user_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="n">fetch_user_from_db</span><span class="p">(</span><span class="n">user_id</span><span class="p">),</span>
+        <span class="n">ttl</span><span class="o">=</span><span class="mi">60</span>
+    <span class="p">)</span>
+</code></pre></div>
+<h3 id="stale-if-error">Stale-If-Error<a class="headerlink" href="#stale-if-error" title="Permanent link">&para;</a></h3>
+<p>Fallback to cached data when the primary data source fails:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache</span><span class="w"> </span><span class="kn">import</span> <span class="n">YokedCache</span><span class="p">,</span> <span class="n">CacheConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">CacheConfig</span><span class="p">(</span>
+    <span class="n">redis_url</span><span class="o">=</span><span class="s2">&quot;redis://localhost:6379&quot;</span><span class="p">,</span>
+    <span class="n">enable_stale_if_error</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">stale_if_error_ttl</span><span class="o">=</span><span class="mi">120</span>  <span class="c1"># Serve stale for up to 2 minutes after TTL expires</span>
+<span class="p">)</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="n">YokedCache</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_data_with_fallback</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="n">fetch_fresh_data</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="c1"># Returns stale cached data if available</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="per-prefix-backend-routing">Per-Prefix Backend Routing<a class="headerlink" href="#per-prefix-backend-routing" title="Permanent link">&para;</a></h3>
+<p>Route different cache keys to different backends based on key prefixes:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache</span><span class="w"> </span><span class="kn">import</span> <span class="n">YokedCache</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache.backends</span><span class="w"> </span><span class="kn">import</span> <span class="n">DiskCacheBackend</span><span class="p">,</span> <span class="n">RedisBackend</span>
+
+<span class="n">cache</span> <span class="o">=</span> <span class="n">YokedCache</span><span class="p">()</span>
+
+<span class="c1"># Setup prefix-based routing</span>
+<span class="n">cache</span><span class="o">.</span><span class="n">setup_prefix_routing</span><span class="p">()</span>
+
+<span class="c1"># Route different data types to different backends</span>
+<span class="n">cache</span><span class="o">.</span><span class="n">add_backend_route</span><span class="p">(</span><span class="s2">&quot;user:&quot;</span><span class="p">,</span> <span class="n">RedisBackend</span><span class="p">(</span><span class="s2">&quot;redis://localhost:6379/0&quot;</span><span class="p">))</span>
+<span class="n">cache</span><span class="o">.</span><span class="n">add_backend_route</span><span class="p">(</span><span class="s2">&quot;temp:&quot;</span><span class="p">,</span> <span class="n">DiskCacheBackend</span><span class="p">(</span><span class="s2">&quot;/tmp/cache&quot;</span><span class="p">))</span>
+<span class="n">cache</span><span class="o">.</span><span class="n">add_backend_route</span><span class="p">(</span><span class="s2">&quot;session:&quot;</span><span class="p">,</span> <span class="n">RedisBackend</span><span class="p">(</span><span class="s2">&quot;redis://localhost:6379/1&quot;</span><span class="p">))</span>
+
+<span class="c1"># Data automatically routed based on key prefix</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;user:123&quot;</span><span class="p">,</span> <span class="n">user_data</span><span class="p">)</span>      <span class="c1"># -&gt; Redis DB 0</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;temp:abc&quot;</span><span class="p">,</span> <span class="n">temp_data</span><span class="p">)</span>      <span class="c1"># -&gt; Disk cache</span>
+<span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;session:xyz&quot;</span><span class="p">,</span> <span class="n">session</span><span class="p">)</span>     <span class="c1"># -&gt; Redis DB 1</span>
+</code></pre></div>
+<h3 id="opentelemetry-distributed-tracing">OpenTelemetry Distributed Tracing<a class="headerlink" href="#opentelemetry-distributed-tracing" title="Permanent link">&para;</a></h3>
+<p>Enable distributed tracing for cache operations:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache</span><span class="w"> </span><span class="kn">import</span> <span class="n">YokedCache</span><span class="p">,</span> <span class="n">CacheConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">yokedcache.tracing</span><span class="w"> </span><span class="kn">import</span> <span class="n">initialize_tracing</span>
+
+<span class="c1"># Initialize global tracing</span>
+<span class="n">initialize_tracing</span><span class="p">(</span>
+    <span class="n">service_name</span><span class="o">=</span><span class="s2">&quot;my-api&quot;</span><span class="p">,</span>
+    <span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">sample_rate</span><span class="o">=</span><span class="mf">1.0</span>
+<span class="p">)</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">CacheConfig</span><span class="p">(</span>
+    <span class="n">redis_url</span><span class="o">=</span><span class="s2">&quot;redis://localhost:6379&quot;</span><span class="p">,</span>
+    <span class="n">enable_tracing</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="n">YokedCache</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<span class="c1"># All cache operations automatically traced</span>
+<span class="k">async</span> <span class="k">with</span> <span class="n">cache</span><span class="o">.</span><span class="n">_tracer</span><span class="o">.</span><span class="n">trace_operation</span><span class="p">(</span><span class="s2">&quot;get_user&quot;</span><span class="p">,</span> <span class="s2">&quot;user:123&quot;</span><span class="p">):</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;user:123&quot;</span><span class="p">)</span>
+    <span class="c1"># Span includes timing, hit/miss, backend info</span>
+</code></pre></div>
+<p>These advanced patterns enable sophisticated caching strategies for high-performance, production applications.</p>
+<h2 id="performance-optimization-patterns">Performance Optimization Patterns<a class="headerlink" href="#performance-optimization-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="connection-reuse">Connection Reuse<a class="headerlink" href="#connection-reuse" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Good: Reuse single cache instance</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="n">YokedCache</span><span class="p">()</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handler1</span><span class="p">():</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;key1&quot;</span><span class="p">)</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handler2</span><span class="p">():</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;key2&quot;</span><span class="p">)</span>
+
+<span class="c1"># Bad: Creating new instances</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">bad_handler</span><span class="p">():</span>
+    <span class="n">cache</span> <span class="o">=</span> <span class="n">YokedCache</span><span class="p">()</span>  <span class="c1"># Don&#39;t do this</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;key&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="batch-operations_1">Batch Operations<a class="headerlink" href="#batch-operations_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Good: Batch multiple operations</span>
+<span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;user:</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">user_ids</span><span class="p">]</span>
+<span class="n">users</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">get_many</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
+
+<span class="c1"># Bad: Individual operations in loop</span>
+<span class="n">users</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">user_id</span> <span class="ow">in</span> <span class="n">user_ids</span><span class="p">:</span>
+    <span class="n">users</span><span class="p">[</span><span class="n">user_id</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;user:</span><span class="si">{</span><span class="n">user_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># Inefficient</span>
+</code></pre></div>
+<h3 id="optimal-ttl-strategy">Optimal TTL Strategy<a class="headerlink" href="#optimal-ttl-strategy" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Hot data: Short TTL</span>
+<span class="nd">@cached</span><span class="p">(</span><span class="n">ttl</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_live_prices</span><span class="p">():</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">fetch_stock_prices</span><span class="p">()</span>
+
+<span class="c1"># Warm data: Medium TTL</span>
+<span class="nd">@cached</span><span class="p">(</span><span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_user_profile</span><span class="p">(</span><span class="n">user_id</span><span class="p">):</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">database</span><span class="o">.</span><span class="n">get_user</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+
+<span class="c1"># Cold data: Long TTL</span>
+<span class="nd">@cached</span><span class="p">(</span><span class="n">ttl</span><span class="o">=</span><span class="mi">3600</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_system_config</span><span class="p">():</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">database</span><span class="o">.</span><span class="n">get_config</span><span class="p">()</span>
+</code></pre></div>
+<p>These usage patterns provide a foundation for implementing effective caching strategies in your applications. Choose the patterns that best fit your use case and combine them as needed for optimal performance.</p>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025 Project Yoked LLC - YokedCache Python FastAPI Redis Caching Library
+    </div>
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+    <a href="https://github.com/sirstig/yokedcache" target="_blank" rel="noopener" title="GitHub Repository" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://pypi.org/project/yokedcache/" target="_blank" rel="noopener" title="PyPI Package" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://sirstig.github.io/yokedcache" target="_blank" rel="noopener" title="Documentation" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M384 512H96c-53 0-96-43-96-96V96C0 43 43 0 96 0h304c26.5 0 48 21.5 48 48v288c0 20.9-13.4 38.7-32 45.3V448c17.7 0 32 14.3 32 32s-14.3 32-32 32zM96 384c-17.7 0-32 14.3-32 32s14.3 32 32 32h256v-64zm32-232c0 13.3 10.7 24 24 24h176c13.3 0 24-10.7 24-24s-10.7-24-24-24H152c-13.3 0-24 10.7-24 24m24 72c-13.3 0-24 10.7-24 24s10.7 24 24 24h176c13.3 0 24-10.7 24-24s-10.7-24-24-24z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+      <div class="md-consent" data-md-component="consent" id="__consent" hidden>
+        <div class="md-consent__overlay"></div>
+        <aside class="md-consent__inner">
+          <form class="md-consent__form md-grid md-typeset" name="consent">
+            
+
+
+  
+
+
+<h4>Cookie consent</h4>
+<p>We use cookies to recognize your repeated visits and preferences, as well as to measure the effectiveness of our documentation and whether users find what they're searching for. With your consent, you're helping us to make our documentation better.</p>
+<input class="md-toggle" type="checkbox" id="__settings" >
+<div class="md-consent__settings">
+  <ul class="task-list">
+    
+    
+      
+        
+  
+  
+    
+    
+  
+  <li class="task-list-item">
+    <label class="task-list-control">
+      <input type="checkbox" name="analytics" checked>
+      <span class="task-list-indicator"></span>
+      Google Analytics
+    </label>
+  </li>
+
+      
+    
+    
+      
+        
+  
+  
+    
+    
+  
+  <li class="task-list-item">
+    <label class="task-list-control">
+      <input type="checkbox" name="github" checked>
+      <span class="task-list-indicator"></span>
+      GitHub
+    </label>
+  </li>
+
+      
+    
+    
+  </ul>
+</div>
+<div class="md-consent__controls">
+  
+    
+      <button class="md-button md-button--primary">Accept</button>
+    
+    
+    
+  
+    
+    
+    
+      <label class="md-button" for="__settings">Manage settings</label>
+    
+  
+</div>
+          </form>
+        </aside>
+      </div>
+      <script>var consent=__md_get("__consent");if(consent)for(var input of document.forms.consent.elements)input.name&&(input.checked=consent[input.name]||!1);else"file:"!==location.protocol&&setTimeout((function(){document.querySelector("[data-md-component=consent]").hidden=!1}),250);var form=document.forms.consent;for(var action of["submit","reset"])form.addEventListener(action,(function(e){if(e.preventDefault(),"reset"===e.type)for(var n of document.forms.consent.elements)n.name&&(n.checked=!1);__md_set("__consent",Object.fromEntries(Array.from(new FormData(form).keys()).map((function(e){return[e,!0]})))),location.hash="",location.reload()}))</script>
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.expand", "navigation.path", "navigation.top", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.action.edit", "content.action.view", "toc.follow", "toc.integrate"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+        <script src="../javascripts/schema.js"></script>
+      
+    
+  </body>
+</html>

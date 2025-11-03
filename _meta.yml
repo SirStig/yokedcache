@@ -1,0 +1,23 @@
+---
+title: YokedCache - Python Caching Library for FastAPI
+description: High-performance Python caching library with Redis auto-invalidation, vector search caching, and seamless FastAPI integration.
+keywords: python caching library, fastapi caching, redis caching, cache auto-invalidation, vector search caching
+author: Project Yoked LLC
+image: https://sirstig.github.io/yokedcache/assets/yokedcache-og-image.png
+
+# Open Graph tags
+og:title: YokedCache - Python Caching Library for FastAPI
+og:description: High-performance Python caching library with Redis auto-invalidation, vector search caching, and seamless FastAPI integration.
+og:type: website
+og:url: https://sirstig.github.io/yokedcache/
+og:image: https://sirstig.github.io/yokedcache/assets/yokedcache-og-image.png
+
+# Twitter Card tags
+twitter:card: summary_large_image
+twitter:title: YokedCache - Python Caching Library for FastAPI
+twitter:description: High-performance Python caching library with Redis auto-invalidation, vector search caching, and seamless FastAPI integration.
+twitter:image: https://sirstig.github.io/yokedcache/assets/yokedcache-og-image.png
+
+# Additional meta tags
+robots: index, follow
+canonical: https://sirstig.github.io/yokedcache/

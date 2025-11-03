@@ -17,10 +17,10 @@ YokedCache is a powerful, async-first Python caching library that brings enterpr
 - **🧠 Intelligent**: Auto-invalidation, vector search caching, and fuzzy matching
 - **📊 Observable**: Built-in metrics, monitoring, and comprehensive CLI tools
 - **🛡️ Production-Ready**: Health checks, error handling, and security features
-- **🔐 Resilient**: Circuit breaker, retry logic, and graceful fallbacks *(v0.2.1)*
-- **⚡ Enhanced**: Smart async/sync context handling and performance optimizations *(v0.2.1)*
-- **🌐 Advanced Patterns**: HTTP middleware, single-flight protection, stale-while-revalidate *(v0.3.0)*
-- **🔍 Observability**: OpenTelemetry tracing and per-prefix backend routing *(v0.3.0)*
+- **🔐 Resilient**: Circuit breaker, retry logic, and graceful fallbacks v0.2.1
+- **⚡ Enhanced**: Smart async/sync context handling and performance optimizations v0.2.1
+- **🌐 Advanced Patterns**: HTTP middleware, single-flight protection, stale-while-revalidate v0.3.0
+- **🔍 Observability**: OpenTelemetry tracing and per-prefix backend routing v0.3.0
 
 ## Quick Start - Python FastAPI Redis Caching
 
@@ -66,8 +66,8 @@ Powerful capabilities for complex use cases:
 
 - **[Backends & Setup](backends.md)** - Memory, Redis, Memcached backends with setup guides
 - **[Vector Search](vector-search.md)** - Semantic similarity search capabilities
-- **[Monitoring & Health](monitoring.md)** - Comprehensive monitoring, health checks, and alerting *(v0.2.1)*
-- **[Advanced Caching Patterns](usage-patterns.md#advanced-caching-patterns-v030)** - HTTP middleware, SWR, single-flight protection *(v0.3.0)*
+- **[Monitoring & Health](monitoring.md)** - Comprehensive monitoring, health checks, and alerting v0.2.1
+- **[Advanced Caching Patterns](usage-patterns.md#advanced-caching-patterns-v030)** - HTTP middleware, SWR, single-flight protection v0.3.0
 
 ### 📖 **Reference**
 Detailed technical documentation:
@@ -122,23 +122,30 @@ pip install yokedcache[disk]        # DiskCache backend (v0.3.0)
 pip install yokedcache[tracing]     # OpenTelemetry tracing (v0.3.0)
 ```
 
-## What's New in 0.3.0
+## Recent Releases
 
-- **🌐 HTTP Response Middleware**: ETag/Cache-Control headers with 304 Not Modified responses
-- **🛡️ Single-Flight Protection**: Prevents cache stampede with automatic deduplication
-- **🔄 Stale-While-Revalidate**: Serve stale data while refreshing in background
-- **💪 Stale-If-Error**: Fallback to cached data during service failures
-- **🔀 Per-Prefix Routing**: Shard cache keys across multiple backends by prefix
-- **📊 OpenTelemetry Integration**: Distributed tracing with spans and metrics
-- **💾 New Backends**: DiskCache and SQLite backends for persistent caching
+### v0.3.0
 
-## What's New in 0.2.0
+- **HTTP Response Middleware**: ETag/Cache-Control headers with 304 Not Modified responses
+- **Single-Flight Protection**: Prevents cache stampede with automatic deduplication
+- **Stale-While-Revalidate**: Serve stale data while refreshing in background
+- **Stale-If-Error**: Fallback to cached data during service failures
+- **Per-Prefix Routing**: Shard cache keys across multiple backends by prefix
+- **OpenTelemetry Integration**: Distributed tracing with spans and metrics
+- **New Backends**: DiskCache and SQLite backends for persistent caching
 
-- **🆕 Multi-Backend Support**: Memory, Redis, and Memcached backends
-- **🔍 Vector Search**: Semantic similarity search capabilities
-- **📊 Production Monitoring**: Prometheus and StatsD integration
-- **🛠️ Enhanced CLI**: CSV export, file output, and improved UX
-- **✅ Comprehensive Testing**: 200+ tests with complete coverage
+### v0.2.1
+
+- **Production Resilience**: Circuit breaker, retry logic, and graceful fallbacks
+- **Enhanced Async/Sync Support**: Smart context detection and explicit method variants
+
+### v0.2.0
+
+- **Multi-Backend Support**: Memory, Redis, and Memcached backends
+- **Vector Search**: Semantic similarity search capabilities
+- **Production Monitoring**: Prometheus and StatsD integration
+- **Enhanced CLI**: CSV export, file output, and improved UX
+- **Comprehensive Testing**: 200+ tests with complete coverage
 
 ---
 

@@ -58,7 +58,7 @@ is_healthy = await cache.health()
 print(f"Cache is healthy: {is_healthy}")
 ```
 
-### Detailed Health Check *(v0.2.1+)*
+### Detailed Health Check v0.2.1
 
 Get comprehensive health information including connection status, pool statistics, and performance metrics:
 

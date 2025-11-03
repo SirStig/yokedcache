@@ -10,7 +10,7 @@
         "programmingLanguage": "Python",
         "author": {
             "@type": "Organization",
-            "name": "Project Yoked LLC",
+            "name": "SirStig",
             "url": "https://github.com/sirstig"
         },
         "url": "https://sirstig.github.io/yokedcache",

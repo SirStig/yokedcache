@@ -38,12 +38,12 @@ config = CacheConfig(
     # Serialization
     default_serialization=SerializationMethod.JSON,
 
-    # Circuit breaker settings (v0.2.1+)
+    # Circuit breaker settings v0.2.1
     enable_circuit_breaker=True,
     circuit_breaker_failure_threshold=5,
     circuit_breaker_timeout=60.0,
 
-    # Connection pool customization (v0.2.1+)
+    # Connection pool customization v0.2.1
     connection_pool_kwargs={
         "socket_connect_timeout": 5.0,
         "socket_timeout": 5.0,
@@ -52,7 +52,7 @@ config = CacheConfig(
         "health_check_interval": 30
     },
 
-    # Error handling and resilience (v0.2.1+)
+    # Error handling and resilience v0.2.1
     fallback_enabled=True,
     connection_retries=3,
     retry_delay=0.1,
@@ -225,7 +225,7 @@ Maximum number of connections in the Redis connection pool.
 #### `connection_timeout` (int)
 **Default**: `30`
 
-#### `connection_pool_kwargs` (Dict[str, Any]) *(v0.2.1+)*
+#### `connection_pool_kwargs` (Dict[str, Any]) v0.2.1
 **Default**: `{}`
 
 Advanced Redis connection pool configuration options. Allows fine-tuning of Redis connection behavior:
@@ -245,7 +245,7 @@ connection_pool_kwargs={
 }
 ```
 
-### Resilience Settings *(v0.2.1+)*
+### Resilience Settings v0.2.1
 
 #### `enable_circuit_breaker` (bool)
 **Default**: `False`

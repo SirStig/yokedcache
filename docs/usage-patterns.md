@@ -543,7 +543,7 @@ async def get_with_fallback(key):
     )
 ```
 
-## Advanced Caching Patterns *(v0.3.0)*
+## Advanced Caching Patterns v0.3.0
 
 YokedCache 0.3.0 introduces powerful advanced caching patterns designed for high-performance, production-ready applications.
 

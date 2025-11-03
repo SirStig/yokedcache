@@ -18,6 +18,9 @@ statsd>=4.0.0
 numpy>=1.21.0
 scipy>=1.7.0
 scikit-learn>=1.0.0
+diskcache>=5.0.0
+opentelemetry-api>=1.15.0
+opentelemetry-sdk>=1.15.0
 
 # Development tools
 pytest>=7.0.0

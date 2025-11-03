@@ -4,6 +4,8 @@ Core YokedCache implementation.
 This module contains the main YokedCache class that provides the primary
 caching functionality, including Redis integration, auto-invalidation,
 and cache management operations.
+
+# flake8: noqa
 """
 
 import asyncio
@@ -11,6 +13,7 @@ import inspect
 import logging
 import socket
 import time
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Set, Union
@@ -21,7 +24,7 @@ try:
 
     REDIS_AVAILABLE = True
 except ImportError:
-    redis = None  # type: ignore
+    redis = None
     ConnectionPool = None  # type: ignore
     REDIS_AVAILABLE = False
 
@@ -59,6 +62,10 @@ class YokedCache:
     - Performance metrics and monitoring
     - Async/await support for FastAPI integration
     """
+
+    # Class-level annotations for late initialization in __init__
+    _stale_store: Dict[str, Dict[str, Any]]
+    _tracing_initialized: bool
 
     def __init__(
         self,
@@ -117,6 +124,37 @@ class YokedCache:
         # Internal state
         self._connected = False
         self._shutdown = False
+        # Initialize stale store & tracing flags early
+        self._stale_store = {}
+        self._tracing_initialized = False
+
+        # Initialize SWR scheduler if enabled
+        self._swr_scheduler: Optional[Any] = None
+        if self.config.enable_stale_while_revalidate:
+            try:
+                from .swr import SWRScheduler
+
+                self._swr_scheduler = SWRScheduler(self)
+            except ImportError:
+                logger.warning("SWR module not available")
+
+        # Initialize prefix router if configured
+        self._prefix_router: Optional[Any] = None
+
+        # Initialize tracing if enabled
+        self._tracer: Optional[Any] = None
+        if self.config.enable_tracing:
+            try:
+                from .tracing import CacheTracer
+
+                self._tracer = CacheTracer(
+                    service_name=getattr(
+                        self.config, "tracing_service_name", "yokedcache"
+                    ),
+                    enabled=True,
+                )
+            except ImportError:
+                logger.warning("Tracing module not available")
 
         # Error handling and resilience
         if self.config.enable_circuit_breaker:
@@ -146,6 +184,416 @@ class YokedCache:
 
         # Setup logging
         self._setup_logging()
+
+        # Single-flight in-flight locks per key
+        self._inflight_locks: "defaultdict[str, asyncio.Lock]" = defaultdict(
+            asyncio.Lock
+        )
+
+    def setup_prefix_routing(self, default_backend_type: str = "redis") -> None:
+        """Setup prefix-based routing with the current cache as default backend."""
+        try:
+            from .backends.base import CacheBackend
+            from .routing import PrefixRouter
+
+            # Create a backend wrapper for the current cache instance
+            class MainCacheBackend(CacheBackend):
+                def __init__(self, cache_instance):
+                    super().__init__()
+                    self._cache = cache_instance
+                    self._connected = True
+
+                async def connect(self) -> None:
+                    return await self._cache.connect()
+
+                async def disconnect(self) -> None:
+                    return await self._cache.disconnect()
+
+                async def health_check(self) -> bool:
+                    return await self._cache.health_check()
+
+                async def get(self, key: str, default: Any = None) -> Any:
+                    return await self._cache._direct_get(key, default)
+
+                async def set(
+                    self,
+                    key: str,
+                    value: Any,
+                    ttl: Optional[int] = None,
+                    tags: Optional[Set[str]] = None,
+                ) -> bool:
+                    return await self._cache._direct_set(key, value, ttl, tags)
+
+                async def delete(self, key: str) -> bool:
+                    return await self._cache._direct_delete(key)
+
+                async def exists(self, key: str) -> bool:
+                    return await self._cache._direct_exists(key)
+
+                async def expire(self, key: str, ttl: int) -> bool:
+                    return await self._cache._direct_expire(key, ttl)
+
+                async def invalidate_pattern(self, pattern: str) -> int:
+                    return await self._cache.invalidate_pattern(pattern)
+
+                async def invalidate_tags(self, tags) -> int:
+                    return await self._cache.invalidate_tags(tags)
+
+                async def flush_all(self) -> bool:
+                    return await self._cache.flush_all()
+
+                async def get_stats(self) -> CacheStats:
+                    return await self._cache.get_stats()
+
+                async def fuzzy_search(
+                    self,
+                    query: str,
+                    threshold: int = 80,
+                    max_results: int = 10,
+                    tags: Optional[Set[str]] = None,
+                ) -> List[FuzzySearchResult]:
+                    return await self._cache.fuzzy_search(
+                        query, threshold, max_results, tags
+                    )
+
+                async def get_all_keys(self, pattern: str = "*") -> List[str]:
+                    # Implementation would need access to Redis directly
+                    return []
+
+                async def get_size_bytes(self) -> int:
+                    stats = await self._cache.get_stats()
+                    return stats.total_memory_bytes
+
+            default_backend = MainCacheBackend(self)
+            self._prefix_router = PrefixRouter(default_backend)
+            logger.info("Prefix routing initialized with main cache as default backend")
+
+        except ImportError as e:
+            logger.error(f"Failed to setup prefix routing: {e}")
+
+    def add_backend_route(self, prefix: str, backend) -> None:
+        """Add a prefix -> backend route."""
+        if not self._prefix_router:
+            self.setup_prefix_routing()
+
+        if self._prefix_router:
+            self._prefix_router.add_route(prefix, backend)
+            logger.info(f"Added backend route: {prefix} -> {type(backend).__name__}")
+
+    def remove_backend_route(self, prefix: str) -> bool:
+        """Remove a prefix route."""
+        if self._prefix_router:
+            return self._prefix_router.remove_route(prefix)
+        return False
+
+    async def _handle_tags(
+        self, key: str, tags: Set[str], ttl: int, redis_client: Any
+    ) -> None:
+        """Handle tag management for a cache key."""
+        normalized_tags = normalize_tags(tags)
+        for tag in normalized_tags:
+            tag_key = self._build_tag_key(tag)
+            try:
+                await redis_client.sadd(tag_key, key)
+                await redis_client.expire(tag_key, ttl + 60)
+            except Exception as e:
+                logger.warning(f"Failed to handle tag {tag} for key {key}: {e}")
+
+    async def _direct_get(self, key: str, default: Any = None) -> Any:
+        """Direct get bypassing routing for internal use."""
+        if not self._connected or not self._redis:
+            return default
+
+        try:
+            if self._circuit_breaker:
+                async with self._circuit_breaker:
+                    data = await self._redis.get(key)
+                    if data is None:
+                        if self._metrics:
+                            metric = OperationMetric(
+                                operation_type="get",
+                                key=key,
+                                duration_ms=0.0,
+                                success=True,
+                                cache_hit=False,
+                            )
+                            self._metrics.record_operation(metric)
+                        return default
+
+                    try:
+                        result = deserialize_data(data, SerializationMethod.JSON)
+                    except CacheSerializationError:
+                        try:
+                            result = deserialize_data(data, SerializationMethod.PICKLE)
+                        except CacheSerializationError:
+                            logger.error(f"Error deserializing value for key {key}")
+                            if self._metrics:
+                                metric = OperationMetric(
+                                    operation_type="get",
+                                    key=key,
+                                    duration_ms=0.0,
+                                    success=False,
+                                    error_type="SerializationError",
+                                    cache_hit=False,
+                                )
+                                self._metrics.record_operation(metric)
+                            return default
+
+                    if self._metrics:
+                        metric = OperationMetric(
+                            operation_type="get",
+                            key=key,
+                            duration_ms=0.0,
+                            success=True,
+                            cache_hit=True,
+                        )
+                        self._metrics.record_operation(metric)
+                    return result
+            else:
+                # Circuit breaker disabled, execute directly
+                data = await self._redis.get(key)
+                if data is None:
+                    if self._metrics:
+                        metric = OperationMetric(
+                            operation_type="get",
+                            key=key,
+                            duration_ms=0.0,
+                            success=True,
+                            cache_hit=False,
+                        )
+                        self._metrics.record_operation(metric)
+                    return default
+
+                try:
+                    result = deserialize_data(data, SerializationMethod.JSON)
+                except CacheSerializationError:
+                    try:
+                        result = deserialize_data(data, SerializationMethod.PICKLE)
+                    except CacheSerializationError:
+                        logger.error(f"Error deserializing value for key {key}")
+                        if self._metrics:
+                            metric = OperationMetric(
+                                operation_type="get",
+                                key=key,
+                                duration_ms=0.0,
+                                success=False,
+                                error_type="SerializationError",
+                                cache_hit=False,
+                            )
+                            self._metrics.record_operation(metric)
+                        return default
+
+                if self._metrics:
+                    metric = OperationMetric(
+                        operation_type="get",
+                        key=key,
+                        duration_ms=0.0,
+                        success=True,
+                        cache_hit=True,
+                    )
+                    self._metrics.record_operation(metric)
+                return result
+
+        except CircuitBreakerError:
+            logger.warning(f"Circuit breaker open for get operation on key: {key}")
+            if self._metrics:
+                metric = OperationMetric(
+                    operation_type="get",
+                    key=key,
+                    duration_ms=0.0,
+                    success=False,
+                    error_type="CircuitBreakerError",
+                    cache_hit=False,
+                )
+                self._metrics.record_operation(metric)
+            return default
+        except Exception as e:
+            logger.error(f"Redis get error for key {key}: {e}")
+            if self._metrics:
+                metric = OperationMetric(
+                    operation_type="get",
+                    key=key,
+                    duration_ms=0.0,
+                    success=False,
+                    error_type=type(e).__name__,
+                    cache_hit=False,
+                )
+                self._metrics.record_operation(metric)
+            return default
+
+    async def _direct_set(
+        self,
+        key: str,
+        value: Any,
+        ttl: Optional[int] = None,
+        tags: Optional[Set[str]] = None,
+    ) -> bool:
+        """Direct set bypassing routing for internal use."""
+        if not self._connected or not self._redis:
+            return False
+
+        try:
+            if self._circuit_breaker:
+                async with self._circuit_breaker:
+                    actual_ttl = ttl or self.config.default_ttl
+                    serialized_value = serialize_data(
+                        value, self.config.default_serialization
+                    )
+                    await self._redis.set(key, serialized_value, ex=actual_ttl)
+                    if tags:
+                        await self._handle_tags(key, tags, actual_ttl, self._redis)
+                    if self._metrics:
+                        metric = OperationMetric(
+                            operation_type="set",
+                            key=key,
+                            duration_ms=0.0,
+                            success=True,
+                            tags=normalize_tags(tags) if tags else set(),
+                        )
+                        self._metrics.record_operation(metric)
+                    return True
+            else:
+                actual_ttl = ttl or self.config.default_ttl
+                serialized_value = serialize_data(
+                    value, self.config.default_serialization
+                )
+                await self._redis.set(key, serialized_value, ex=actual_ttl)
+                if tags:
+                    await self._handle_tags(key, tags, actual_ttl, self._redis)
+                if self._metrics:
+                    metric = OperationMetric(
+                        operation_type="set",
+                        key=key,
+                        duration_ms=0.0,
+                        success=True,
+                        tags=normalize_tags(tags) if tags else set(),
+                    )
+                    self._metrics.record_operation(metric)
+                return True
+
+        except CircuitBreakerError:
+            logger.warning(f"Circuit breaker open for set operation on key: {key}")
+            if self._metrics:
+                metric = OperationMetric(
+                    operation_type="set",
+                    key=key,
+                    duration_ms=0.0,
+                    success=False,
+                    error_type="CircuitBreakerError",
+                    tags=normalize_tags(tags) if tags else set(),
+                )
+                self._metrics.record_operation(metric)
+            return False
+        except Exception as e:
+            logger.error(f"Redis set error for key {key}: {e}")
+            if self._metrics:
+                metric = OperationMetric(
+                    operation_type="set",
+                    key=key,
+                    duration_ms=0.0,
+                    success=False,
+                    error_type=type(e).__name__,
+                    tags=normalize_tags(tags) if tags else set(),
+                )
+                self._metrics.record_operation(metric)
+            return False
+
+    async def _direct_delete(self, key: str) -> bool:
+        """Direct delete bypassing routing for internal use."""
+        if not self._connected or not self._redis:
+            return False
+
+        try:
+            if self._circuit_breaker:
+                async with self._circuit_breaker:
+                    result = await self._redis.delete(key)
+                    if self._metrics:
+                        metric = OperationMetric(
+                            operation_type="delete",
+                            key=key,
+                            duration_ms=0.0,
+                            success=result > 0,
+                        )
+                        self._metrics.record_operation(metric)
+                    return result > 0
+            else:
+                result = await self._redis.delete(key)
+                if self._metrics:
+                    metric = OperationMetric(
+                        operation_type="delete",
+                        key=key,
+                        duration_ms=0.0,
+                        success=result > 0,
+                    )
+                    self._metrics.record_operation(metric)
+                return result > 0
+
+        except CircuitBreakerError:
+            logger.warning(f"Circuit breaker open for delete operation on key: {key}")
+            if self._metrics:
+                metric = OperationMetric(
+                    operation_type="delete",
+                    key=key,
+                    duration_ms=0.0,
+                    success=False,
+                    error_type="CircuitBreakerError",
+                )
+                self._metrics.record_operation(metric)
+            return False
+        except Exception as e:
+            logger.error(f"Redis delete error for key {key}: {e}")
+            if self._metrics:
+                metric = OperationMetric(
+                    operation_type="delete",
+                    key=key,
+                    duration_ms=0.0,
+                    success=False,
+                    error_type=type(e).__name__,
+                )
+                self._metrics.record_operation(metric)
+            return False
+
+    async def _direct_exists(self, key: str) -> bool:
+        """Direct exists check bypassing routing for internal use."""
+        if not self._connected or not self._redis:
+            return False
+
+        try:
+            if self._circuit_breaker:
+                async with self._circuit_breaker:
+                    result = await self._redis.exists(key)
+                    return result > 0
+            else:
+                result = await self._redis.exists(key)
+                return result > 0
+
+        except CircuitBreakerError:
+            logger.warning(f"Circuit breaker open for exists operation on key: {key}")
+            return False
+        except Exception as e:
+            logger.error(f"Redis exists error for key {key}: {e}")
+            return False
+
+    async def _direct_expire(self, key: str, ttl: int) -> bool:
+        """Direct expire bypassing routing for internal use."""
+        if not self._connected or not self._redis:
+            return False
+
+        try:
+            if self._circuit_breaker:
+                async with self._circuit_breaker:
+                    result = await self._redis.expire(key, ttl)
+                    return result
+            else:
+                result = await self._redis.expire(key, ttl)
+                return result
+
+        except CircuitBreakerError:
+            logger.warning(f"Circuit breaker open for expire operation on key: {key}")
+            return False
+        except Exception as e:
+            logger.error(f"Redis expire error for key {key}: {e}")
+            return False
 
     def _is_running_in_async_context(self) -> bool:
         """Check if we're currently running in an async context."""
@@ -639,6 +1087,17 @@ class YokedCache:
         Returns:
             Cached value or default
         """
+        # Use prefix routing if available
+        if self._prefix_router:
+            try:
+                backend = self._prefix_router.get_backend(key)
+                if backend != self._prefix_router.default_backend:
+                    # Using a different backend, delegate completely
+                    return await backend.get(key, default)
+            except Exception as e:
+                logger.error(f"Prefix routing error for key {key}: {e}")
+                # Fall back to default behavior
+
         sanitized_key = self._build_key(key)
         start_time = time.time()
         cache_hit = False
@@ -649,23 +1108,17 @@ class YokedCache:
 
             async def _get_operation():
                 nonlocal cache_hit
-
                 async with self._get_redis() as r:
-                    # Get value from Redis
                     data = await r.get(sanitized_key)
-
                     if data is None:
                         self._stats.add_miss()
                         if self.config.log_cache_misses:
                             logger.debug(f"Cache miss: {sanitized_key}")
                         cache_hit = False
                         return default
-
-                    # Deserialize value
                     try:
                         value = deserialize_data(data, SerializationMethod.JSON)
                     except CacheSerializationError:
-                        # Try pickle as fallback
                         try:
                             value = deserialize_data(data, SerializationMethod.PICKLE)
                         except CacheSerializationError:
@@ -674,27 +1127,31 @@ class YokedCache:
                                 sanitized_key,
                             )
                             return default
-
-                    # Update statistics
                     self._stats.add_hit()
                     cache_hit = True
-
-                    # Update access time if requested
                     if touch:
                         try:
                             await r.touch(sanitized_key)
                         except Exception:
-                            # touch may not be supported (e.g., fakeredis)
                             pass
-
                     if self.config.log_cache_hits:
                         logger.debug(f"Cache hit: {sanitized_key}")
-
                     return value
 
             result = await self._execute_with_resilience(
                 _get_operation, fallback_on_error=False
             )
+            # handle stale-if-error: if result none and we have stale
+            if result is None and self.config.enable_stale_if_error:
+                stale_meta = self._stale_store.get(sanitized_key)
+                if stale_meta:
+                    # Validate stale_if_error ttl window
+                    stale_ttl = getattr(self.config, "stale_if_error_ttl", 0)
+                    if (
+                        stale_ttl <= 0
+                        or (time.time() - stale_meta["stored_at"]) <= stale_ttl
+                    ):
+                        return stale_meta["value"]
             success = True
             return default if result is None else result
 
@@ -749,6 +1206,26 @@ class YokedCache:
         Returns:
             True if successful, False otherwise
         """
+        # Use prefix routing if available
+        if self._prefix_router:
+            try:
+                backend = self._prefix_router.get_backend(key)
+                if backend != self._prefix_router.default_backend:
+                    # Using a different backend, delegate completely
+                    # Convert tags to set if needed
+                    tag_set = None
+                    if tags:
+                        if isinstance(tags, str):
+                            tag_set = {tags}
+                        elif isinstance(tags, list):
+                            tag_set = set(tags)
+                        else:
+                            tag_set = tags
+                    return await backend.set(key, value, ttl, tag_set)
+            except Exception as e:
+                logger.error(f"Prefix routing error for key {key}: {e}")
+                # Fall back to default behavior
+
         sanitized_key = self._build_key(key)
         actual_ttl = ttl or self.config.default_ttl
         # Apply jitter only when using default TTL
@@ -766,9 +1243,7 @@ class YokedCache:
             async def _set_operation():
                 serialized_data = serialize_data(value, serialization)
                 async with self._get_redis() as r:
-                    # Basic set with TTL
                     await r.set(sanitized_key, serialized_data, ex=actual_ttl)
-                    # Handle tags (no pipeline for test compatibility)
                     if tags:
                         for tag in normalized_tags:
                             tag_key = self._build_tag_key(tag)
@@ -782,6 +1257,16 @@ class YokedCache:
                 return True
 
             result = await self._execute_with_resilience(_set_operation)
+            # record stale baseline for SWR/meta
+            if result and (
+                self.config.enable_stale_while_revalidate
+                or self.config.enable_stale_if_error
+            ):
+                self._stale_store[sanitized_key] = {
+                    "value": value,
+                    "stored_at": time.time(),
+                    "ttl": actual_ttl,
+                }
             success = bool(result)
             # In fallback degraded (hard fail) mode, pretend the set failed so tests
             # expecting False on connection failure pass while still warming memory.
@@ -817,20 +1302,31 @@ class YokedCache:
         Returns:
             True if key was deleted, False if key didn't exist
         """
+        # Use prefix routing if available
+        if self._prefix_router:
+            try:
+                backend = self._prefix_router.get_backend(key)
+                if backend != self._prefix_router.default_backend:
+                    # Using a different backend, delegate completely
+                    return await backend.delete(key)
+            except Exception as e:
+                logger.error(f"Prefix routing error for key {key}: {e}")
+                # Fall back to default behavior
+
         sanitized_key = self._build_key(key)
-        raw_key = key
         try:
             async with self._get_redis() as r:
-                # Tests expect raw key call when key not prefixed. Try raw first.
-                use_raw_first = not raw_key.startswith(f"{self.config.key_prefix}:")
-                primary_key = raw_key if use_raw_first else sanitized_key
-                result = await r.delete(primary_key)
-                # If nothing deleted and we tried raw first, fall back to prefixed
-                if result == 0 and use_raw_first and sanitized_key != raw_key:
-                    result = await r.delete(sanitized_key)
+                # Always use sanitized key to match how set/get work
+                result = await r.delete(sanitized_key)
+                # Also try raw key for backward compatibility with tests
+                if result == 0:
+                    result = await r.delete(key)
                 if result > 0:
+                    # Remove from stale store if present
+                    self._stale_store.pop(sanitized_key, None)
+                    self._stale_store.pop(key, None)
                     self._stats.total_deletes += 1
-                    logger.debug(f"Cache delete: {primary_key}")
+                    logger.debug(f"Cache delete: {sanitized_key}")
                     return True
                 return False
         except Exception as e:  # noqa: PIE786
@@ -839,6 +1335,17 @@ class YokedCache:
 
     async def exists(self, key: str) -> bool:
         """Check if key exists in cache."""
+        # Use prefix routing if available
+        if self._prefix_router:
+            try:
+                backend = self._prefix_router.get_backend(key)
+                if backend != self._prefix_router.default_backend:
+                    # Using a different backend, delegate completely
+                    return await backend.exists(key)
+            except Exception as e:
+                logger.error(f"Prefix routing error for key {key}: {e}")
+                # Fall back to default behavior
+
         sanitized_key = self._build_key(key)
         raw_key = key
         try:
@@ -860,10 +1367,92 @@ class YokedCache:
         try:
             async with self._get_redis() as r:
                 result = await r.expire(sanitized_key, ttl)
+                # If expiration is very short (< 10 seconds), remove from stale store immediately
+                # Otherwise, remove when TTL is close to expiring
+                if result and (ttl < 10):
+                    self._stale_store.pop(sanitized_key, None)
                 return result
         except Exception as e:
             logger.error(f"Error setting expiration for key {sanitized_key}: {e}")
             return False
+
+    # Single-flight helper
+    async def fetch_or_set(
+        self,
+        key: str,
+        loader: Callable[[], Any],
+        ttl: Optional[int] = None,
+        tags: Optional[Union[str, List[str], Set[str]]] = None,
+        serialization: Optional[SerializationMethod] = None,
+    ) -> Any:
+        """Fetch a key or compute and set it atomically (stampede protection).
+
+        Uses per-key asyncio.Lock to ensure only one loader executes.
+        """
+        sanitized_key = self._build_key(key)
+        existing = await self.get(key, default=None)
+        if existing is not None:
+            # Optionally schedule background refresh when TTL low (SWR)
+            if self.config.enable_stale_while_revalidate:
+                try:
+                    async with self._get_redis() as r:
+                        ttl_remaining = await r.ttl(sanitized_key)
+                    threshold = getattr(self.config, "single_flight_stale_ttl", 0) or 0
+                    if (
+                        isinstance(ttl_remaining, int)
+                        and ttl_remaining > 0
+                        and 0 < threshold >= ttl_remaining
+                    ):
+                        # schedule refresh
+                        asyncio.create_task(
+                            self._background_refresh(
+                                key, loader, ttl, tags, serialization
+                            )
+                        )
+                except Exception:
+                    pass
+            return existing
+        if not self.config.enable_single_flight:
+            # compute directly
+            value = loader()
+            if inspect.iscoroutine(value):  # allow async loader
+                value = await value
+            await self.set(key, value, ttl=ttl, tags=tags, serialization=serialization)
+            return value
+        lock = self._inflight_locks[key]
+        async with lock:
+            # re-check after acquiring lock
+            existing2 = await self.get(key, default=None)
+            if existing2 is not None:
+                return existing2
+            value = loader()
+            if inspect.iscoroutine(value):
+                value = await value
+            await self.set(key, value, ttl=ttl, tags=tags, serialization=serialization)
+            return value
+
+    async def _background_refresh(
+        self,
+        key: str,
+        loader: Callable[[], Any],
+        ttl: Optional[int],
+        tags: Optional[Union[str, List[str], Set[str]]],
+        serialization: Optional[SerializationMethod],
+    ) -> None:
+        """Refresh a key in background (SWR)."""
+        try:  # pragma: no cover - best effort
+            lock = self._inflight_locks[key]
+            if lock.locked():
+                return  # another refresh in progress
+            async with lock:
+                value = loader()
+                if inspect.iscoroutine(value):
+                    value = await value
+                await self.set(
+                    key, value, ttl=ttl, tags=tags, serialization=serialization
+                )
+        except Exception:
+            pass
 
     async def invalidate_pattern(self, pattern: str) -> int:
         """
@@ -885,8 +1474,16 @@ class YokedCache:
                 if not keys:
                     return 0
 
+                # Convert keys to strings if they're bytes (Redis returns bytes)
+                key_list = [
+                    k.decode() if isinstance(k, bytes) else str(k) for k in keys
+                ]
+
                 # Delete all matching keys
-                deleted = await r.delete(*keys)
+                deleted = await r.delete(*key_list)
+                # Remove from stale store
+                for k in key_list:
+                    self._stale_store.pop(k, None)
 
                 self._stats.total_invalidations += deleted
                 logger.info(f"Invalidated {deleted} keys matching pattern: {pattern}")
@@ -919,8 +1516,15 @@ class YokedCache:
                     keys = await r.smembers(tag_key)
 
                     if keys:
+                        # Convert keys to strings if they're bytes
+                        key_list = [
+                            k.decode() if isinstance(k, bytes) else str(k) for k in keys
+                        ]
                         # Delete the actual cache keys
-                        deleted = await r.delete(*keys)
+                        deleted = await r.delete(*key_list)
+                        # Remove from stale store
+                        for k in key_list:
+                            self._stale_store.pop(k, None)
                         total_invalidated += deleted
 
                         # Clean up the tag set
@@ -962,8 +1566,15 @@ class YokedCache:
                 if not keys:
                     deleted = 0
                 else:
+                    # Convert keys to strings if they're bytes
+                    key_list = [
+                        k.decode() if isinstance(k, bytes) else str(k) for k in keys
+                    ]
                     # Delete all matching keys
-                    deleted = await r.delete(*keys)
+                    deleted = await r.delete(*key_list)
+                    # Remove from stale store
+                    for k in key_list:
+                        self._stale_store.pop(k, None)
                     self._stats.total_invalidations += deleted
 
                 logger.warning(f"Flushed all cache keys ({deleted} keys deleted)")

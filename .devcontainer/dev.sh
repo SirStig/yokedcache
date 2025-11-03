@@ -45,7 +45,7 @@ case "$1" in
         pip install -e .
         log_success "Development installation complete"
         ;;
-        
+
     "test"|"tests")
         log_info "Running tests..."
         activate_env
@@ -55,14 +55,14 @@ case "$1" in
             pytest -v
         fi
         ;;
-        
+
     "test-cov"|"coverage")
         log_info "Running tests with coverage..."
         activate_env
         pytest --cov=yokedcache --cov-report=html --cov-report=term-missing
         log_success "Coverage report generated in htmlcov/"
         ;;
-        
+
     "format"|"fmt")
         log_info "Formatting code..."
         activate_env
@@ -70,7 +70,7 @@ case "$1" in
         isort src tests
         log_success "Code formatting complete"
         ;;
-        
+
     "lint")
         log_info "Running linting checks..."
         activate_env
@@ -78,7 +78,7 @@ case "$1" in
         mypy src
         log_success "Linting complete"
         ;;
-        
+
     "quality"|"qa")
         log_info "Running all quality checks..."
         activate_env
@@ -88,62 +88,62 @@ case "$1" in
         mypy src
         log_success "All quality checks passed"
         ;;
-        
+
     "docs"|"doc")
         log_info "Building documentation..."
         activate_env
         mkdocs build
         log_success "Documentation built in site/"
         ;;
-        
+
     "docs-serve")
         log_info "Starting documentation server..."
         activate_env
         mkdocs serve --dev-addr=0.0.0.0:58080
         ;;
-        
+
     "redis-cli")
         log_info "Connecting to Redis CLI..."
         redis-cli -h redis -p 56379
         ;;
-        
+
     "ping")
         log_info "Testing cache connection..."
         activate_env
         yokedcache ping
         ;;
-        
+
     "stats")
         log_info "Showing cache statistics..."
         activate_env
         yokedcache stats
         ;;
-        
+
     "clear")
         log_warning "Clearing cache..."
         activate_env
         yokedcache clear --confirm
         log_success "Cache cleared"
         ;;
-        
+
     "logs")
         service="${2:-yokedcache-dev}"
         log_info "Showing logs for $service..."
         docker logs -f "$service"
         ;;
-        
+
     "shell")
         log_info "Starting development shell..."
         activate_env
         exec bash
         ;;
-        
+
     "jupyter")
         log_info "Starting Jupyter Lab..."
         activate_env
         jupyter lab --ip=0.0.0.0 --port=58888 --allow-root --no-browser
         ;;
-        
+
     "monitor")
         log_info "Starting monitoring stack..."
         docker-compose --profile monitoring up -d
@@ -151,19 +151,19 @@ case "$1" in
         log_info "  • Prometheus: http://localhost:59090"
         log_info "  • Grafana: http://localhost:53000 (admin/admin)"
         ;;
-        
+
     "tools")
         log_info "Starting development tools..."
         docker-compose --profile tools up -d
         log_success "Tools started:"
         log_info "  • Redis Insight: http://localhost:58001"
         ;;
-        
+
     "status")
         log_info "Service status:"
         docker-compose ps
         ;;
-        
+
     "restart")
         service="${2:-all}"
         if [ "$service" = "all" ]; then
@@ -175,14 +175,14 @@ case "$1" in
         fi
         log_success "Restart complete"
         ;;
-        
+
     "clean")
         log_info "Cleaning up development environment..."
         docker-compose down -v
         docker system prune -f
         log_success "Cleanup complete"
         ;;
-        
+
     "help"|""|"-h"|"--help")
         echo "YokedCache Development Helper"
         echo ""
@@ -221,7 +221,7 @@ case "$1" in
         echo "  jupyter          Start Jupyter Lab"
         echo ""
         ;;
-        
+
     *)
         log_error "Unknown command: $1"
         echo "Run './dev.sh help' for available commands"

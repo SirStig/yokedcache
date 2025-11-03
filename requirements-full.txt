@@ -18,6 +18,13 @@ python-levenshtein>=0.12.0
 # Optional dependencies - Memcached backend
 aiomcache>=0.8.0,<1.0.0
 
+# Optional dependencies - Disk cache backend
+diskcache>=5.0.0
+
+# Optional dependencies - OpenTelemetry tracing
+opentelemetry-api>=1.15.0
+opentelemetry-sdk>=1.15.0
+
 # Optional dependencies - Monitoring
 prometheus_client>=0.16.0
 statsd>=4.0.0

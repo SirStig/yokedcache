@@ -207,6 +207,34 @@ class CircuitBreaker:
         self.last_failure_time = None
         logger.info("Circuit breaker manually reset")
 
+    async def __aenter__(self):
+        """Async context manager entry."""
+        # Check if circuit is open and should attempt reset
+        if self.state == CircuitBreakerState.OPEN:
+            if self._should_attempt_reset():
+                self.state = CircuitBreakerState.HALF_OPEN
+                logger.info("Circuit breaker moving to half-open state")
+            else:
+                raise CircuitBreakerError(
+                    f"Circuit breaker is open. Failure count: {self.failure_count}",
+                    self.state,
+                )
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        if exc_type is None:
+            # Success
+            self._on_success()
+        elif exc_type is not None and isinstance(exc_val, self.expected_exception):
+            # Expected failure
+            self._on_failure(exc_val)
+            if self.state == CircuitBreakerState.HALF_OPEN:
+                self.state = CircuitBreakerState.OPEN
+                logger.warning("Circuit breaker reopened during half-open test")
+        # Don't suppress exceptions
+        return False
+
 
 class RetryWithBackoff:
     """

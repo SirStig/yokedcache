@@ -26,23 +26,23 @@ config = CacheConfig(
     redis_url="redis://localhost:6379/0",
     max_connections=50,
     connection_timeout=30,
-    
+
     # Cache behavior
     default_ttl=300,
     key_prefix="myapp",
-    
+
     # Features
     enable_fuzzy=True,
     fuzzy_threshold=80,
-    
+
     # Serialization
     default_serialization=SerializationMethod.JSON,
-    
+
     # Circuit breaker settings (v0.2.1+)
     enable_circuit_breaker=True,
     circuit_breaker_failure_threshold=5,
     circuit_breaker_timeout=60.0,
-    
+
     # Connection pool customization (v0.2.1+)
     connection_pool_kwargs={
         "socket_connect_timeout": 5.0,
@@ -51,12 +51,12 @@ config = CacheConfig(
         "retry_on_timeout": True,
         "health_check_interval": 30
     },
-    
+
     # Error handling and resilience (v0.2.1+)
     fallback_enabled=True,
     connection_retries=3,
     retry_delay=0.1,
-    
+
     # Logging
     log_level="INFO"
 )
@@ -85,12 +85,12 @@ tables:
     serialization_method: JSON
     enable_fuzzy: true
     fuzzy_threshold: 85
-    
+
   products:
     ttl: 1800
     tags: ["product_data", "catalog"]
     serialization_method: PICKLE
-    
+
   sessions:
     ttl: 900
     tags: ["session_data"]
@@ -134,7 +134,7 @@ export YOKEDCACHE_REDIS_URL="redis://localhost:6379/0"
 export YOKEDCACHE_DEFAULT_TTL="300"
 export YOKEDCACHE_KEY_PREFIX="myapp"
 
-# Connection settings  
+# Connection settings
 export YOKEDCACHE_MAX_CONNECTIONS="50"
 export YOKEDCACHE_CONNECTION_TIMEOUT="30"
 
@@ -390,14 +390,14 @@ config = CacheConfig(
             serialization_method=SerializationMethod.JSON,
             enable_fuzzy=True,
             fuzzy_threshold=85,
-            
+
             # Query-specific TTL overrides
             query_specific_ttls={
                 "SELECT * FROM users WHERE active = true": 600,
                 "SELECT COUNT(*) FROM users": 60
             }
         ),
-        
+
         "products": TableCacheConfig(
             ttl=1800,
             tags={"product_data", "catalog"},
@@ -405,7 +405,7 @@ config = CacheConfig(
             enable_compression=True,
             compression_threshold=512
         ),
-        
+
         "sessions": TableCacheConfig(
             ttl=900,                                    # Short TTL for sessions
             tags={"session_data"},
@@ -564,7 +564,7 @@ tables:
     ttl: 3600
     tags: ["user_data"]
     enable_compression: true
-    
+
   products:
     ttl: 7200           # Long TTL for stable product data
     tags: ["product_data"]
@@ -585,7 +585,7 @@ try:
     )
 except ConfigValidationError as e:
     print(f"Configuration error: {e}")
-    
+
 # Validate configuration manually
 config = CacheConfig(default_ttl=300)
 validation_errors = config.validate()

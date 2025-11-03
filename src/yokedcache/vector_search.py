@@ -22,7 +22,7 @@ try:
     VECTOR_DEPS_AVAILABLE = True
 except ImportError:
     VECTOR_DEPS_AVAILABLE = False
-    np = None  # type: ignore
+    np = None
     TfidfVectorizer = None
     cosine_similarity = None
     euclidean = None
@@ -129,9 +129,12 @@ class VectorSimilaritySearch:
             self._document_vectors = self.vectorizer.fit_transform(self._documents)
             self._fitted = True
 
+            feature_count = 0
+            if self._document_vectors is not None:
+                feature_count = self._document_vectors.shape[1]
             logger.info(
                 f"Vector similarity search fitted on {len(self._documents)} documents "
-                f"with {self._document_vectors.shape[1] if self._document_vectors is not None else 0} features"
+                f"with {feature_count} features"
             )
 
         except Exception as e:

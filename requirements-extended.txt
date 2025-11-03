@@ -21,6 +21,12 @@ typing-extensions>=4.0.0
 # For Memcached backend support:
 # pip install aiomcache>=0.8.0
 
+# For disk cache backend support:
+# pip install diskcache>=5.0.0
+
+# For OpenTelemetry distributed tracing:
+# pip install opentelemetry-api>=1.15.0 opentelemetry-sdk>=1.15.0
+
 # For production monitoring (Prometheus + StatsD):
 # pip install prometheus_client>=0.16.0 statsd>=4.0.0
 
@@ -42,3 +48,9 @@ typing-extensions>=4.0.0
 
 # Minimal + Memcached:
 # pip install -r requirements-minimal.txt aiomcache
+
+# Minimal + Disk backend:
+# pip install -r requirements-minimal.txt diskcache
+
+# Minimal + Tracing:
+# pip install -r requirements-minimal.txt opentelemetry-api opentelemetry-sdk

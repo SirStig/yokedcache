@@ -181,27 +181,27 @@ from yokedcache.backends import MemoryBackend
 
 class TestNewFeature:
     """Test new feature functionality."""
-    
+
     @pytest.fixture
     async def setup_feature(self):
         """Setup test environment."""
         # Setup code
         yield test_object
         # Cleanup code
-    
+
     @pytest.mark.asyncio
     async def test_basic_functionality(self, setup_feature):
         """Test basic feature operation."""
         # Arrange
         test_data = {"key": "value"}
-        
+
         # Act
         result = await setup_feature.method(test_data)
-        
+
         # Assert
         assert result is not None
         assert isinstance(result, expected_type)
-    
+
     @pytest.mark.asyncio
     async def test_error_handling(self, setup_feature):
         """Test error conditions."""
@@ -219,10 +219,10 @@ async def test_async_operation():
     """Test asynchronous operation."""
     backend = MemoryBackend()
     await backend.connect()
-    
+
     result = await backend.set("key", "value")
     assert result is True
-    
+
     await backend.disconnect()
 ```
 
@@ -238,10 +238,10 @@ async def test_with_mocked_redis():
         mock_redis = AsyncMock()
         mock_redis.ping = AsyncMock()
         mock_redis_class.return_value = mock_redis
-        
+
         backend = RedisBackend()
         await backend.connect()
-        
+
         mock_redis.ping.assert_called_once()
 ```
 
@@ -257,7 +257,7 @@ Handle optional dependencies gracefully:
 def test_vector_search_feature():
     """Test vector search when dependencies are available."""
     from yokedcache.vector_search import VectorSimilaritySearch
-    
+
     search = VectorSimilaritySearch()
     # Test implementation
 ```
@@ -276,7 +276,7 @@ When adding a new backend:
 ```python
 class TestNewBackend:
     """Test new backend implementation."""
-    
+
     @pytest.fixture
     async def backend(self):
         """Create backend instance."""
@@ -284,7 +284,7 @@ class TestNewBackend:
         await backend.connect()
         yield backend
         await backend.disconnect()
-    
+
     @pytest.mark.asyncio
     async def test_interface_compliance(self, backend):
         """Test that backend implements required interface."""
@@ -316,7 +316,7 @@ def test_cli_command():
     """Test CLI command execution."""
     runner = CliRunner()
     result = runner.invoke(cli, ['stats', '--format', 'json'])
-    
+
     assert result.exit_code == 0
     assert 'total_hits' in result.output
 ```
@@ -512,15 +512,15 @@ async def test_concurrent_operations():
     """Test high concurrency operations."""
     backend = MemoryBackend()
     await backend.connect()
-    
+
     # Simulate 100 concurrent operations
     tasks = []
     for i in range(100):
         tasks.append(backend.set(f"key_{i}", f"value_{i}"))
-    
+
     results = await asyncio.gather(*tasks)
     assert all(results)
-    
+
     await backend.disconnect()
 ```
 

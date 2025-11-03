@@ -38,7 +38,7 @@ We welcome contributions to YokedCache! This document provides guidelines for co
    ```bash
    # Using Docker
    docker run -d -p 6379:6379 redis:7-alpine
-   
+
    # Or install Redis locally
    # Follow instructions at https://redis.io/download
    ```

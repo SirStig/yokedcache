@@ -9,7 +9,7 @@ All service ports have been changed to non-standard values to avoid conflicts wi
 | Service | Old Port | New Port | Description |
 |---------|----------|----------|-------------|
 | Redis | 6379 | **56379** | Main Redis cache service |
-| Memcached | 11211 | **51211** | Alternative cache backend |
+| Memcached | 11211 | **11211** | Alternative cache backend |
 | Redis Insight | 8001 | **58001** | Redis GUI interface |
 | Prometheus | 9090 | **59090** | Metrics collection |
 | Grafana | 3000 | **53000** | Metrics visualization |
@@ -19,15 +19,15 @@ All service ports have been changed to non-standard values to avoid conflicts wi
 
 ### Updated Files
 
-✅ **devcontainer.json** - Port forwarding and environment variables  
-✅ **docker-compose.yml** - Service port mappings and health checks  
-✅ **redis.conf** - Redis server port configuration  
-✅ **prometheus.yml** - Scrape target endpoints  
-✅ **post-create.sh** - Connection tests and config generation  
-✅ **dev.sh** - Helper script commands  
-✅ **README.md** - Documentation updates  
-✅ **OVERVIEW.md** - Service URL references  
-✅ **Dockerfile** - Exposed ports  
+✅ **devcontainer.json** - Port forwarding and environment variables
+✅ **docker-compose.yml** - Service port mappings and health checks
+✅ **redis.conf** - Redis server port configuration
+✅ **prometheus.yml** - Scrape target endpoints
+✅ **post-create.sh** - Connection tests and config generation
+✅ **dev.sh** - Helper script commands
+✅ **README.md** - Documentation updates
+✅ **OVERVIEW.md** - Service URL references
+✅ **Dockerfile** - Exposed ports
 
 ### Environment Variables
 
@@ -40,7 +40,7 @@ YOKEDCACHE_PROMETHEUS_PORT=58000
 ### Service URLs (Updated)
 
 - **Redis**: `redis://redis:56379`
-- **Memcached**: `memcached:51211`
+- **Memcached**: `memcached:11211`
 - **Redis Insight**: http://localhost:58001
 - **Prometheus**: http://localhost:59090
 - **Grafana**: http://localhost:53000 (admin/admin)
@@ -54,7 +54,7 @@ YOKEDCACHE_PROMETHEUS_PORT=58000
 redis-cli -h redis -p 56379
 
 # Test memcached
-nc -z memcached 51211
+nc -z memcached 11211
 
 # Documentation server
 mkdocs serve --dev-addr=0.0.0.0:58080

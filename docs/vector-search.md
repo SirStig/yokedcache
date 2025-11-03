@@ -183,21 +183,21 @@ vector_search = VectorSimilaritySearch(similarity_method="cosine")
 
 async def enhanced_search(query: str, use_vector: bool = True):
     """Search using both traditional fuzzy and vector search."""
-    
+
     # Get all cache data
     all_keys = await cache.get_all_keys("*")
     cache_data = {}
-    
+
     for key in all_keys:
         value = await cache.get(key)
         if value:
             cache_data[key] = value
-    
+
     if use_vector and cache_data:
         # Fit and search using vector similarity
         vector_search.fit(cache_data)
         vector_results = vector_search.search(query, cache_data, threshold=0.1)
-        
+
         # Convert to consistent format
         results = [
             {
@@ -220,7 +220,7 @@ async def enhanced_search(query: str, use_vector: bool = True):
             }
             for r in fuzzy_results
         ]
-    
+
     return results
 ```
 
@@ -229,34 +229,34 @@ async def enhanced_search(query: str, use_vector: bool = True):
 ```python
 class CacheWithVectorSearch:
     """Cache wrapper with automatic vector search updates."""
-    
+
     def __init__(self, cache: YokedCache):
         self.cache = cache
         self.vector_search = VectorSimilaritySearch()
         self._cache_data = {}
         self._fitted = False
-    
+
     async def set(self, key: str, value, **kwargs):
         """Set cache value and update search index."""
         result = await self.cache.set(key, value, **kwargs)
-        
+
         # Update search index
         self._cache_data[key] = value
         self.vector_search.update_cache_entry(key, value)
-        
+
         return result
-    
+
     async def delete(self, key: str):
         """Delete cache value and update search index."""
         result = await self.cache.delete(key)
-        
+
         # Update search index
         if key in self._cache_data:
             del self._cache_data[key]
             self.vector_search.remove_cache_entry(key)
-        
+
         return result
-    
+
     async def search(self, query: str, **kwargs):
         """Search using vector similarity."""
         if not self._fitted:
@@ -266,10 +266,10 @@ class CacheWithVectorSearch:
                 value = await self.cache.get(key)
                 if value:
                     self._cache_data[key] = value
-            
+
             self.vector_search.fit(self._cache_data)
             self._fitted = True
-        
+
         return self.vector_search.search(query, self._cache_data, **kwargs)
 ```
 
@@ -343,7 +343,7 @@ for method in methods:
     search = VectorSimilaritySearch(similarity_method=method)
     search.fit(cache_data)
     results = search.search(query, cache_data, threshold=0.1, max_results=3)
-    
+
     print(f"\n{method.title()} Similarity Results:")
     for result in results:
         print(f"  {result.key}: {result.score:.3f}")
@@ -397,14 +397,14 @@ class BatchVectorSearch:
         self.search = VectorSimilaritySearch()
         self.pending_updates = {}
         self.batch_size = batch_size
-    
+
     def update_entry(self, key: str, value):
         """Add entry to batch update."""
         self.pending_updates[key] = value
-        
+
         if len(self.pending_updates) >= self.batch_size:
             self.flush_updates()
-    
+
     def flush_updates(self):
         """Apply all pending updates."""
         if self.pending_updates:
@@ -467,19 +467,19 @@ print(f"Vectors match: {np.array_equal(vector, retrieved)}")
 ```python
 async def hybrid_search(cache, query: str, threshold: float = 0.1):
     """Combine traditional fuzzy search with vector search."""
-    
+
     # Get traditional fuzzy results
     fuzzy_results = await cache.fuzzy_search(query, threshold=threshold*100)
-    
+
     # Get vector search results
     vector_search = VectorSimilaritySearch()
     all_data = await cache.get_all_data()  # Implement this method
     vector_search.fit(all_data)
     vector_results = vector_search.search(query, all_data, threshold=threshold)
-    
+
     # Combine and rank results
     combined_results = {}
-    
+
     # Add fuzzy results
     for result in fuzzy_results:
         combined_results[result.key] = {
@@ -487,7 +487,7 @@ async def hybrid_search(cache, query: str, threshold: float = 0.1):
             "fuzzy_score": result.score / 100.0,
             "vector_score": 0.0
         }
-    
+
     # Add vector results
     for result in vector_results:
         if result.key in combined_results:
@@ -498,7 +498,7 @@ async def hybrid_search(cache, query: str, threshold: float = 0.1):
                 "fuzzy_score": 0.0,
                 "vector_score": result.score
             }
-    
+
     # Calculate combined score (weighted average)
     final_results = []
     for key, data in combined_results.items():
@@ -511,7 +511,7 @@ async def hybrid_search(cache, query: str, threshold: float = 0.1):
                 "fuzzy_score": data["fuzzy_score"],
                 "vector_score": data["vector_score"]
             })
-    
+
     # Sort by combined score
     return sorted(final_results, key=lambda x: x["score"], reverse=True)
 ```
@@ -540,20 +540,20 @@ def prepare_search_data(data):
 ```python
 class ManagedVectorSearch:
     """Vector search with automatic index management."""
-    
+
     def __init__(self, rebuild_threshold=1000):
         self.search = VectorSimilaritySearch()
         self.rebuild_threshold = rebuild_threshold
         self.updates_since_rebuild = 0
-    
+
     def should_rebuild_index(self):
         """Check if index should be rebuilt."""
         return self.updates_since_rebuild >= self.rebuild_threshold
-    
+
     async def update_and_maybe_rebuild(self, cache_data):
         """Update index and rebuild if necessary."""
         self.updates_since_rebuild += 1
-        
+
         if self.should_rebuild_index():
             self.search.fit(cache_data)
             self.updates_since_rebuild = 0

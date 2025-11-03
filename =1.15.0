@@ -1,0 +1,7 @@
+Requirement already satisfied: diskcache in /opt/conda/envs/yokedcache/lib/python3.11/site-packages (5.6.3)
+Requirement already satisfied: opentelemetry-api in /opt/conda/envs/yokedcache/lib/python3.11/site-packages (1.36.0)
+Requirement already satisfied: opentelemetry-sdk in /opt/conda/envs/yokedcache/lib/python3.11/site-packages (1.36.0)
+Requirement already satisfied: importlib-metadata<8.8.0,>=6.0 in /opt/conda/envs/yokedcache/lib/python3.11/site-packages (from opentelemetry-api) (8.7.0)
+Requirement already satisfied: typing-extensions>=4.5.0 in /opt/conda/envs/yokedcache/lib/python3.11/site-packages (from opentelemetry-api) (4.15.0)
+Requirement already satisfied: zipp>=3.20 in /opt/conda/envs/yokedcache/lib/python3.11/site-packages (from importlib-metadata<8.8.0,>=6.0->opentelemetry-api) (3.23.0)
+Requirement already satisfied: opentelemetry-semantic-conventions==0.57b0 in /opt/conda/envs/yokedcache/lib/python3.11/site-packages (from opentelemetry-sdk) (0.57b0)

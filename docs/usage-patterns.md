@@ -56,7 +56,7 @@ async def search_products(query: str, use_cache: bool = True):
     if not use_cache:
         # Skip cache for this call
         return await perform_live_search(query)
-    
+
     return await database.search_products(query)
 
 # Force fresh data
@@ -236,7 +236,7 @@ YokedCache extracts table names from SQL queries automatically:
 ```python
 # These patterns are automatically detected:
 "SELECT * FROM users WHERE id = ?"           # → table: users
-"INSERT INTO products (name) VALUES (?)"     # → table: products  
+"INSERT INTO products (name) VALUES (?)"     # → table: products
 "UPDATE orders SET status = ? WHERE id = ?"  # → table: orders
 "DELETE FROM sessions WHERE expired < ?"     # → table: sessions
 
@@ -263,10 +263,10 @@ async def change_user_role(user_id: int, role: str, db=Depends(cached_get_db)):
     # This operation affects both users and permissions
     db.execute("UPDATE users SET role = ? WHERE id = ?", (role, user_id))
     db.execute("DELETE FROM user_permissions WHERE user_id = ?", (user_id,))
-    
+
     # Manually invalidate multiple tables
     await cache.invalidate_tags(["table:users", "table:user_permissions"])
-    
+
     await db.commit()
     return {"status": "role_changed"}
 ```
@@ -281,14 +281,14 @@ Invalidate cache across multiple services:
 async def update_user(user_id: int, user: UserUpdate):
     # Update user in database
     await update_user_in_db(user_id, user)
-    
+
     # Invalidate user-related cache across all services
     await cache.invalidate_tags([f"user:{user_id}", "table:users"])
-    
+
     # Optionally publish event for other services
     await publish_user_updated_event(user_id)
 
-# Service B: Order management  
+# Service B: Order management
 @app.get("/orders/user/{user_id}")
 async def get_user_orders(user_id: int, db=Depends(cached_get_db)):
     # This will use fresh user data after the update in Service A
@@ -382,7 +382,7 @@ Search not just keys, but also cached values:
 # Store structured data
 user_data = {
     "name": "Alice Johnson",
-    "email": "alice@example.com", 
+    "email": "alice@example.com",
     "department": "Engineering",
     "skills": ["Python", "JavaScript", "Machine Learning"]
 }
@@ -434,12 +434,12 @@ warming_tasks:
     args: ["electronics"]
     ttl: 600
     tags: ["products", "category:electronics"]
-    
+
   - function: get_popular_items
     args: []
     ttl: 1800
     tags: ["popular", "homepage"]
-    
+
   - function: get_user_preferences
     args: [123, 456, 789]  # Warm for multiple users
     ttl: 300
@@ -483,17 +483,17 @@ async def get_user_data(user_id: int):
     except Exception as e:
         # Cache error - log but continue
         logger.warning(f"Cache read failed: {e}")
-    
+
     # Fallback to database
     user_data = await database.get_user(user_id)
-    
+
     try:
         # Try to cache for next time
         await cache.set(f"user:{user_id}", user_data, ttl=300)
     except Exception as e:
         # Cache write error - log but return data
         logger.warning(f"Cache write failed: {e}")
-    
+
     return user_data
 ```
 
@@ -509,14 +509,14 @@ class CacheCircuitBreaker:
         self.failure_count = 0
         self.last_failure = None
         self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
-    
+
     async def call_with_fallback(self, cache_operation, fallback_operation):
         if self.state == "OPEN":
             if datetime.now() - self.last_failure > timedelta(seconds=self.timeout):
                 self.state = "HALF_OPEN"
             else:
                 return await fallback_operation()
-        
+
         try:
             result = await cache_operation()
             if self.state == "HALF_OPEN":
@@ -526,10 +526,10 @@ class CacheCircuitBreaker:
         except Exception as e:
             self.failure_count += 1
             self.last_failure = datetime.now()
-            
+
             if self.failure_count >= self.failure_threshold:
                 self.state = "OPEN"
-            
+
             logger.warning(f"Cache operation failed: {e}")
             return await fallback_operation()
 
@@ -584,7 +584,7 @@ for user_id in user_ids:
 async def get_live_prices():
     return await fetch_stock_prices()
 
-# Warm data: Medium TTL  
+# Warm data: Medium TTL
 @cached(ttl=300)
 async def get_user_profile(user_id):
     return await database.get_user(user_id)

@@ -6,7 +6,7 @@ featuring automatic cache invalidation, fuzzy search capabilities, and intellige
 database integration.
 """
 
-__version__ = "0.2.3"
+__version__ = "0.2.4"
 __author__ = "Project Yoked LLC"
 __email__ = "twogoodgamer2@gmail.com"
 __license__ = "MIT"
@@ -78,12 +78,21 @@ except ImportError:
     PrometheusCollector = None  # type: ignore
     StatsDCollector = None  # type: ignore
 
-# Import vector search with optional dependencies
 try:
-    from .vector_search import RedisVectorSearch, VectorSimilaritySearch
+    from .routing import PrefixRouter
 except ImportError:
-    VectorSimilaritySearch = None  # type: ignore
-    RedisVectorSearch = None  # type: ignore
+    PrefixRouter = None  # type: ignore
+
+try:
+    from .swr import SWRScheduler
+except ImportError:
+    SWRScheduler = None  # type: ignore
+
+try:
+    from .tracing import CacheTracer, initialize_tracing
+except ImportError:
+    CacheTracer = None  # type: ignore
+    initialize_tracing = None
 
 __all__ = [
     # Core classes
@@ -115,7 +124,9 @@ __all__ = [
     "NoOpCollector",
     "PrometheusCollector",
     "StatsDCollector",
-    # Vector search (may be None if dependencies not installed)
-    "VectorSimilaritySearch",
-    "RedisVectorSearch",
+    # New features (may be None if dependencies not installed)
+    "PrefixRouter",
+    "SWRScheduler",
+    "CacheTracer",
+    "initialize_tracing",
 ]

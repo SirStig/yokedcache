@@ -207,7 +207,7 @@ from yokedcache.backends import MemoryBackend, RedisBackend
 def create_cache():
     """Create cache based on environment."""
     env = os.getenv("ENVIRONMENT", "development")
-    
+
     if env == "development":
         backend = MemoryBackend(max_size=1000)
     elif env == "testing":
@@ -217,7 +217,7 @@ def create_cache():
             redis_url=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
             connection_pool_size=int(os.getenv("REDIS_POOL_SIZE", "20"))
         )
-    
+
     config = CacheConfig(backend=backend)
     return YokedCache(config)
 ```
@@ -232,14 +232,14 @@ cache:
     memory:
       max_size: 1000
       key_prefix: "dev"
-  
+
   production:
     backend: redis
     redis:
       url: "redis://prod-redis:6379/0"
       pool_size: 50
       key_prefix: "prod"
-  
+
   testing:
     backend: memory
     memory:
@@ -257,17 +257,17 @@ def load_cache_from_config(config_file: str, environment: str):
     """Load cache configuration from YAML file."""
     with open(config_file) as f:
         config = yaml.safe_load(f)
-    
+
     cache_config = config["cache"][environment]
     backend_type = cache_config["backend"]
-    
+
     if backend_type == "memory":
         backend = MemoryBackend(**cache_config["memory"])
     elif backend_type == "redis":
         backend = RedisBackend(**cache_config["redis"])
     else:
         raise ValueError(f"Unknown backend: {backend_type}")
-    
+
     return YokedCache(CacheConfig(backend=backend))
 ```
 
@@ -276,24 +276,24 @@ def load_cache_from_config(config_file: str, environment: str):
 ```python
 class AdaptiveCache:
     """Cache that can switch backends at runtime."""
-    
+
     def __init__(self):
         self.memory_backend = MemoryBackend(max_size=1000)
         self.redis_backend = RedisBackend()
         self.current_backend = self.memory_backend
-    
+
     async def switch_to_redis(self):
         """Switch to Redis backend."""
         await self.current_backend.disconnect()
         await self.redis_backend.connect()
         self.current_backend = self.redis_backend
-    
+
     async def switch_to_memory(self):
         """Switch to memory backend."""
         await self.current_backend.disconnect()
         await self.memory_backend.connect()
         self.current_backend = self.memory_backend
-    
+
     async def get(self, key: str):
         """Get value using current backend."""
         return await self.current_backend.get(key)
@@ -328,20 +328,20 @@ async def migrate_cache_data(source_backend, target_backend):
     """Migrate data from one backend to another."""
     await source_backend.connect()
     await target_backend.connect()
-    
+
     try:
         # Get all keys from source
         keys = await source_backend.get_all_keys("*")
-        
+
         migrated = 0
         for key in keys:
             value = await source_backend.get(key)
             if value is not None:
                 await target_backend.set(key, value)
                 migrated += 1
-        
+
         print(f"Migrated {migrated} keys successfully")
-        
+
     finally:
         await source_backend.disconnect()
         await target_backend.disconnect()
@@ -392,7 +392,7 @@ await migrate_cache_data(memory_backend, redis_backend)
        def __init__(self):
            self.primary = RedisBackend()
            self.fallback = MemoryBackend(max_size=1000)
-       
+
        async def get(self, key: str):
            try:
                return await self.primary.get(key)
@@ -519,7 +519,7 @@ Add these settings to `redis.conf`:
 maxmemory 2gb
 maxmemory-policy allkeys-lru
 
-# Network optimization  
+# Network optimization
 tcp-keepalive 300
 timeout 0
 
@@ -574,20 +574,20 @@ from yokedcache import YokedCache
 async def test_connection():
     try:
         cache = YokedCache(redis_url="redis://localhost:6379/0")
-        
+
         # Test basic connectivity
         health = await cache.health()
         print(f"Health check: {health}")
-        
+
         # Test operations
         await cache.set("test_key", "test_value", ttl=60)
         value = await cache.get("test_key")
         print(f"Test operation: {value}")
-        
+
         # Test detailed health check
         detailed = await cache.detailed_health_check()
         print(f"Detailed health: {detailed}")
-        
+
     except Exception as e:
         print(f"Connection failed: {e}")
 

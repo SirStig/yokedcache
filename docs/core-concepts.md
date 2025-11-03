@@ -16,13 +16,13 @@ graph TB
     F --> G[Return Data]
     H[Write Operation] --> I[Auto-Invalidation]
     I --> J[Clear Related Cache Tags]
-    
+
     subgraph "Backends"
         K[Memory Backend]
         L[Redis Backend]
         M[Memcached Backend]
     end
-    
+
     B --> K
     B --> L
     B --> M
@@ -169,9 +169,9 @@ async def get_user_profile(user_id: int):
 
 # Database dependency caching (automatic table tags)
 cached_get_db = cached_dependency(
-    get_db, 
-    cache=cache, 
-    ttl=300, 
+    get_db,
+    cache=cache,
+    ttl=300,
     table_name="users"  # Automatically adds "table:users" tag
 )
 ```
@@ -208,9 +208,9 @@ Auto-invalidation automatically clears cache entries when related data changes.
 ```python
 # Setup auto-invalidation
 cached_get_db = cached_dependency(
-    get_db, 
-    cache=cache, 
-    ttl=300, 
+    get_db,
+    cache=cache,
+    ttl=300,
     table_name="users"
 )
 
@@ -235,7 +235,7 @@ YokedCache automatically detects affected tables from SQL queries:
 ```python
 # Simple patterns detected automatically
 "SELECT * FROM users WHERE id = ?"           # → users
-"INSERT INTO products (name) VALUES (?)"     # → products  
+"INSERT INTO products (name) VALUES (?)"     # → products
 "UPDATE orders SET status = ? WHERE id = ?"  # → orders
 "DELETE FROM sessions WHERE expired < ?"     # → sessions
 ```
@@ -335,7 +335,7 @@ async def get_expensive_data():
 YokedCache implements circuit breaker patterns to prevent cascade failures:
 
 - **Closed**: Normal operation, cache working
-- **Open**: Cache failing, bypass cache temporarily  
+- **Open**: Cache failing, bypass cache temporarily
 - **Half-Open**: Testing if cache has recovered
 
 ### Logging and Monitoring
@@ -396,10 +396,10 @@ config = CacheConfig(
     # Global settings
     default_ttl=300,
     key_prefix="myapp",
-    
+
     # Performance settings
     max_connections=50,
-    
+
     # Table-specific settings
     tables={
         "users": TableCacheConfig(

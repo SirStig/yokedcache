@@ -44,7 +44,7 @@ fi
 echo "🔄 Waiting for Memcached to be ready..."
 max_attempts=15
 attempt=0
-while ! nc -z memcached 51211 > /dev/null 2>&1; do
+while ! nc -z memcached 11211 > /dev/null 2>&1; do
     attempt=$((attempt + 1))
     if [ $attempt -ge $max_attempts ]; then
         echo "❌ Memcached failed to start within expected time"
@@ -54,7 +54,7 @@ while ! nc -z memcached 51211 > /dev/null 2>&1; do
     sleep 1
 done
 
-if nc -z memcached 51211 > /dev/null 2>&1; then
+if nc -z memcached 11211 > /dev/null 2>&1; then
     echo "✅ Memcached is ready!"
 else
     echo "⚠️  Memcached may not be ready, but continuing..."
@@ -132,11 +132,11 @@ tables:
     ttl: 600
     tags: ["user_data"]
     enable_fuzzy: true
-    
+
   products:
     ttl: 1800
     tags: ["product_data"]
-    
+
   sessions:
     ttl: 300
     tags: ["session_data"]
@@ -158,7 +158,7 @@ echo "   • Start Jupyter:  jupyter lab --ip=0.0.0.0 --port=8888 --allow-root"
 echo ""
 echo "🔗 Available Services:"
 echo "   • Redis:          redis://redis:56379"
-echo "   • Memcached:      memcached:51211"
+echo "   • Memcached:      memcached:11211"
 echo "   • Redis Insight:  http://localhost:58001 (if enabled)"
 echo "   • Prometheus:     http://localhost:59090 (if enabled)"
 echo "   • Grafana:        http://localhost:53000 (if enabled)"

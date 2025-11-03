@@ -43,7 +43,7 @@ Base = declarative_base()
 # Models
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     email = Column(String, unique=True, index=True)
@@ -52,7 +52,7 @@ class User(Base):
 
 class Product(Base):
     __tablename__ = "products"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     description = Column(String)
@@ -111,8 +111,8 @@ cache = YokedCache()
 
 # Create cached database dependency
 cached_get_db = cached_dependency(
-    get_db, 
-    cache=cache, 
+    get_db,
+    cache=cache,
     ttl=300,  # 5 minutes default
     table_name="auto_detect"  # Auto-detect tables from queries
 )
@@ -137,7 +137,7 @@ async def get_user(user_id: int, db: Session = Depends(cached_get_db)):
 
 @app.get("/users")
 async def list_users(
-    active_only: bool = True, 
+    active_only: bool = True,
     limit: int = 100,
     db: Session = Depends(cached_get_db)
 ):
@@ -215,20 +215,20 @@ async def create_user(user: UserCreate, db: Session = Depends(cached_get_db)):
 
 @app.put("/users/{user_id}")
 async def update_user(
-    user_id: int, 
-    user: UserUpdate, 
+    user_id: int,
+    user: UserUpdate,
     db: Session = Depends(cached_get_db)
 ):
     """Update user - automatically invalidates user cache on commit"""
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Update only provided fields
     update_data = user.dict(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_user, key, value)
-    
+
     await db.commit()  # Triggers cache invalidation
     await db.refresh(db_user)
     return db_user
@@ -239,7 +239,7 @@ async def delete_user(user_id: int, db: Session = Depends(cached_get_db)):
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     db.delete(db_user)
     await db.commit()  # Triggers cache invalidation
     return {"message": "User deleted successfully"}
@@ -255,19 +255,19 @@ async def create_product(product: ProductCreate, db: Session = Depends(cached_ge
 
 @app.put("/products/{product_id}")
 async def update_product(
-    product_id: int, 
-    product: ProductUpdate, 
+    product_id: int,
+    product: ProductUpdate,
     db: Session = Depends(cached_get_db)
 ):
     """Update product - automatically invalidates product cache on commit"""
     db_product = db.query(Product).filter(Product.id == product_id).first()
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
+
     update_data = product.dict(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_product, key, value)
-    
+
     await db.commit()
     await db.refresh(db_product)
     return db_product
@@ -341,14 +341,14 @@ For expensive computations, add function-level caching:
 async def calculate_user_analytics(db: Session):
     """Expensive analytics calculation - cached for 10 minutes"""
     print("Calculating user analytics...")  # You'll see this only when cache misses
-    
+
     # Simulate expensive computation
     await asyncio.sleep(2)
-    
+
     total_users = db.query(User).count()
     active_users = db.query(User).filter(User.active == True).count()
     inactive_users = total_users - active_users
-    
+
     return {
         "total_users": total_users,
         "active_users": active_users,
@@ -361,18 +361,18 @@ async def calculate_user_analytics(db: Session):
 async def calculate_product_analytics(db: Session, category: Optional[str] = None):
     """Product analytics - cached by category"""
     print(f"Calculating product analytics for category: {category}")
-    
+
     await asyncio.sleep(1)  # Simulate expensive computation
-    
+
     query = db.query(Product)
     if category:
         query = query.filter(Product.category == category)
-    
+
     products = query.all()
     total_products = len(products)
     active_products = len([p for p in products if p.active])
     avg_price = sum(p.price for p in products) / total_products if total_products > 0 else 0
-    
+
     return {
         "category": category or "all",
         "total_products": total_products,
@@ -408,16 +408,16 @@ import os
 
 def get_cache_config():
     """Get cache configuration based on environment"""
-    
+
     environment = os.getenv("ENVIRONMENT", "development")
-    
+
     if environment == "production":
         return CacheConfig(
             redis_url=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
             default_ttl=600,  # 10 minutes default in production
             key_prefix=f"myapp_prod",
             max_connections=100,
-            
+
             # Table-specific configurations
             tables={
                 "users": TableCacheConfig(
@@ -431,40 +431,40 @@ def get_cache_config():
                     serialization_method=SerializationMethod.JSON
                 )
             },
-            
+
             # Enable monitoring
             enable_metrics=True,
             log_level="WARNING"
         )
-    
+
     elif environment == "staging":
         return CacheConfig(
             redis_url=os.getenv("REDIS_URL", "redis://localhost:6379/1"),
             default_ttl=300,
             key_prefix=f"myapp_staging",
             max_connections=50,
-            
+
             tables={
                 "users": TableCacheConfig(ttl=1800, tags={"user_data"}),
                 "products": TableCacheConfig(ttl=900, tags={"product_data"})
             },
-            
+
             enable_metrics=True,
             log_level="INFO"
         )
-    
+
     else:  # development
         return CacheConfig(
             redis_url=os.getenv("REDIS_URL", "redis://localhost:6379/2"),
             default_ttl=60,  # Short TTL for development
             key_prefix=f"myapp_dev",
             max_connections=10,
-            
+
             tables={
                 "users": TableCacheConfig(ttl=300, tags={"user_data"}),
                 "products": TableCacheConfig(ttl=300, tags={"product_data"})
             },
-            
+
             enable_fuzzy=True,  # Enable fuzzy search in development
             log_level="DEBUG"
         )
@@ -486,53 +486,53 @@ from typing import List
 
 async def test_cache_performance():
     """Test cache performance improvements"""
-    
+
     base_url = "http://localhost:8000"
-    
+
     async with httpx.AsyncClient() as client:
         # Test 1: Database query performance
         print("Testing cache performance...")
-        
+
         # First request (cache miss)
         start_time = time.time()
         response = await client.get(f"{base_url}/users/1")
         first_request_time = time.time() - start_time
         print(f"First request (cache miss): {first_request_time:.3f}s")
-        
+
         # Second request (cache hit)
         start_time = time.time()
         response = await client.get(f"{base_url}/users/1")
         second_request_time = time.time() - start_time
         print(f"Second request (cache hit): {second_request_time:.3f}s")
-        
+
         speedup = first_request_time / second_request_time
         print(f"Cache speedup: {speedup:.1f}x faster")
-        
+
         # Test 2: Analytics caching
         print("\nTesting analytics caching...")
-        
+
         start_time = time.time()
         response = await client.get(f"{base_url}/analytics/users")
         first_analytics_time = time.time() - start_time
         print(f"First analytics request: {first_analytics_time:.3f}s")
-        
+
         start_time = time.time()
         response = await client.get(f"{base_url}/analytics/users")
         second_analytics_time = time.time() - start_time
         print(f"Second analytics request: {second_analytics_time:.3f}s")
-        
+
         analytics_speedup = first_analytics_time / second_analytics_time
         print(f"Analytics cache speedup: {analytics_speedup:.1f}x faster")
-        
+
         # Test 3: Cache invalidation
         print("\nTesting cache invalidation...")
-        
+
         # Create a user
         await client.post(f"{base_url}/users", json={
             "name": "Test User",
             "email": "test@example.com"
         })
-        
+
         # Check cache stats
         stats_response = await client.get(f"{base_url}/cache/stats")
         stats = stats_response.json()
@@ -580,7 +580,7 @@ yokedcache stats --format json | jq .
    # seed_data.py
    import asyncio
    import httpx
-   
+
    async def seed_data():
        async with httpx.AsyncClient() as client:
            # Create users
@@ -589,20 +589,20 @@ yokedcache stats --format json | jq .
                {"name": "Bob Smith", "email": "bob@example.com"},
                {"name": "Charlie Brown", "email": "charlie@example.com"},
            ]
-           
+
            for user in users:
                await client.post("http://localhost:8000/users", json=user)
-               
+
            # Create products
            products = [
                {"name": "Laptop", "description": "Gaming laptop", "price": 149999, "category": "electronics"},
                {"name": "Book", "description": "Python programming", "price": 2999, "category": "books"},
                {"name": "Coffee", "description": "Premium coffee", "price": 1299, "category": "food"},
            ]
-           
+
            for product in products:
                await client.post("http://localhost:8000/products", json=product)
-   
+
    asyncio.run(seed_data())
    ```
 

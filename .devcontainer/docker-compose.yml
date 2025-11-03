@@ -46,12 +46,12 @@ services:
     image: memcached:1.6-alpine
     container_name: yokedcache-memcached
     ports:
-      - "51211:51211"
-    command: ["memcached", "-m", "64", "-v", "-p", "51211"]
+      - "11211:11211"
+    command: ["memcached", "-m", "64", "-v", "-p", "11211"]
     networks:
       - yokedcache-network
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "51211"]
+      test: ["CMD", "nc", "-z", "localhost", "11211"]
       interval: 5s
       timeout: 3s
       retries: 5

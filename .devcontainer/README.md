@@ -4,7 +4,7 @@ This directory contains a complete containerized development environment for Yok
 
 ## 🚀 Quick Start
 
-1. **Prerequisites**: 
+1. **Prerequisites**:
    - Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
    - Install [VS Code](https://code.visualstudio.com/)
    - Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
@@ -32,7 +32,7 @@ This directory contains a complete containerized development environment for Yok
 
 ### Optional Monitoring Stack
 - **Redis Insight** (GUI for Redis) - Port 8001
-- **Prometheus** (Metrics collection) - Port 9090  
+- **Prometheus** (Metrics collection) - Port 9090
 - **Grafana** (Metrics visualization) - Port 3000
 
 ## 🔧 Configuration
@@ -51,7 +51,7 @@ PYTHONPATH=/workspace/src
 
 ### Service URLs
 - **Redis**: `redis://redis:56379`
-- **Memcached**: `memcached:51211`
+- **Memcached**: `memcached:11211`
 - **Redis Insight**: http://localhost:58001
 - **Prometheus**: http://localhost:59090
 - **Grafana**: http://localhost:53000 (admin/admin)

@@ -74,7 +74,16 @@ That's it! Your database queries are now cached with automatic invalidation.
 
 ## Key Features
 
-### 🔐 Production-Grade Resilience for Python FastAPI Apps *(New in v0.2.1)*
+### � Advanced Caching Patterns *(New in v0.3.0)*
+
+- **HTTP Response Middleware**: ETag/Cache-Control headers with 304 Not Modified responses
+- **Single-Flight Protection**: Prevents cache stampede with automatic deduplication
+- **Stale-While-Revalidate**: Serve stale data while refreshing in background
+- **Stale-If-Error**: Fallback to cached data during service failures
+- **Per-Prefix Routing**: Shard cache keys across multiple backends by prefix
+- **OpenTelemetry Integration**: Distributed tracing with spans and metrics
+
+### �🔐 Production-Grade Resilience for Python FastAPI Apps *(New in v0.2.1)*
 
 - **Circuit Breaker Pattern**: Prevents cascading failures during Redis cache outages
 - **Redis Connection Pool Management**: Advanced Redis caching configuration
@@ -93,6 +102,8 @@ That's it! Your database queries are now cached with automatic invalidation.
 
 - **Redis**: Full-featured backend with clustering and persistence support for production caching
 - **Memcached**: High-performance distributed caching
+- **DiskCache**: Local disk-based persistent caching
+- **SQLite**: Embedded database caching with TTL support
 - **In-Memory**: Fast local Python caching for development and testing
 - Pluggable backend system for custom Redis cache implementations
 
@@ -143,6 +154,8 @@ pip install yokedcache[memcached]     # Add Memcached support
 pip install yokedcache[monitoring]    # Add Prometheus/StatsD support
 pip install yokedcache[vector]        # Add vector similarity search
 pip install yokedcache[fuzzy]         # Add traditional fuzzy search
+pip install yokedcache[disk]          # Add disk-based backend
+pip install yokedcache[tracing]       # Add OpenTelemetry tracing
 
 # Full installation with all features
 pip install yokedcache[full]
@@ -243,17 +256,125 @@ async def get_user(user_id: int, db=Depends(cached_get_db)):
 # Automatic caching + invalidation now active!
 ```
 
+### Advanced Caching Patterns *(New in v0.3.0)*
+
+#### HTTP Response Middleware
+
+```python
+from fastapi import FastAPI
+from yokedcache.middleware import CacheMiddleware
+
+app = FastAPI()
+
+# Add HTTP caching middleware
+app.add_middleware(
+    CacheMiddleware,
+    cache_ttl=300,
+    cache_key_prefix="http",
+    include_paths=["/api/*"],
+    exclude_paths=["/admin/*"]
+)
+
+@app.get("/api/users/{user_id}")
+async def get_user(user_id: int):
+    # Response automatically cached with ETag headers
+    # Returns 304 Not Modified for unchanged data
+    return {"id": user_id, "name": "John Doe"}
+```
+
+#### Single-Flight Protection & Stale-While-Revalidate
+
+```python
+from yokedcache import YokedCache, CacheConfig
+
+config = CacheConfig(
+    redis_url="redis://localhost:6379",
+    enable_stale_while_revalidate=True,
+    enable_stale_if_error=True
+)
+cache = YokedCache(config)
+
+# Single-flight protection prevents stampede
+async def expensive_operation(key: str):
+    # Only one instance of this will run per key
+    # Other requests wait for the result
+    return await cache.fetch_or_set(
+        key,
+        fetcher_func=lambda: compute_expensive_data(),
+        ttl=300
+    )
+
+# Stale-while-revalidate: serve stale data while refreshing
+@cache.cached(ttl=60, stale_while_revalidate=True)
+async def get_user_data(user_id: int):
+    # Returns cached data immediately if stale
+    # Triggers background refresh for next request
+    return fetch_user_from_db(user_id)
+```
+
+#### Per-Prefix Backend Routing
+
+```python
+from yokedcache import YokedCache
+from yokedcache.backends import DiskCacheBackend, RedisBackend
+
+cache = YokedCache()
+
+# Setup prefix-based routing
+cache.setup_prefix_routing()
+
+# Route different data types to different backends
+cache.add_backend_route("user:", RedisBackend("redis://localhost:6379/0"))
+cache.add_backend_route("temp:", DiskCacheBackend("/tmp/cache"))
+cache.add_backend_route("session:", RedisBackend("redis://localhost:6379/1"))
+
+# Data automatically routed based on key prefix
+await cache.set("user:123", user_data)      # -> Redis DB 0
+await cache.set("temp:abc", temp_data)      # -> Disk cache
+await cache.set("session:xyz", session)    # -> Redis DB 1
+```
+
+#### OpenTelemetry Distributed Tracing
+
+```python
+from yokedcache import YokedCache, CacheConfig
+from yokedcache.tracing import initialize_tracing
+
+# Initialize global tracing
+initialize_tracing(
+    service_name="my-api",
+    enabled=True,
+    sample_rate=1.0
+)
+
+config = CacheConfig(
+    redis_url="redis://localhost:6379",
+    enable_tracing=True
+)
+cache = YokedCache(config)
+
+# All cache operations automatically traced
+async with cache.tracer.trace_operation("get_user", "user:123"):
+    user = await cache.get("user:123")
+    # Span includes timing, hit/miss, backend info
+```
+
 ### Advanced Usage
 
 ### Multi-Backend Configuration
 
 ```python
 from yokedcache import YokedCache
-from yokedcache.backends import RedisBackend, MemcachedBackend, MemoryBackend
+from yokedcache.backends import RedisBackend, MemcachedBackend, MemoryBackend, DiskCacheBackend
 
 # Redis backend (default)
 redis_cache = YokedCache(backend=RedisBackend(
     redis_url="redis://localhost:6379/0"
+))
+
+# Disk-based persistent cache
+disk_cache = YokedCache(backend=DiskCacheBackend(
+    directory="/var/cache/myapp"
 ))
 
 # Memcached backend

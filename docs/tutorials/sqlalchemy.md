@@ -41,29 +41,29 @@ Base = declarative_base()
 # Models
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True)
     email = Column(String(100), unique=True, index=True)
     full_name = Column(String(100))
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     posts = relationship("Post", back_populates="author")
 
 class Post(Base):
     __tablename__ = "posts"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(200), index=True)
     content = Column(Text)
     published = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Foreign keys
     author_id = Column(Integer, ForeignKey("users.id"))
-    
+
     # Relationships
     author = relationship("User", back_populates="posts")
 
@@ -117,7 +117,7 @@ async def get_published_posts(limit: int = 10) -> List[dict]:
                 .order_by(Post.created_at.desc())
                 .limit(limit)
                 .all())
-        
+
         return [{
             "id": post.id,
             "title": post.title,
@@ -138,7 +138,7 @@ async def get_user_stats() -> dict:
         active_users = session.query(User).filter(User.is_active == True).count()
         total_posts = session.query(Post).count()
         published_posts = session.query(Post).filter(Post.published == True).count()
-        
+
         return {
             "total_users": total_users,
             "active_users": active_users,
@@ -198,17 +198,17 @@ class BaseRepository(ABC):
         self.session = session
 
 class UserRepository(BaseRepository):
-    
+
     @cached(ttl=600, tags=["users"])
     async def get_by_id(self, user_id: int) -> Optional[User]:
         """Get user by ID with caching"""
         return self.session.query(User).filter(User.id == user_id).first()
-    
+
     @cached(ttl=300, tags=["users"])
     async def get_by_username(self, username: str) -> Optional[User]:
         """Get user by username with caching"""
         return self.session.query(User).filter(User.username == username).first()
-    
+
     @cached(ttl=180, tags=["users"])
     async def get_active_users(self, limit: int = 50) -> List[User]:
         """Get active users with caching"""
@@ -216,25 +216,25 @@ class UserRepository(BaseRepository):
                 .filter(User.is_active == True)
                 .limit(limit)
                 .all())
-    
+
     async def create(self, user_data: Dict[str, Any]) -> User:
         """Create user and invalidate cache"""
         user = User(**user_data)
         self.session.add(user)
         await self.session.commit()
-        
+
         # Invalidate user-related cache
         await cache.invalidate_tags(["users"])
-        
+
         return user
 
 class PostRepository(BaseRepository):
-    
+
     @cached(ttl=300, tags=["posts"])
     async def get_by_id(self, post_id: int) -> Optional[Post]:
         """Get post by ID with caching"""
         return self.session.query(Post).filter(Post.id == post_id).first()
-    
+
     @cached(ttl=180, tags=["posts"])
     async def get_published(self, limit: int = 10) -> List[Post]:
         """Get published posts with caching"""
@@ -243,16 +243,16 @@ class PostRepository(BaseRepository):
                 .order_by(Post.created_at.desc())
                 .limit(limit)
                 .all())
-    
+
     async def create(self, post_data: Dict[str, Any]) -> Post:
         """Create post and invalidate cache"""
         post = Post(**post_data)
         self.session.add(post)
         await self.session.commit()
-        
+
         # Invalidate post-related cache
         await cache.invalidate_tags(["posts"])
-        
+
         return post
 ```
 
@@ -268,37 +268,37 @@ from cached_queries import *
 async def warm_user_cache(user_ids: List[int]):
     """Warm cache for specific users"""
     print(f"Warming cache for {len(user_ids)} users...")
-    
+
     tasks = []
     for user_id in user_ids:
         tasks.append(get_user_by_id(user_id))
-        
+
     await asyncio.gather(*tasks)
     print("User cache warmed successfully")
 
 async def warm_popular_content():
     """Warm cache for popular content"""
     print("Warming popular content cache...")
-    
+
     # Warm popular posts
     await get_published_posts(limit=20)
-    
+
     # Warm user statistics
     await get_user_stats()
-    
+
     print("Popular content cache warmed successfully")
 
 async def full_cache_warm():
     """Perform full cache warming"""
     print("Starting full cache warming...")
-    
+
     # Warm user cache for first 50 users
     user_ids = list(range(1, 51))
     await warm_user_cache(user_ids)
-    
+
     # Warm popular content
     await warm_popular_content()
-    
+
     print("Full cache warming completed")
 ```
 
@@ -315,30 +315,30 @@ from contextlib import asynccontextmanager
 class QueryPerformanceMonitor:
     def __init__(self):
         self.query_stats = {}
-    
+
     @asynccontextmanager
     async def monitor_query(self, query_name: str):
         """Context manager to monitor query performance"""
         start_time = time.time()
-        
+
         try:
             yield
         finally:
             end_time = time.time()
             execution_time = end_time - start_time
-            
+
             if query_name not in self.query_stats:
                 self.query_stats[query_name] = {
                     "total_calls": 0,
                     "total_time": 0,
                     "avg_time": 0
                 }
-            
+
             stats = self.query_stats[query_name]
             stats["total_calls"] += 1
             stats["total_time"] += execution_time
             stats["avg_time"] = stats["total_time"] / stats["total_calls"]
-    
+
     def get_stats(self):
         """Get performance statistics"""
         return self.query_stats
@@ -349,17 +349,17 @@ monitor = QueryPerformanceMonitor()
 async def performance_test():
     """Test cache performance vs database performance"""
     print("Running performance tests...")
-    
+
     user_id = 1
-    
+
     # First call (cache miss)
     async with monitor.monitor_query("cached_user_first_call"):
         await get_user_by_id(user_id)
-    
+
     # Second call (cache hit)
     async with monitor.monitor_query("cached_user_second_call"):
         await get_user_by_id(user_id)
-    
+
     # Print statistics
     stats = monitor.get_stats()
     for query_name, query_stats in stats.items():
@@ -370,7 +370,7 @@ async def performance_test():
 
 ### 1. Cache TTL Strategy
 - **Hot data** (frequently changing): 30-300 seconds
-- **Warm data** (occasionally changing): 300-1800 seconds  
+- **Warm data** (occasionally changing): 300-1800 seconds
 - **Cold data** (rarely changing): 1800-3600 seconds
 - **Analytics data** (expensive to compute): 900-3600 seconds
 

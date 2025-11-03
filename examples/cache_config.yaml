@@ -55,7 +55,7 @@ tables:
       - on: ["insert", "update", "delete"]
         invalidate_tags: ["user_data"]
         invalidate_patterns: ["user:*"]
-  
+
   posts:
     ttl: 1800  # 30 minutes for posts
     tags:
@@ -66,7 +66,7 @@ tables:
       - on: ["insert", "update", "delete"]
         invalidate_tags: ["content"]
         cascade_tables: ["comments"]  # Also invalidate related tables
-  
+
   sessions:
     ttl: 900  # 15 minutes for sessions
     tags:
@@ -76,7 +76,7 @@ tables:
     invalidation_rules:
       - on: ["delete"]
         invalidate_patterns: ["session:*"]
-  
+
   products:
     ttl: 7200  # 2 hours for product data
     tags:
@@ -95,7 +95,7 @@ invalidation_rules:
     on: ["update"]
     invalidate_tags: ["user_sessions"]
     delay: 1.0  # Delay invalidation by 1 second
-  
+
   - table: "products"
     on: ["insert", "update", "delete"]
     invalidate_patterns: ["catalog:*", "search:*"]
@@ -109,7 +109,7 @@ warm:
       value: {"status": "active", "version": "1.0.0"}
       ttl: 3600
       tags: ["system"]
-    
+
     - key: "config:features"
       value: {"feature_a": true, "feature_b": false}
       ttl: 7200

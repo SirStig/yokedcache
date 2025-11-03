@@ -95,6 +95,33 @@ class CacheConfig:
     # (tests expect this behavior by default).
     enable_memory_fallback: bool = False
 
+    # Single-flight / stampede protection
+    enable_single_flight: bool = True
+    # seconds to wait for in-flight computation
+    single_flight_timeout: float = 10.0
+    # serve stale up to this many seconds while refreshing
+    single_flight_stale_ttl: int = 60
+
+    # Stale-while-revalidate / stale-if-error
+    enable_stale_while_revalidate: bool = True
+    enable_stale_if_error: bool = True
+    stale_if_error_ttl: int = 120  # additional seconds to serve stale on error
+
+    # Backend routing / sharding
+    enable_prefix_routing: bool = False
+    # prefix -> backend key
+    prefix_backend_map: Dict[str, str] = field(default_factory=dict)
+    default_backend: str = "redis"  # logical name used when routing
+
+    # Additional backends toggles
+    enable_disk_backend: bool = False
+    enable_sqlite_backend: bool = False
+
+    # Tracing / observability
+    enable_tracing: bool = False
+    tracing_service_name: str = "yokedcache"
+    tracing_sample_rate: float = 1.0
+
     def __post_init__(self) -> None:
         """Post-initialization processing."""
         # Support legacy max_retries alias if supplied

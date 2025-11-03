@@ -249,7 +249,7 @@ Commands return standard exit codes for scripting:
 
 - `0`: Success
 - `1`: General error
-- `2`: Configuration error  
+- `2`: Configuration error
 - `3`: Connection error
 
 Process JSON output with tools like `jq`:

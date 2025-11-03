@@ -83,7 +83,7 @@ A complete containerized development environment for YokedCache with Redis, Memc
 ## 🌐 Service URLs
 
 - **Redis**: `redis://redis:56379`
-- **Memcached**: `memcached:51211`
+- **Memcached**: `memcached:11211`
 - **Redis Insight**: <http://localhost:58001>
 - **Prometheus**: <http://localhost:59090>
 - **Grafana**: <http://localhost:53000> (admin/admin)
@@ -111,14 +111,14 @@ graph TB
     A --> C[Redis 7]
     A --> D[Memcached]
     A --> E[Development Tools]
-    
+
     B --> F[YokedCache Source]
     B --> G[All Dependencies]
     B --> H[Testing Framework]
-    
+
     C --> I[Cache Backend]
     D --> J[Alternative Backend]
-    
+
     E --> K[Code Quality Tools]
     E --> L[Documentation Tools]
     E --> M[Monitoring Stack]
@@ -193,7 +193,7 @@ Access dashboards:
 ## 🎯 Development Best Practices
 
 1. **Use the helper script**: `./dev.sh` for common tasks
-2. **Run tests frequently**: `./dev.sh test` 
+2. **Run tests frequently**: `./dev.sh test`
 3. **Format before committing**: `./dev.sh format`
 4. **Check code quality**: `./dev.sh quality`
 5. **Monitor cache health**: `./dev.sh ping` and `./dev.sh stats`

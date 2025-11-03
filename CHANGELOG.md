@@ -1,3 +1,67 @@
+## [0.2.4] - 2025-11-02
+
+### 🐛 Critical Bug Fixes
+
+#### Fixed Missing Implementation
+- **Fixed missing `_handle_tags` method**: Implemented proper tag management method that was referenced but not defined, fixing tag handling for cache operations
+
+#### Fixed Exception Handling
+- **Fixed incorrect exception name**: Replaced all instances of non-existent `CircuitBreakerOpenError` with correct `CircuitBreakerError` from circuit_breaker module, preventing runtime failures
+
+#### Code Structure Fixes
+- **Removed duplicate method definitions**: Eliminated multiple duplicate definitions of `_direct_get`, `_direct_set`, `_direct_delete`, `_direct_exists`, and `_direct_expire` methods
+- **Fixed incorrect method nesting**: Moved `add_backend_route` and `remove_backend_route` methods from incorrectly nested position inside `setup_prefix_routing` to proper class level
+- **Fixed incorrect self references**: Corrected `self._cache` references (which don't exist) to proper `self` references in method implementations
+
+#### Metrics API Fixes
+- **Fixed metrics method calls**: Replaced calls to non-existent methods (`record_miss`, `record_hit`, `record_set`, `record_delete`, `record_error`) with proper `record_operation()` calls using `OperationMetric` objects
+- **Added null safety checks**: Added proper null checks for `self._metrics` before performing metrics operations to prevent crashes when metrics are disabled
+
+#### Circuit Breaker Enhancements
+- **Added context manager support**: Implemented `__aenter__` and `__aexit__` methods in `CircuitBreaker` class to support proper async context manager usage (`async with self._circuit_breaker`)
+
+### Impact
+These fixes resolve critical runtime errors that would have prevented the library from functioning correctly. All fixes maintain backward compatibility and improve code quality and reliability.
+
+## [0.3.0] - 2025-08-26
+
+### 🚀 Major Features
+
+#### Advanced Caching Patterns
+- **HTTP Response Middleware**: ETag/Cache-Control headers with 304 Not Modified responses for FastAPI applications
+- **Single-Flight Protection**: Prevents cache stampede by deduplicating concurrent requests for the same key
+- **Stale-While-Revalidate**: Serve stale cached data while refreshing in background for improved performance
+- **Stale-If-Error**: Fallback to cached data during service failures for enhanced resilience
+
+#### Multi-Backend Architecture
+- **DiskCache Backend**: Local disk-based persistent caching using the `diskcache` library
+- **SQLite Backend**: Embedded database caching with TTL support for offline scenarios
+- **Per-Prefix Routing**: Route cache keys to different backends based on key prefixes for data sharding
+
+#### Observability & Tracing
+- **OpenTelemetry Integration**: Distributed tracing with automatic span creation for cache operations
+- **Cache Metrics**: Hit/miss tracking, timing metrics, and backend performance monitoring
+- **Global Tracer Configuration**: Service-wide tracing setup with configurable sampling rates
+
+### 🔧 Technical Enhancements
+- **SWR Scheduler**: Background refresh scheduling with task management and cleanup
+- **Prefix Router**: Intelligent backend selection based on key patterns
+- **Enhanced Configuration**: New config options for advanced features with backward compatibility
+- **Optional Dependencies**: Graceful handling of missing optional packages (diskcache, opentelemetry)
+
+### 📦 Installation
+```bash
+# New optional dependencies
+pip install yokedcache[disk]          # DiskCache backend
+pip install yokedcache[tracing]       # OpenTelemetry tracing
+pip install yokedcache[full]          # All features including new ones
+```
+
+### 🧪 Testing
+- Comprehensive test suite for all new features
+- Integration tests for advanced caching patterns
+- Mock-based testing for optional dependencies
+
 ## [0.2.3] - 2025-08-25
 
 
@@ -50,7 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Circuit Breaker Pattern**: Advanced resilience pattern to prevent cascading failures during Redis outages
 - **Connection Pool Management**: Enhanced Redis connection configuration with custom pool parameters
-- **Async/Sync Context Detection**: Smart handling to prevent Task object returns in mixed async/sync environments  
+- **Async/Sync Context Detection**: Smart handling to prevent Task object returns in mixed async/sync environments
 - **Comprehensive Metrics System**: Real-time performance tracking with hit rates, error rates, and response times
 - **Enhanced Error Handling**: Graceful fallback mechanisms when cache operations fail
 - **Health Check Endpoint**: Detailed cache status monitoring including connection pool stats and performance metrics

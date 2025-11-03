@@ -79,6 +79,16 @@ vector = [
     "scipy>=1.7.0",
     "scikit-learn>=1.0.0",
 ]
+disk = [
+    "diskcache>=5.0.0",
+]
+sqlite = [
+    "aiosqlite>=0.19.0",
+]
+tracing = [
+    "opentelemetry-api>=1.15.0",
+    "opentelemetry-sdk>=1.15.0",
+]
 full = [
     "sqlalchemy>=1.4.0",
     "fuzzywuzzy>=0.18.0",
@@ -89,6 +99,10 @@ full = [
     "numpy>=1.21.0",
     "scipy>=1.7.0",
     "scikit-learn>=1.0.0",
+    "diskcache>=5.0.0",
+    "aiosqlite>=0.19.0",
+    "opentelemetry-api>=1.15.0",
+    "opentelemetry-sdk>=1.15.0",
 ]
 dev = [
     "pytest>=7.0.0",
@@ -111,6 +125,10 @@ dev = [
     "numpy>=1.21.0",
     "scipy>=1.7.0",
     "scikit-learn>=1.0.0",
+    "diskcache>=5.6.0",
+    "aiosqlite>=0.19.0",
+    "opentelemetry-api>=1.24.0",
+    "opentelemetry-sdk>=1.24.0",
 ]
 docs = [
     "mkdocs>=1.4.0",

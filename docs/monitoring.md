@@ -291,10 +291,10 @@ import asyncio
 
 class CustomMetricsCollector:
     """Custom metrics collector example."""
-    
+
     def __init__(self, webhook_url: str):
         self.webhook_url = webhook_url
-    
+
     async def increment(self, metric: str, value: float = 1, tags: dict = None):
         """Send increment to webhook."""
         data = {
@@ -306,7 +306,7 @@ class CustomMetricsCollector:
         }
         # Send to webhook (implementation depends on your system)
         await self._send_webhook(data)
-    
+
     async def gauge(self, metric: str, value: float, tags: dict = None):
         """Send gauge to webhook."""
         data = {
@@ -317,17 +317,17 @@ class CustomMetricsCollector:
             "timestamp": time.time()
         }
         await self._send_webhook(data)
-    
+
     async def histogram(self, metric: str, value: float, tags: dict = None):
         """Send histogram to webhook."""
         # Implementation for histogram metrics
         pass
-    
+
     async def timing(self, metric: str, value: float, tags: dict = None):
         """Send timing to webhook."""
         # Implementation for timing metrics
         pass
-    
+
     async def _send_webhook(self, data: dict):
         """Send data to webhook endpoint."""
         # Implement webhook sending logic
@@ -343,25 +343,25 @@ metrics = CacheMetrics([custom_collector])
 ```python
 async def track_business_metrics(cache_metrics: CacheMetrics):
     """Track business-specific metrics."""
-    
+
     # Track user actions
     await cache_metrics.increment(
         "user.login",
         tags={"source": "api", "method": "oauth"}
     )
-    
+
     # Track application state
     await cache_metrics.gauge(
         "active_sessions",
         value=get_active_session_count(),
         tags={"server": "web-01"}
     )
-    
+
     # Track request processing time
     timer_id = cache_metrics.start_timer("request_processing")
-    
+
     # ... process request ...
-    
+
     await cache_metrics.end_timer(timer_id, "request_processing", {
         "endpoint": "/api/users",
         "status_code": "200"
@@ -514,18 +514,18 @@ from yokedcache.monitoring import CacheMetrics
 
 class CacheHealthMonitor:
     """Monitor cache health and performance."""
-    
+
     def __init__(self, cache: YokedCache, metrics: CacheMetrics):
         self.cache = cache
         self.metrics = metrics
         self.monitoring = True
-    
+
     async def start_monitoring(self, interval: int = 60):
         """Start health monitoring loop."""
         while self.monitoring:
             await self._collect_health_metrics()
             await asyncio.sleep(interval)
-    
+
     async def _collect_health_metrics(self):
         """Collect and report health metrics."""
         try:
@@ -533,24 +533,24 @@ class CacheHealthMonitor:
             start_time = time.time()
             is_healthy = await self.cache.health_check()
             response_time = time.time() - start_time
-            
+
             # Report health metrics
             await self.metrics.gauge("cache.health", 1.0 if is_healthy else 0.0)
             await self.metrics.timing("cache.health_check_duration", response_time)
-            
+
             if is_healthy:
                 # Collect performance metrics
                 stats = await self.cache.get_stats()
-                
+
                 await self.metrics.gauge("cache.hit_rate", stats.hit_rate)
                 await self.metrics.gauge("cache.size_bytes", stats.total_memory_bytes)
                 await self.metrics.gauge("cache.keys_count", stats.total_keys)
                 await self.metrics.gauge("cache.uptime_seconds", stats.uptime_seconds)
-                
+
         except Exception as e:
             await self.metrics.increment("cache.health_check_errors")
             print(f"Health check failed: {e}")
-    
+
     def stop_monitoring(self):
         """Stop health monitoring."""
         self.monitoring = False
@@ -569,47 +569,47 @@ import time
 
 async def benchmark_cache_performance(cache: YokedCache, metrics: CacheMetrics):
     """Benchmark cache performance and report metrics."""
-    
+
     # Warm up cache
     print("Warming up cache...")
     for i in range(1000):
         await cache.set(f"benchmark:warm:{i}", f"value_{i}")
-    
+
     # Benchmark GET operations
     print("Benchmarking GET operations...")
     get_times = []
-    
+
     for i in range(1000):
         start = time.time()
         await cache.get(f"benchmark:warm:{i % 1000}")
         get_times.append(time.time() - start)
-    
+
     # Report GET performance
     await metrics.gauge("benchmark.get.avg_latency", statistics.mean(get_times))
     await metrics.gauge("benchmark.get.p95_latency", statistics.quantiles(get_times, n=20)[18])
     await metrics.gauge("benchmark.get.p99_latency", statistics.quantiles(get_times, n=100)[98])
-    
+
     # Benchmark SET operations
     print("Benchmarking SET operations...")
     set_times = []
-    
+
     for i in range(1000):
         start = time.time()
         await cache.set(f"benchmark:set:{i}", f"benchmark_value_{i}")
         set_times.append(time.time() - start)
-    
+
     # Report SET performance
     await metrics.gauge("benchmark.set.avg_latency", statistics.mean(set_times))
     await metrics.gauge("benchmark.set.p95_latency", statistics.quantiles(set_times, n=20)[18])
     await metrics.gauge("benchmark.set.p99_latency", statistics.quantiles(set_times, n=100)[98])
-    
+
     # Calculate throughput
     total_ops = len(get_times) + len(set_times)
     total_time = max(get_times) + max(set_times)
     throughput = total_ops / total_time
-    
+
     await metrics.gauge("benchmark.throughput_ops_per_sec", throughput)
-    
+
     print(f"Benchmark complete:")
     print(f"  GET avg: {statistics.mean(get_times)*1000:.2f}ms")
     print(f"  SET avg: {statistics.mean(set_times)*1000:.2f}ms")
@@ -621,31 +621,31 @@ async def benchmark_cache_performance(cache: YokedCache, metrics: CacheMetrics):
 ```python
 class ErrorTrackingMetrics:
     """Track and report error rates."""
-    
+
     def __init__(self, metrics: CacheMetrics):
         self.metrics = metrics
         self.error_counts = {}
-    
+
     async def track_error(self, operation: str, error_type: str, error: Exception):
         """Track an error occurrence."""
         error_key = f"{operation}.{error_type}"
-        
+
         await self.metrics.increment("cache.errors.total", tags={
             "operation": operation,
             "error_type": error_type,
             "error_class": error.__class__.__name__
         })
-        
+
         # Track error rate
         self.error_counts[error_key] = self.error_counts.get(error_key, 0) + 1
-    
+
     async def calculate_error_rates(self, total_operations: dict):
         """Calculate and report error rates."""
         for error_key, error_count in self.error_counts.items():
             operation = error_key.split('.')[0]
             total_ops = total_operations.get(operation, 1)
             error_rate = error_count / total_ops
-            
+
             await self.metrics.gauge(f"cache.error_rate.{operation}", error_rate)
 
 # Usage with cache operations
@@ -672,17 +672,17 @@ Monitor performance in real-time and alert on issues:
 async def monitor_cache_performance():
     while True:
         metrics = cache.get_comprehensive_metrics()
-        
+
         # Alert on poor performance
         if metrics.hit_rate < 0.70:
             await send_alert(f"Low hit rate: {metrics.hit_rate:.2%}")
-        
+
         if metrics.avg_response_time > 0.100:
             await send_alert(f"High latency: {metrics.avg_response_time:.3f}s")
-        
+
         if metrics.error_rate > 0.01:
             await send_alert(f"High error rate: {metrics.error_rate:.3%}")
-        
+
         await asyncio.sleep(30)  # Check every 30 seconds
 ```
 
@@ -707,7 +707,7 @@ alert_manager.add_alert(
 )
 
 alert_manager.add_alert(
-    name="high_latency", 
+    name="high_latency",
     metric="avg_response_time",
     threshold=0.100,
     comparison="greater_than",

@@ -18,19 +18,16 @@ repos:
     hooks:
       - id: mypy
         args: [--ignore-missing-imports, --no-strict-optional]
+        exclude: ^(scripts/|examples/)
         additional_dependencies:
           - types-PyYAML
           - types-redis
           - types-click
 
-  - repo: local
-    hooks:
-      - id: pytest
-        name: Run tests with pytest
-        entry: pytest
-        language: system
-        pass_filenames: false
-        args: [--tb=short, -v]
+  # Note: pytest is intentionally excluded from pre-commit hooks
+  # Tests should run in CI/CD pipeline, not on every commit
+  # To run tests manually: pytest
+  # To run tests before push: pre-push hook (if configured) or manually
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0

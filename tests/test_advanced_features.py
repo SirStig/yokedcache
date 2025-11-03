@@ -214,7 +214,10 @@ class TestSWRScheduler:
 
         # Verify fetcher was called and cache was updated
         mock_fetcher.assert_called_once()
-        mock_cache.set.assert_called_once_with("test_key", "refreshed_value", 1)
+        # cache.set uses keyword arguments: set(key, value, ttl=..., tags=...)
+        mock_cache.set.assert_called_once_with(
+            "test_key", "refreshed_value", ttl=1, tags=None
+        )
 
         await scheduler.stop()
 

@@ -7,26 +7,35 @@ and similarity calculations for more accurate and semantic search results.
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from .models import CacheEntry, FuzzySearchResult
 
 logger = logging.getLogger(__name__)
 
-try:
+VECTOR_DEPS_AVAILABLE = False
+if TYPE_CHECKING:
     import numpy as np
     from scipy.spatial.distance import euclidean
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.metrics.pairwise import cosine_similarity, manhattan_distances
+else:
+    try:
+        import numpy as np  # type: ignore
+        from scipy.spatial.distance import euclidean  # type: ignore
+        from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore
+        from sklearn.metrics.pairwise import (  # type: ignore
+            cosine_similarity,
+            manhattan_distances,
+        )
 
-    VECTOR_DEPS_AVAILABLE = True
-except ImportError:
-    VECTOR_DEPS_AVAILABLE = False
-    np = None
-    TfidfVectorizer = None
-    cosine_similarity = None
-    euclidean = None
-    manhattan_distances = None
+        VECTOR_DEPS_AVAILABLE = True
+    except ImportError:
+        np = None  # type: ignore[assignment]
+        TfidfVectorizer = None  # type: ignore[assignment]
+        cosine_similarity = None  # type: ignore[assignment]
+        euclidean = None  # type: ignore[assignment]
+        manhattan_distances = None  # type: ignore[assignment]
 
 
 class VectorSimilaritySearch:

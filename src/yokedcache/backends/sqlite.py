@@ -7,12 +7,15 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Set, Union
 
-try:  # pragma: no cover - optional dependency
+if TYPE_CHECKING:
     import aiosqlite
-except Exception:  # pragma: no cover - optional dependency
-    aiosqlite = None
+else:
+    try:  # pragma: no cover - optional dependency
+        import aiosqlite  # type: ignore
+    except Exception:  # pragma: no cover - optional dependency
+        aiosqlite = None  # type: ignore[assignment]
 
 from ..models import CacheStats, FuzzySearchResult
 from .base import CacheBackend

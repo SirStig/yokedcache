@@ -6,8 +6,8 @@ featuring automatic cache invalidation, fuzzy search capabilities, and intellige
 database integration.
 """
 
-__version__ = "0.2.4"
-__author__ = "Project Yoked LLC"
+__version__ = "0.3.0"
+__author__ = "SirStig"
 __email__ = "twogoodgamer2@gmail.com"
 __license__ = "MIT"
 
@@ -92,7 +92,7 @@ try:
     from .tracing import CacheTracer, initialize_tracing
 except ImportError:
     CacheTracer = None  # type: ignore
-    initialize_tracing = None
+    initialize_tracing = None  # type: ignore[assignment]
 
 __all__ = [
     # Core classes

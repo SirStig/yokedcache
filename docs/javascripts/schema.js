@@ -34,7 +34,7 @@
             "price": "0",
             "priceCurrency": "USD"
         },
-        "softwareVersion": "0.2.1",
+        "softwareVersion": "0.3.0",
         "requirements": "Python 3.9+",
         "featureList": [
             "Redis caching with auto-invalidation",

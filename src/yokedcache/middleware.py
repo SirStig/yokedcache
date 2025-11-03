@@ -32,7 +32,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 try:  # pragma: no cover - optional fastapi/starlette usage
     from fastapi import Request
 except Exception:  # pragma: no cover
-    Request = Any
+    Request = Any  # type: ignore[assignment,misc]
 
 
 class HTTPCacheMiddleware:  # pragma: no cover - integration layer

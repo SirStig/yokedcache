@@ -1,7 +1,7 @@
 """
 YokedCache Advanced Features Demo
 
-This example demonstrates the new advanced caching features introduced in v0.2.4:
+This example demonstrates the new advanced caching features introduced in v0.3.0:
 - HTTP Response Middleware
 - Single-Flight Protection
 - Stale-While-Revalidate

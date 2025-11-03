@@ -24,8 +24,8 @@ try:
 
     REDIS_AVAILABLE = True
 except ImportError:
-    redis = None
-    ConnectionPool = None  # type: ignore
+    redis = None  # type: ignore[assignment]
+    ConnectionPool = None  # type: ignore[assignment,misc]
     REDIS_AVAILABLE = False
 
 from .circuit_breaker import CircuitBreaker, CircuitBreakerError, RetryWithBackoff

@@ -19,6 +19,8 @@ YokedCache is a powerful, async-first Python caching library that brings enterpr
 - **🛡️ Production-Ready**: Health checks, error handling, and security features
 - **🔐 Resilient**: Circuit breaker, retry logic, and graceful fallbacks *(v0.2.1)*
 - **⚡ Enhanced**: Smart async/sync context handling and performance optimizations *(v0.2.1)*
+- **🌐 Advanced Patterns**: HTTP middleware, single-flight protection, stale-while-revalidate *(v0.3.0)*
+- **🔍 Observability**: OpenTelemetry tracing and per-prefix backend routing *(v0.3.0)*
 
 ## Quick Start - Python FastAPI Redis Caching
 
@@ -65,6 +67,7 @@ Powerful capabilities for complex use cases:
 - **[Backends & Setup](backends.md)** - Memory, Redis, Memcached backends with setup guides
 - **[Vector Search](vector-search.md)** - Semantic similarity search capabilities
 - **[Monitoring & Health](monitoring.md)** - Comprehensive monitoring, health checks, and alerting *(v0.2.1)*
+- **[Advanced Caching Patterns](usage-patterns.md#advanced-caching-patterns-v030)** - HTTP middleware, SWR, single-flight protection *(v0.3.0)*
 
 ### 📖 **Reference**
 Detailed technical documentation:
@@ -115,7 +118,19 @@ pip install yokedcache[vector]      # Vector search
 pip install yokedcache[monitoring]  # Prometheus & StatsD
 pip install yokedcache[memcached]   # Memcached backend
 pip install yokedcache[fuzzy]       # Fuzzy search
+pip install yokedcache[disk]        # DiskCache backend (v0.3.0)
+pip install yokedcache[tracing]     # OpenTelemetry tracing (v0.3.0)
 ```
+
+## What's New in 0.3.0
+
+- **🌐 HTTP Response Middleware**: ETag/Cache-Control headers with 304 Not Modified responses
+- **🛡️ Single-Flight Protection**: Prevents cache stampede with automatic deduplication
+- **🔄 Stale-While-Revalidate**: Serve stale data while refreshing in background
+- **💪 Stale-If-Error**: Fallback to cached data during service failures
+- **🔀 Per-Prefix Routing**: Shard cache keys across multiple backends by prefix
+- **📊 OpenTelemetry Integration**: Distributed tracing with spans and metrics
+- **💾 New Backends**: DiskCache and SQLite backends for persistent caching
 
 ## What's New in 0.2.0
 

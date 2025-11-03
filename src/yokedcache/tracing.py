@@ -8,23 +8,28 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 # Optional OpenTelemetry imports
-try:
+TRACING_AVAILABLE = False
+if TYPE_CHECKING:
     from opentelemetry import trace
     from opentelemetry.semconv.trace import SpanAttributes
     from opentelemetry.trace import Status, StatusCode
+else:
+    try:
+        from opentelemetry import trace  # type: ignore
+        from opentelemetry.semconv.trace import SpanAttributes  # type: ignore
+        from opentelemetry.trace import Status, StatusCode  # type: ignore
 
-    TRACING_AVAILABLE = True
-except ImportError:
-    trace = None
-    Status = None
-    StatusCode = None
-    SpanAttributes = None
-    TRACING_AVAILABLE = False
+        TRACING_AVAILABLE = True
+    except ImportError:
+        trace = None  # type: ignore[assignment]
+        Status = None  # type: ignore[assignment,misc]
+        StatusCode = None  # type: ignore[assignment,misc]
+        SpanAttributes = None  # type: ignore[assignment,misc]
 
 
 class CacheTracer:
@@ -136,9 +141,9 @@ def initialize_tracing(
     if enabled and TRACING_AVAILABLE and sample_rate < 1.0:
         try:
             from opentelemetry.sdk.trace import TracerProvider
-            from opentelemetry.sdk.trace.sampling import TraceIdRatioBasedSampler
+            from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
 
-            sampler = TraceIdRatioBasedSampler(sample_rate)
+            sampler = TraceIdRatioBased(sample_rate)
             trace.set_tracer_provider(TracerProvider(sampler=sampler))
             logger.debug(f"Set trace sampling rate to {sample_rate}")
         except ImportError:

@@ -262,13 +262,13 @@ async def get_user(user_id: int, db=Depends(cached_get_db)):
 
 ```python
 from fastapi import FastAPI
-from yokedcache.middleware import CacheMiddleware
+from yokedcache.middleware import HTTPCacheMiddleware
 
 app = FastAPI()
 
 # Add HTTP caching middleware
 app.add_middleware(
-    CacheMiddleware,
+    HTTPCacheMiddleware,
     cache_ttl=300,
     cache_key_prefix="http",
     include_paths=["/api/*"],
@@ -585,4 +585,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Made with care by [Project Yoked LLC](https://github.com/sirstig)**
+**Made with care by [SirStig](https://github.com/sirstig)**

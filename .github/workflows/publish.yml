@@ -95,7 +95,7 @@ jobs:
 
       - name: Type check
         run: |
-          mypy src --ignore-missing-imports
+          mypy src --ignore-missing-imports --disable-error-code=unused-ignore
 
   build-and-publish:
     name: Build and Publish to PyPI

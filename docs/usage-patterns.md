@@ -543,6 +543,162 @@ async def get_with_fallback(key):
     )
 ```
 
+## Advanced Caching Patterns *(v0.3.0)*
+
+YokedCache 0.3.0 introduces powerful advanced caching patterns designed for high-performance, production-ready applications.
+
+### HTTP Response Middleware
+
+Add HTTP caching middleware to FastAPI applications for automatic ETag and Cache-Control header management:
+
+```python
+from fastapi import FastAPI
+from yokedcache import YokedCache
+from yokedcache.middleware import HTTPCacheMiddleware
+
+app = FastAPI()
+cache = YokedCache()
+
+# Add HTTP caching middleware
+app.add_middleware(
+    HTTPCacheMiddleware,
+    cache=cache,
+    default_ttl=300,
+    include_query=False,
+    cache_control="public, max-age=300"
+)
+
+@app.get("/api/users/{user_id}")
+async def get_user(user_id: int):
+    # Response automatically cached with ETag headers
+    # Returns 304 Not Modified for unchanged data
+    return {"id": user_id, "name": "John Doe"}
+```
+
+### Single-Flight Protection
+
+Prevent cache stampede by ensuring only one request computes a value while others wait:
+
+```python
+from yokedcache import YokedCache, CacheConfig
+
+config = CacheConfig(
+    redis_url="redis://localhost:6379",
+    enable_single_flight=True
+)
+cache = YokedCache(config)
+
+async def expensive_computation():
+    # This will only run once, even with concurrent requests
+    await asyncio.sleep(5)
+    return compute_expensive_data()
+
+# Multiple concurrent requests - only one computation runs
+results = await asyncio.gather(
+    cache.fetch_or_set("expensive_key", expensive_computation, ttl=300),
+    cache.fetch_or_set("expensive_key", expensive_computation, ttl=300),
+    cache.fetch_or_set("expensive_key", expensive_computation, ttl=300),
+)
+# All results are identical, but computation only ran once
+```
+
+### Stale-While-Revalidate (SWR)
+
+Serve stale cached data immediately while refreshing in the background:
+
+```python
+from yokedcache import YokedCache, CacheConfig
+
+config = CacheConfig(
+    redis_url="redis://localhost:6379",
+    enable_stale_while_revalidate=True
+)
+cache = YokedCache(config)
+
+# Function that returns stale data immediately and refreshes in background
+async def get_user_data(user_id: int):
+    return await cache.fetch_or_set(
+        f"user:{user_id}",
+        lambda: fetch_user_from_db(user_id),
+        ttl=60
+    )
+```
+
+### Stale-If-Error
+
+Fallback to cached data when the primary data source fails:
+
+```python
+from yokedcache import YokedCache, CacheConfig
+
+config = CacheConfig(
+    redis_url="redis://localhost:6379",
+    enable_stale_if_error=True,
+    stale_if_error_ttl=120  # Serve stale for up to 2 minutes after TTL expires
+)
+cache = YokedCache(config)
+
+async def get_data_with_fallback(key: str):
+    try:
+        return await fetch_fresh_data(key)
+    except Exception:
+        # Returns stale cached data if available
+        return await cache.get(key, default=None)
+```
+
+### Per-Prefix Backend Routing
+
+Route different cache keys to different backends based on key prefixes:
+
+```python
+from yokedcache import YokedCache
+from yokedcache.backends import DiskCacheBackend, RedisBackend
+
+cache = YokedCache()
+
+# Setup prefix-based routing
+cache.setup_prefix_routing()
+
+# Route different data types to different backends
+cache.add_backend_route("user:", RedisBackend("redis://localhost:6379/0"))
+cache.add_backend_route("temp:", DiskCacheBackend("/tmp/cache"))
+cache.add_backend_route("session:", RedisBackend("redis://localhost:6379/1"))
+
+# Data automatically routed based on key prefix
+await cache.set("user:123", user_data)      # -> Redis DB 0
+await cache.set("temp:abc", temp_data)      # -> Disk cache
+await cache.set("session:xyz", session)     # -> Redis DB 1
+```
+
+### OpenTelemetry Distributed Tracing
+
+Enable distributed tracing for cache operations:
+
+```python
+from yokedcache import YokedCache, CacheConfig
+from yokedcache.tracing import initialize_tracing
+
+# Initialize global tracing
+initialize_tracing(
+    service_name="my-api",
+    enabled=True,
+    sample_rate=1.0
+)
+
+config = CacheConfig(
+    redis_url="redis://localhost:6379",
+    enable_tracing=True
+)
+cache = YokedCache(config)
+
+# All cache operations automatically traced
+async with cache._tracer.trace_operation("get_user", "user:123"):
+    user = await cache.get("user:123")
+    # Span includes timing, hit/miss, backend info
+```
+
+These advanced patterns enable sophisticated caching strategies for high-performance, production applications.
+
 ## Performance Optimization Patterns
 
 ### Connection Reuse

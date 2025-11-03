@@ -28,7 +28,7 @@ try:
     AIOMCACHE_AVAILABLE = True
 except ImportError:
     AIOMCACHE_AVAILABLE = False
-    aiomcache = None
+    aiomcache = None  # type: ignore[assignment]
 
 
 class MemcachedBackend(CacheBackend):

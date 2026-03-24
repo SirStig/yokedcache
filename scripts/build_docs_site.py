@@ -240,6 +240,9 @@ def main() -> int:
                 api_href=site_href("api/index.html"),
                 docs_first_href=site_href("getting-started.html"),
                 version=version,
+                favicon_href=site_href("favicon.png"),
+                favicon_svg_href=site_href("favicon.svg"),
+                og_image_url=f"{SITE_URL}/og-image.png",
             )
             out_path.write_text(html, encoding="utf-8")
 

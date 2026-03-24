@@ -162,9 +162,9 @@ async def _display_stats(cache: YokedCache, format: str, output: Optional[str] =
             "table_stats": stats.table_stats,
             "tag_stats": stats.tag_stats,
         }
-        output_content = orjson.dumps(
-            stats_dict, option=orjson.OPT_INDENT_2
-        ).decode("utf-8")
+        output_content = orjson.dumps(stats_dict, option=orjson.OPT_INDENT_2).decode(
+            "utf-8"
+        )
         if output:
             with open(output, "w") as f:
                 f.write(output_content)

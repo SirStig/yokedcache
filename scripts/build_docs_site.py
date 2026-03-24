@@ -8,6 +8,7 @@ import re
 import shutil
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 import markdown
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -74,10 +75,19 @@ def md_to_html_path(md_rel: str) -> str:
     return Path(md_rel).with_suffix(".html").as_posix()
 
 
-def rel_href(from_page: str, to_page: str) -> str:
-    a = Path(from_page).parent
-    b = Path(to_page)
-    return Path(os.path.relpath(b, a)).as_posix()
+def _link_path_segment() -> str:
+    raw = os.environ.get("YOKEDCACHE_SITE_PATH_PREFIX")
+    if raw is not None:
+        return raw.strip().strip("/")
+    return urlparse(SITE_URL).path.strip("/")
+
+
+def site_href(rel_path: str) -> str:
+    rel = rel_path.strip().lstrip("/")
+    seg = _link_path_segment()
+    if seg:
+        return f"/{seg}/{rel}"
+    return f"/{rel}"
 
 
 def title_from_first_h1(body: str) -> str | None:
@@ -141,11 +151,11 @@ def nav_context(current_out: str) -> list[dict]:
         links = []
         for title, src in items:
             if src == "__api__":
-                href = rel_href(current_out, "api/index.html")
+                href = site_href("api/index.html")
                 cur = current_out.startswith("api/")
             else:
                 target = md_to_html_path(src)
-                href = rel_href(current_out, target)
+                href = site_href(target)
                 cur = current_out == target
             links.append({"title": title, "href": href, "current": cur})
         groups.append({"label": label, "links": links})
@@ -215,9 +225,6 @@ def main() -> int:
             )
             canonical = f"{SITE_URL}/{out_rel}"
 
-            depth = len(Path(out_rel).parent.parts)
-            ap = "../" * depth
-
             html = tpl.render(
                 title=title,
                 description=desc,
@@ -226,11 +233,12 @@ def main() -> int:
                 body_html=body_html,
                 toc_html=toc_html,
                 nav_groups=nav_context(out_rel),
-                asset_prefix=ap,
-                home_href=rel_href(out_rel, "index.html"),
-                changelog_href=rel_href(out_rel, "changelog.html"),
-                api_href=rel_href(out_rel, "api/index.html"),
-                docs_first_href=rel_href(out_rel, "getting-started.html"),
+                asset_style_href=site_href("assets/style.css"),
+                asset_script_href=site_href("assets/app.js"),
+                home_href=site_href("index.html"),
+                changelog_href=site_href("changelog.html"),
+                api_href=site_href("api/index.html"),
+                docs_first_href=site_href("getting-started.html"),
                 version=version,
             )
             out_path.write_text(html, encoding="utf-8")

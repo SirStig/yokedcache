@@ -93,7 +93,7 @@ case "$1" in
         log_info "Building documentation..."
         activate_env
         pip install -q -e ".[docs]" 2>/dev/null || true
-        python scripts/build_docs_site.py
+        YOKEDCACHE_SITE_PATH_PREFIX= python scripts/build_docs_site.py
         cp CHANGELOG.md site/changelog.md 2>/dev/null || true
         python -m pdoc yokedcache -o site/api --template-directory site-src/pdoc-template
         log_success "Documentation built in site/"
@@ -103,7 +103,7 @@ case "$1" in
         log_info "Starting documentation server..."
         activate_env
         pip install -q -e ".[docs]" 2>/dev/null || true
-        python scripts/build_docs_site.py
+        YOKEDCACHE_SITE_PATH_PREFIX= python scripts/build_docs_site.py
         cp CHANGELOG.md site/changelog.md 2>/dev/null || true
         python -m pdoc yokedcache -o site/api --template-directory site-src/pdoc-template
         cd site && python -m http.server 58080 --bind 0.0.0.0

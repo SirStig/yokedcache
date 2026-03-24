@@ -26,6 +26,9 @@ First stable 1.x release. Published as **1.0.0** (not a PEP 440 pre-release) so 
 
 ### Changed
 
+- **Minimum Python is now 3.10** (was 3.9). Python 3.9 is EOL; raising the floor lets the lockfile use **filelock** ≥3.25.2 (fixes symlink / TOCTOU issues in older releases). **Supported and CI-tested:** 3.10–3.14. **Python 3.9** installs should stay on **`yokedcache==0.3.0`** (or any `0.3.x`); that line does not receive the 1.x security or dependency hardening—upgrade Python and yokedcache when you can (see docs site *Getting started* and `SECURITY.md`).
+- **black** 26.3.1 in dev / pre-commit (CVE-2026-32274: cache path handling).
+- **orjson** minimum raised to **≥3.11.6** (addresses unbounded recursion in `loads`/`dumps` on deeply nested JSON in earlier 3.x lines).
 - Redis pattern flush, invalidation, fuzzy key listing, and CLI `list` use `SCAN` / `scan_iter` instead of `KEYS`.
 - Long cache keys: `sanitize_key` now uses full-length SHA-256 for the hashed suffix (replacing truncated MD5).
 - `PrefixRouter.invalidate_pattern` selects the backend using the same longest-prefix rule as `get_backend`.
@@ -33,7 +36,7 @@ First stable 1.x release. Published as **1.0.0** (not a PEP 440 pre-release) so 
 - In-memory Redis fallback (`_InMemoryRedis`) implements `scan_iter` for compatibility with scan-based code paths.
 - `DiskCacheBackend` creates the thread pool on `connect` and shuts down the executor on `disconnect`.
 - `HTTPCacheMiddleware` normalizes `If-None-Match` (quoted tokens, `*`, comma-separated lists) for 304 handling.
-- Replaced stdlib `json` with `orjson` for JSON cache payloads, key hashing, decorators, vector metadata fields, and CLI `--format json` output; adds dependency `orjson>=3.9.0`. Rationale: `orjson` is a fast native-backed serializer, and these paths run on every JSON cache hit/miss and during key construction, so reducing serialization cost improves throughput versus pure-Python `json`.
+- Replaced stdlib `json` with `orjson` for JSON cache payloads, key hashing, decorators, vector metadata fields, and CLI `--format json` output; dependency `orjson>=3.11.6`. Rationale: `orjson` is a fast native-backed serializer, and these paths run on every JSON cache hit/miss and during key construction, so reducing serialization cost improves throughput versus pure-Python `json`.
 
 ### Fixed
 

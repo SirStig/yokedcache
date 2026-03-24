@@ -410,13 +410,11 @@ class TestCLIConfiguration:
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".yaml", delete=False
         ) as tmp_file:
-            tmp_file.write(
-                """
+            tmp_file.write("""
 redis_url: redis://localhost:6379/1
 default_ttl: 600
 key_prefix: test
-"""
-            )
+""")
             config_path = tmp_file.name
 
         try:

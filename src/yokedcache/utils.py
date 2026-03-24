@@ -7,13 +7,13 @@ data serialization, hashing, and other helper operations.
 
 import hashlib
 import logging
-
-import orjson
 import pickle
 import time
 from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, Dict, List, Optional, Set, Union
+
+import orjson
 
 from .exceptions import CacheSerializationError
 from .models import SerializationMethod

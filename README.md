@@ -69,8 +69,10 @@ async def get_user(user_id: int, db=Depends(cached_get_db)):
 
 | | Minimum |
 |---|---|
-| Python | 3.9+ |
+| Python | 3.10+ for **yokedcache 1.x** (tested on 3.10 through 3.14 in CI) |
 | Redis | 4.x client; server 6+ typical for production |
+
+**Python 3.9** is unsupported on 1.x (transitive deps such as patched **filelock** require 3.10+). If you must stay on 3.9, pin **`yokedcache==0.3.0`** (or `0.3.x`); that release line is **not** maintained for new security fixes—plan an upgrade.
 
 Other backends impose their own dependencies when you install the matching extra.
 
@@ -84,7 +86,7 @@ Other backends impose their own dependencies when you install the matching extra
 
 ## Security
 
-Treat Redis and Memcached as **trusted** stores: anyone who can write arbitrary keys can affect deserialization. From **1.0.0**, new values are written with a typed envelope; set `allow_legacy_insecure_deserialization=False` on `CacheConfig` once legacy entries are migrated. Do not use `HTTPCacheMiddleware` on authenticated routes without a `key_builder` that varies the key per user or session. See the changelog for details.
+Treat Redis and Memcached as **trusted** stores: anyone who can write arbitrary keys can affect deserialization. From **1.0.0**, new values are written with a typed envelope; set `allow_legacy_insecure_deserialization=False` on `CacheConfig` once legacy entries are migrated. Do not use `HTTPCacheMiddleware` on authenticated routes without a `key_builder` that varies the key per user or session. See the changelog for details. The **[SECURITY.md](SECURITY.md)** file covers the optional disk backend (pickle / `diskcache`) and how we pin vulnerable transitive deps in `uv.lock`.
 
 ## Development
 

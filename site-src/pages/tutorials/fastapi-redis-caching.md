@@ -18,7 +18,7 @@ This comprehensive tutorial shows you how to implement high-performance caching 
 
 ## Prerequisites
 
-- Python 3.9+
+- Python 3.10 or newer (3.10–3.14 tested in upstream CI)
 - FastAPI application
 - Redis server (local or cloud)
 - Basic understanding of async/await

@@ -7,10 +7,10 @@ and similarity calculations for more accurate and semantic search results.
 
 import ast
 import logging
-
-import orjson
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+
+import orjson
 
 from .models import CacheEntry, FuzzySearchResult
 

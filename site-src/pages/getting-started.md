@@ -47,6 +47,18 @@ pip install "yokedcache[fuzzy]==1.0.0"
 pip install "yokedcache[vector,monitoring,fuzzy]==1.0.0"
 ```
 
+## Python versions
+
+**YokedCache 1.x** requires **Python 3.10 or newer**. The project is tested in CI on **3.10, 3.11, 3.12, 3.13, and 3.14**.
+
+If you are still on **Python 3.9** (EOL), **pip will not install 1.x**; use the last **0.3** release instead, for example:
+
+```bash
+pip install "yokedcache==0.3.0"
+```
+
+That **`0.3.x` line is legacy**: it does not include 1.x security hardening (envelope format, safer vector metadata parsing, updated minimum **orjson**, patched transitive **filelock** in our lockfile, and so on). Treat it as a temporary bridge and **upgrade Python and yokedcache** when possible. See the repository **[SECURITY.md](https://github.com/sirstig/yokedcache/blob/main/SECURITY.md)** for trust boundaries and dependency notes.
+
 ## Prerequisites
 
 ### Redis Setup

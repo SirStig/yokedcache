@@ -6,7 +6,7 @@ We welcome contributions to YokedCache! This document provides guidelines for co
 
 ### Prerequisites
 
-- Python 3.9 or higher
+- Python 3.10 or higher (GitHub Actions tests **3.10–3.14**)
 - Redis server
 - Git
 

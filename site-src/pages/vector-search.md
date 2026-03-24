@@ -125,7 +125,7 @@ Vector search requires additional dependencies:
 
 ```bash
 # Install vector search dependencies
-pip install "yokedcache[vector]==1.0.0"
+pip install "yokedcache[vector]"
 
 # Or install manually
 pip install numpy scipy scikit-learn

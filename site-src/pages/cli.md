@@ -8,7 +8,7 @@ The CLI is automatically available after installing YokedCache:
 
 ```bash
 # Install YokedCache
-pip install "yokedcache==1.0.0"
+pip install yokedcache
 
 # Verify CLI installation
 yokedcache --version

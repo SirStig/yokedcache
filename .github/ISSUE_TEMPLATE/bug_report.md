@@ -7,6 +7,8 @@ assignees: ''
 
 ---
 
+Do **not** use this template for undisclosed security issues—use **[Security advisories](https://github.com/sirstig/yokedcache/security/advisories/new)** instead. Known third-party notes (e.g. optional **diskcache** / **CVE-2025-69872**) are summarized in [`SECURITY.md`](https://github.com/sirstig/yokedcache/blob/main/SECURITY.md).
+
 **Describe the bug**
 A clear and concise description of what the bug is.
 

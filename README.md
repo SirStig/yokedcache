@@ -24,13 +24,13 @@ Async-first Python caching for FastAPI and other asyncio services: Redis-oriente
 
 ## Installation
 
-Current stable line: **1.0.0** (default on PyPI).
+Install the latest **1.x** from PyPI; you do not need to pin an exact version unless your policy requires it.
 
 ```bash
 pip install yokedcache
 ```
 
-To require 1.x or newer:
+To require 1.x or newer explicitly:
 
 ```bash
 pip install "yokedcache>=1.0.0"
@@ -86,7 +86,9 @@ Other backends impose their own dependencies when you install the matching extra
 
 ## Security
 
-Treat Redis and Memcached as **trusted** stores: anyone who can write arbitrary keys can affect deserialization. From **1.0.0**, new values are written with a typed envelope; set `allow_legacy_insecure_deserialization=False` on `CacheConfig` once legacy entries are migrated. Do not use `HTTPCacheMiddleware` on authenticated routes without a `key_builder` that varies the key per user or session. See the changelog for details. The **[SECURITY.md](SECURITY.md)** file covers the optional disk backend (pickle / `diskcache`) and how we pin vulnerable transitive deps in `uv.lock`.
+Treat Redis and Memcached as **trusted** stores: anyone who can write arbitrary keys can affect deserialization. From **1.0.0**, new values are written with a typed envelope; set `allow_legacy_insecure_deserialization=False` on `CacheConfig` once legacy entries are migrated. Do not use `HTTPCacheMiddleware` on authenticated routes without a `key_builder` that varies the key per user or session. See the changelog for details.
+
+**Optional `disk` extra:** installs **diskcache**, which uses **pickle** by default. **[CVE-2025-69872](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v)** (GHSA-w8v5-vhqr-4h9v) documents unsafe pickle deserialization when an attacker can write the cache directory; **there is no patched diskcache release on PyPI yet**, so dependency scanners may still alert. Use a non-world-writable cache path and skip `yokedcache[disk]` if you do not need disk persistence. Full write-up: **[SECURITY.md](SECURITY.md)** (also covers how we pin transitive deps in `uv.lock`).
 
 ## Development
 

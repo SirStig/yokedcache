@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Documentation
+
+- Documented the optional **diskcache** advisory (**CVE-2025-69872** / [GHSA-w8v5-vhqr-4h9v](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v)) in `SECURITY.md`, the README Security section, the docs site *Security* page, `CONTRIBUTING.md`, and the GitHub bug report template (no patched upstream wheel at the time of writing; trust boundaries and mitigations).
+
 ## [1.0.0] - 2026-03-23
 
 First stable 1.x release. Published as **1.0.0** (not a PEP 440 pre-release) so a plain `pip install yokedcache` resolves to this line ahead of 0.x. Focus: security hardening, safer Redis usage, and clearer HTTP cache semantics.

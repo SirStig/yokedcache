@@ -4,7 +4,7 @@
 
 ## Summary
 
-- Package: yokedcache (PyPI), current version **1.0.0**; **Python 3.10+** (CI: 3.10–3.14). Python **3.9**: legacy **`yokedcache==0.3.0`** only—no 1.x security backports; upgrade recommended.
+- Package: yokedcache (PyPI), latest **1.x** via `pip install yokedcache` (pin only if your policy requires it); **Python 3.10+** (CI: 3.10–3.14). Python **3.9**: legacy **`yokedcache==0.3.0`** or **`yokedcache<1`** only—no 1.x security backports; upgrade recommended.
 - Docs: https://sirstig.github.io/yokedcache/
 - API (HTML): https://sirstig.github.io/yokedcache/api/
 - Changelog: https://sirstig.github.io/yokedcache/changelog.html

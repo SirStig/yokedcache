@@ -5,7 +5,27 @@ Report vulnerabilities via [GitHub Security Advisories](https://github.com/sirst
 ## Trust boundaries
 
 - **Redis / Memcached**: Treat as trusted stores. Anyone who can write arbitrary keys can influence what your app deserializes. Use `CacheConfig.allow_legacy_insecure_deserialization=False` once legacy blobs are gone (see changelog).
-- **Disk backend (`yokedcache[disk]`)**: The optional `diskcache` library persists values with **pickle** by default. There is **no patched diskcache release** yet for [CVE-2025-69872](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v) (unsafe pickle deserialization if an attacker can write the cache directory). Only use the disk extra when the cache directory is **not writable by untrusted users**; prefer JSON/msgpack serialization at the application layer where feasible.
+
+## Optional disk backend (`diskcache`)
+
+The **`yokedcache[disk]`** extra pulls in **[diskcache](https://pypi.org/project/diskcache/)** (python-diskcache). That library persists values with **pickle** by default.
+
+| | |
+| --- | --- |
+| **Advisory** | [GHSA-w8v5-vhqr-4h9v](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v) (**CVE-2025-69872**) |
+| **Affected** | diskcache **through 5.6.3** (current PyPI line as of this writing) |
+| **Patched PyPI version** | **None** yet; automated scanners may flag the dependency until upstream ships a release |
+
+**Threat model:** someone who can **write or replace files under the cache directory** can supply a malicious pickle payload; when your process reads that entry, that can lead to **arbitrary code execution**.
+
+**What we recommend**
+
+- Do **not** install the disk extra unless you need a filesystem-backed cache.
+- Keep the cache directory **writable only by the application user** (no shared multi-tenant paths, no world-writable directories, careful with network mounts).
+- Prefer **Redis, SQLite, or memory** backends when untrusted parties could influence the filesystem.
+- At the application layer, only cache payloads you could treat as **trusted after deserialization**; JSON or msgpack at the boundary does not remove the pickle risk inside diskcache until you stop using pickle-backed storage for those keys.
+
+**Upstream note:** diskcache also provides **`JSONDisk`** (JSON + zlib instead of pickle). **YokedCache’s `DiskCacheBackend`** currently constructs `diskcache.Cache` with the default disk (pickle). Callers who require disk without pickle need a custom integration or another backend until this project exposes a supported switch.
 
 ## Dependency scanning
 

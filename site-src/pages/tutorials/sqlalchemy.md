@@ -14,7 +14,7 @@ Learn how to integrate YokedCache with SQLAlchemy for high-performance database 
 
 ```bash
 # Install dependencies
-pip install "yokedcache[full]==1.0.0" sqlalchemy psycopg2-binary
+pip install "yokedcache[full]" sqlalchemy psycopg2-binary
 
 # Start Redis
 docker run -d --name redis -p 6379:6379 redis:7

@@ -219,6 +219,10 @@ yokedcache/
 - **Discussions:** Use GitHub Discussions for questions
 - **Chat:** Join our community chat (link TBD)
 
+## Security
+
+Report vulnerabilities through [GitHub Security Advisories](https://github.com/sirstig/yokedcache/security/advisories/new). Maintainer-facing notes on trust boundaries, optional backends, and known third-party advisories (including **diskcache** / **CVE-2025-69872** for the optional `disk` extra) live in **[SECURITY.md](SECURITY.md)** in the repository root.
+
 ## Code of Conduct
 
 By participating in this project, you agree to abide by our Code of Conduct:

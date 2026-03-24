@@ -14,7 +14,13 @@ This guide will walk you through installing YokedCache and setting up your first
 
 ```bash
 # Install the core YokedCache package for Python FastAPI Redis caching
-pip install "yokedcache==1.0.0"
+pip install yokedcache
+```
+
+If you want an explicit 1.x floor (optional):
+
+```bash
+pip install "yokedcache>=1.0.0"
 ```
 
 ### Recommended Installation for Production FastAPI Applications
@@ -23,7 +29,7 @@ For production FastAPI applications, install YokedCache with all Redis caching f
 
 ```bash
 # Install with all Redis caching features (recommended for FastAPI)
-pip install "yokedcache[full]==1.0.0"
+pip install "yokedcache[full]"
 ```
 
 ### Feature-Specific Installation for Custom Python Setups
@@ -32,19 +38,19 @@ Install only the Redis caching features you need for your Python application:
 
 ```bash
 # Vector similarity search caching
-pip install "yokedcache[vector]==1.0.0"
+pip install "yokedcache[vector]"
 
 # Production monitoring for Redis cache (Prometheus, StatsD)
-pip install "yokedcache[monitoring]==1.0.0"
+pip install "yokedcache[monitoring]"
 
 # Memcached backend support
-pip install "yokedcache[memcached]==1.0.0"
+pip install "yokedcache[memcached]"
 
 # Fuzzy search capabilities for cached data
-pip install "yokedcache[fuzzy]==1.0.0"
+pip install "yokedcache[fuzzy]"
 
 # Combine multiple caching features
-pip install "yokedcache[vector,monitoring,fuzzy]==1.0.0"
+pip install "yokedcache[vector,monitoring,fuzzy]"
 ```
 
 ## Python versions
@@ -510,7 +516,7 @@ pip list | grep yokedcache
 
 # Reinstall if needed
 pip uninstall yokedcache
-pip install "yokedcache[full]==1.0.0"
+pip install "yokedcache[full]"
 ```
 
 ### Performance Issues

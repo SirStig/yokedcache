@@ -14,7 +14,7 @@ By the end of this tutorial, you'll have a FastAPI application with:
 
 ```bash
 # Install dependencies
-pip install "yokedcache[full]==1.0.0" fastapi uvicorn sqlalchemy psycopg2-binary
+pip install "yokedcache[full]" fastapi uvicorn sqlalchemy psycopg2-binary
 
 # Start Redis (using Docker)
 docker run -d --name redis -p 6379:6379 redis:7

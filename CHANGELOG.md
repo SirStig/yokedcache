@@ -5,15 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-## [1.0.0-beta] - 2026-03-24
+## [1.0.0-beta] - 2026-03-23
 
 First beta toward 1.0.0. Focus: security hardening, safer Redis usage, and clearer HTTP cache semantics.
 
 ### Security
 
-- Replaced use of `eval()` when loading vector metadata from Redis with `json` / `ast.literal_eval`, shape validation, and `numpy.dtype` validation for `RedisVectorSearch.get_vector`.
+- Replaced use of `eval()` when loading vector metadata from Redis with `orjson` / `ast.literal_eval`, shape validation, and `numpy.dtype` validation for `RedisVectorSearch.get_vector`.
 - Introduced a versioned binary envelope for cache values (`serialize_for_cache` / `deserialize_from_cache`) so reads use a single deserialization path; avoids ambiguous JSON-then-pickle fallback on new payloads.
 - Added `CacheConfig.allow_legacy_insecure_deserialization` (default `True`) to allow reading legacy unwrapped blobs during migration; set to `False` when Redis is strictly trusted and legacy entries are gone.
 - Documented that `HTTPCacheMiddleware` must not cache per-user responses without a custom `key_builder`; default keys are only method + path (+ optional query).
@@ -35,6 +33,7 @@ First beta toward 1.0.0. Focus: security hardening, safer Redis usage, and clear
 - In-memory Redis fallback (`_InMemoryRedis`) implements `scan_iter` for compatibility with scan-based code paths.
 - `DiskCacheBackend` creates the thread pool on `connect` and shuts down the executor on `disconnect`.
 - `HTTPCacheMiddleware` normalizes `If-None-Match` (quoted tokens, `*`, comma-separated lists) for 304 handling.
+- Replaced stdlib `json` with `orjson` for JSON cache payloads, key hashing, decorators, vector metadata fields, and CLI `--format json` output; adds dependency `orjson>=3.9.0`. Rationale: `orjson` is a fast native-backed serializer, and these paths run on every JSON cache hit/miss and during key construction, so reducing serialization cost improves throughput versus pure-Python `json`.
 
 ### Fixed
 

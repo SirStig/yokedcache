@@ -8,7 +8,6 @@ and maintenance operations.
 import asyncio
 import csv
 import functools
-import json
 import sys
 import time
 from datetime import datetime
@@ -16,6 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import click
+import orjson
 import yaml
 
 from .cache import YokedCache
@@ -162,7 +162,9 @@ async def _display_stats(cache: YokedCache, format: str, output: Optional[str] =
             "table_stats": stats.table_stats,
             "tag_stats": stats.tag_stats,
         }
-        output_content = json.dumps(stats_dict, indent=2)
+        output_content = orjson.dumps(
+            stats_dict, option=orjson.OPT_INDENT_2
+        ).decode("utf-8")
         if output:
             with open(output, "w") as f:
                 f.write(output_content)
@@ -322,14 +324,14 @@ async def list(
                     key.decode() if isinstance(key, bytes) else str(key) for key in keys
                 ]
                 click.echo(
-                    json.dumps(
+                    orjson.dumps(
                         {
                             "keys": key_list,
                             "count": len(key_list),
                             "pattern": search_pattern,
                         },
-                        indent=2,
-                    )
+                        option=orjson.OPT_INDENT_2,
+                    ).decode("utf-8")
                 )
             else:
                 click.echo(f"Found {len(keys)} keys matching pattern: {search_pattern}")
@@ -750,14 +752,14 @@ async def search(ctx, query: str, threshold: int, max_results: int, format: str)
                 )
 
             click.echo(
-                json.dumps(
+                orjson.dumps(
                     {
                         "query": query,
                         "results": results_data,
                         "count": len(results_data),
                     },
-                    indent=2,
-                )
+                    option=orjson.OPT_INDENT_2,
+                ).decode("utf-8")
             )
 
         else:

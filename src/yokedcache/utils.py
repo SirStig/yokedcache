@@ -6,8 +6,9 @@ data serialization, hashing, and other helper operations.
 """
 
 import hashlib
-import json
 import logging
+
+import orjson
 import pickle
 import time
 from datetime import datetime, timezone
@@ -72,8 +73,8 @@ def _create_query_hash(query: Optional[str], params: Optional[Dict[str, Any]]) -
 
     if params:
         # Sort parameters for consistent hashing
-        sorted_params = json.dumps(params, sort_keys=True, default=str)
-        hash_input += sorted_params
+        sorted_params = orjson.dumps(params, option=orjson.OPT_SORT_KEYS, default=str)
+        hash_input += sorted_params.decode("utf-8")
 
     # Use SHA-256 for consistent, collision-resistant hashing
     return hashlib.sha256(hash_input.encode("utf-8")).hexdigest()[:16]
@@ -97,9 +98,7 @@ def serialize_data(
     """
     try:
         if method == SerializationMethod.JSON:
-            return json.dumps(
-                data, default=_json_serializer, ensure_ascii=False
-            ).encode("utf-8")
+            return orjson.dumps(data, default=_json_serializer)
 
         elif method == SerializationMethod.PICKLE:
             return pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
@@ -145,7 +144,7 @@ def deserialize_data(
     """
     try:
         if method == SerializationMethod.JSON:
-            return json.loads(data.decode("utf-8"))
+            return orjson.loads(data)
 
         elif method == SerializationMethod.PICKLE:
             return pickle.loads(data)

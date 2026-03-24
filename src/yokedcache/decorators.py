@@ -723,7 +723,8 @@ class CachedDatabaseWrapper:
 
         # Hash the arguments
         import hashlib
-        import json
+
+        import orjson
 
         # Convert args and kwargs to hashable representation
         hashable_data = {
@@ -731,8 +732,9 @@ class CachedDatabaseWrapper:
             "kwargs": {k: str(v) for k, v in kwargs.items()},
         }
 
-        data_str = json.dumps(hashable_data, sort_keys=True)
-        query_hash = hashlib.sha256(data_str.encode()).hexdigest()[:16]
+        query_hash = hashlib.sha256(
+            orjson.dumps(hashable_data, option=orjson.OPT_SORT_KEYS)
+        ).hexdigest()[:16]
 
         key_parts.append(f"hash:{query_hash}")
 
@@ -812,7 +814,8 @@ def _build_function_cache_key(
 ) -> str:
     """Build cache key for function calls."""
     import hashlib
-    import json
+
+    import orjson
 
     # Get function signature for consistent key generation
     sig = inspect.signature(func)
@@ -828,15 +831,16 @@ def _build_function_cache_key(
     # Add bound arguments
     for param_name, value in bound_args.arguments.items():
         try:
-            # Try to convert to JSON-serializable format
-            key_data["args"][param_name] = json.loads(json.dumps(value, default=str))
-        except (TypeError, ValueError):
+            key_data["args"][param_name] = orjson.loads(
+                orjson.dumps(value, default=str)
+            )
+        except (TypeError, ValueError, orjson.JSONEncodeError):
             # Fall back to string representation
             key_data["args"][param_name] = str(value)
 
-    # Generate hash
-    data_str = json.dumps(key_data, sort_keys=True)
-    func_hash = hashlib.sha256(data_str.encode()).hexdigest()[:16]
+    func_hash = hashlib.sha256(
+        orjson.dumps(key_data, option=orjson.OPT_SORT_KEYS)
+    ).hexdigest()[:16]
 
     return f"{prefix}:func:{func.__name__}:hash:{func_hash}"
 

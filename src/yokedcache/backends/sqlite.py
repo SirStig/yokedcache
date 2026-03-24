@@ -32,13 +32,15 @@ class SQLiteBackend(CacheBackend):  # pragma: no cover - thin wrapper
         if aiosqlite is None:
             raise RuntimeError("aiosqlite not installed")
         self._db = await aiosqlite.connect(self._path)
-        await self._db.execute("""
+        await self._db.execute(
+            """
             CREATE TABLE IF NOT EXISTS yokedcache (
                 k TEXT PRIMARY KEY,
                 v BLOB,
                 expire_at REAL
             )
-            """)
+            """
+        )
         await self._db.commit()
         self._connected = True
 

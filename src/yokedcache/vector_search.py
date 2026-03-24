@@ -6,8 +6,9 @@ and similarity calculations for more accurate and semantic search results.
 """
 
 import ast
-import json
 import logging
+
+import orjson
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
@@ -51,8 +52,8 @@ def _parse_vector_shape(raw: Any) -> tuple:
     if isinstance(raw, str):
         raw_stripped = raw.strip()
         try:
-            parsed = json.loads(raw_stripped)
-        except json.JSONDecodeError:
+            parsed = orjson.loads(raw_stripped)
+        except orjson.JSONDecodeError:
             parsed = ast.literal_eval(raw_stripped)
     else:
         parsed = raw
@@ -439,7 +440,7 @@ class RedisVectorSearch:
             # Store metadata
             metadata_key = f"{self.vector_key_prefix}:meta:{key}"
             metadata = {
-                "shape": json.dumps(list(vector.shape)),
+                "shape": orjson.dumps(list(vector.shape)).decode("utf-8"),
                 "dtype": str(vector.dtype),
             }
 

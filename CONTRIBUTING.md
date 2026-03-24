@@ -207,8 +207,8 @@ yokedcache/
 3. Create a release PR
 4. After merge, tag the release:
    ```bash
-   git tag -a v1.0.0-beta -m "Release version 1.0.0-beta"
-   git push origin v1.0.0-beta
+   git tag -a v1.0.0 -m "Release version 1.0.0"
+   git push origin v1.0.0
    ```
 5. GitHub Actions will automatically publish to PyPI
 

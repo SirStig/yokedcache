@@ -1,7 +1,7 @@
 """
 YokedCache Advanced Features Demo
 
-This example demonstrates advanced caching features in YokedCache 1.0.0-beta:
+This example demonstrates advanced caching features in YokedCache 1.0.0:
 - HTTP Response Middleware
 - Single-Flight Protection
 - Stale-While-Revalidate

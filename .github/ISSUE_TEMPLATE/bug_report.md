@@ -33,7 +33,7 @@ Paste any error messages or stack traces here
 **Environment (please complete the following information):**
  - OS: [e.g. Ubuntu 20.04, Windows 10, macOS 12]
  - Python version: [e.g. 3.9.5]
- - YokedCache version: [e.g. 1.0.0-beta]
+ - YokedCache version: [e.g. 1.0.0]
  - Redis version: [e.g. 7.0.5]
  - FastAPI version: [e.g. 0.104.1]
 

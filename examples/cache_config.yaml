@@ -106,7 +106,7 @@ warm:
   # Predefined cache entries to warm on startup
   items:
     - key: "system:status"
-      value: {"status": "active", "version": "1.0.0-beta"}
+      value: {"status": "active", "version": "1.0.0"}
       ttl: 3600
       tags: ["system"]
 

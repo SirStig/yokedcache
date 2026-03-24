@@ -24,16 +24,16 @@ Async-first Python caching for FastAPI and other asyncio services: Redis-oriente
 
 ## Installation
 
-Current release line: **1.0.0-beta** (pre-release on PyPI).
+Current stable line: **1.0.0** (default on PyPI).
 
 ```bash
-pip install "yokedcache==1.0.0-beta"
+pip install yokedcache
 ```
 
-For the latest pre-release without pinning:
+To require 1.x or newer:
 
 ```bash
-pip install --pre yokedcache
+pip install "yokedcache>=1.0.0"
 ```
 
 Optional extras:
@@ -84,7 +84,7 @@ Other backends impose their own dependencies when you install the matching extra
 
 ## Security
 
-Treat Redis and Memcached as **trusted** stores: anyone who can write arbitrary keys can affect deserialization. From **1.0.0-beta**, new values are written with a typed envelope; set `allow_legacy_insecure_deserialization=False` on `CacheConfig` once legacy entries are migrated. Do not use `HTTPCacheMiddleware` on authenticated routes without a `key_builder` that varies the key per user or session. See the changelog for details.
+Treat Redis and Memcached as **trusted** stores: anyone who can write arbitrary keys can affect deserialization. From **1.0.0**, new values are written with a typed envelope; set `allow_legacy_insecure_deserialization=False` on `CacheConfig` once legacy entries are migrated. Do not use `HTTPCacheMiddleware` on authenticated routes without a `key_builder` that varies the key per user or session. See the changelog for details.
 
 ## Development
 

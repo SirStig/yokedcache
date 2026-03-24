@@ -303,7 +303,7 @@ Find approximate matches across cached keys and optionally search within cached 
 
 ```python
 # Install the fuzzy search dependencies
-# pip install "yokedcache[fuzzy]==1.0.0-beta"
+# pip install "yokedcache[fuzzy]==1.0.0"
 
 from yokedcache import YokedCache, CacheConfig
 

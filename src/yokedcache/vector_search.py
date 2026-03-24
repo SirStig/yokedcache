@@ -114,7 +114,7 @@ class VectorSimilaritySearch:
         if not VECTOR_DEPS_AVAILABLE:
             raise ImportError(
                 "Vector dependencies not available. Install with: "
-                'pip install "yokedcache[vector]==1.0.0-beta"'
+                'pip install "yokedcache[vector]==1.0.0"'
             )
 
         self.similarity_method = similarity_method

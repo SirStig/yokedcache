@@ -4,7 +4,7 @@
 
 ## Summary
 
-- Package: yokedcache (PyPI), current version **1.0.0-beta**
+- Package: yokedcache (PyPI), current version **1.0.0**
 - Docs: https://sirstig.github.io/yokedcache/
 - API (HTML): https://sirstig.github.io/yokedcache/api/
 - Changelog: https://sirstig.github.io/yokedcache/changelog.html
@@ -13,7 +13,7 @@
 ## Install
 
 ```
-pip install "yokedcache==1.0.0-beta"
+pip install yokedcache
 ```
 
 Extras: `yokedcache[full]` for optional backends and monitoring stacks; see PyPI metadata and getting-started guide.

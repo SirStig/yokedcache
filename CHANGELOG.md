@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0-beta] - 2026-03-23
+## [1.0.0] - 2026-03-23
 
-First beta toward 1.0.0. Focus: security hardening, safer Redis usage, and clearer HTTP cache semantics.
+First stable 1.x release. Published as **1.0.0** (not a PEP 440 pre-release) so a plain `pip install yokedcache` resolves to this line ahead of 0.x. Focus: security hardening, safer Redis usage, and clearer HTTP cache semantics.
 
 ### Security
 
@@ -134,8 +134,8 @@ First beta toward 1.0.0. Focus: security hardening, safer Redis usage, and clear
 
 - Initial release: core Redis cache, FastAPI-oriented usage, CLI, configuration, baseline documentation.
 
-[Unreleased]: https://github.com/sirstig/yokedcache/compare/v1.0.0-beta...HEAD
-[1.0.0-beta]: https://github.com/sirstig/yokedcache/compare/v0.3.0...v1.0.0-beta
+[Unreleased]: https://github.com/sirstig/yokedcache/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/sirstig/yokedcache/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/sirstig/yokedcache/compare/v0.2.4...v0.3.0
 [0.2.4]: https://github.com/sirstig/yokedcache/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/sirstig/yokedcache/compare/v0.2.1...v0.2.3

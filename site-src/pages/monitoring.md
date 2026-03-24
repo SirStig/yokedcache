@@ -143,7 +143,7 @@ The NoOpCollector allows you to disable metrics collection without changing your
 
 ```bash
 # Install Prometheus dependencies
-pip install "yokedcache[monitoring]==1.0.0-beta"
+pip install "yokedcache[monitoring]==1.0.0"
 
 # Or install manually
 pip install prometheus_client
@@ -221,7 +221,7 @@ collector = PrometheusCollector(
 
 ```bash
 # Install StatsD dependencies
-pip install "yokedcache[monitoring]==1.0.0-beta"
+pip install "yokedcache[monitoring]==1.0.0"
 
 # Or install manually
 pip install statsd

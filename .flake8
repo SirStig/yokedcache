@@ -1,0 +1,5 @@
+# Flake8 does not read [tool.flake8] from pyproject.toml without a plugin.
+# Keep in sync with [tool.flake8] in pyproject.toml.
+[flake8]
+max-line-length = 88
+extend-ignore = E203, E501, W503

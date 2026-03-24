@@ -28,21 +28,30 @@ class DiskCacheBackend(CacheBackend):  # pragma: no cover - thin wrapper
         super().__init__(**config)
         self._directory = directory
         self._cache: Optional[Any] = None
-        self._executor = ThreadPoolExecutor(max_workers=2)
+        self._executor: Optional[ThreadPoolExecutor] = None
 
     async def _run(self, func, *args, **kwargs):  # small helper
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(self._executor, lambda: func(*args, **kwargs))
+        ex = self._executor
+        if ex is None:
+            raise RuntimeError("DiskCacheBackend is not connected")
+        return await loop.run_in_executor(ex, lambda: func(*args, **kwargs))
 
     async def connect(self) -> None:
         if diskcache is None:
             raise RuntimeError("diskcache is not installed")
+        if self._executor is None:
+            self._executor = ThreadPoolExecutor(max_workers=2)
         self._cache = diskcache.Cache(self._directory)
         self._connected = True
 
     async def disconnect(self) -> None:
         if self._cache:
             await self._run(self._cache.close)
+            self._cache = None
+        if self._executor is not None:
+            self._executor.shutdown(wait=False)
+            self._executor = None
         self._connected = False
 
     async def health_check(self) -> bool:

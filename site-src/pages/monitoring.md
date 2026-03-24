@@ -1,6 +1,6 @@
 # Production Monitoring & Health Checks
 
-YokedCache v0.2.1 includes comprehensive monitoring, health checking, and metrics collection capabilities for production environments. Monitor cache performance, track detailed metrics, and set up alerts using industry-standard tools like Prometheus and StatsD.
+YokedCache includes comprehensive monitoring, health checking, and metrics collection capabilities for production environments. Monitor cache performance, track detailed metrics, and set up alerts using industry-standard tools like Prometheus and StatsD.
 
 ## Table of Contents
 
@@ -58,7 +58,7 @@ is_healthy = await cache.health()
 print(f"Cache is healthy: {is_healthy}")
 ```
 
-### Detailed Health Check v0.2.1
+### Detailed Health Check
 
 Get comprehensive health information including connection status, pool statistics, and performance metrics:
 
@@ -143,7 +143,7 @@ The NoOpCollector allows you to disable metrics collection without changing your
 
 ```bash
 # Install Prometheus dependencies
-pip install yokedcache[monitoring]
+pip install "yokedcache[monitoring]==1.0.0-beta"
 
 # Or install manually
 pip install prometheus_client
@@ -221,7 +221,7 @@ collector = PrometheusCollector(
 
 ```bash
 # Install StatsD dependencies
-pip install yokedcache[monitoring]
+pip install "yokedcache[monitoring]==1.0.0-beta"
 
 # Or install manually
 pip install statsd

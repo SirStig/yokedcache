@@ -5,11 +5,11 @@ This module tests the vector similarity search features including TF-IDF
 vectorization, similarity calculations, and search operations.
 """
 
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from yokedcache.models import CacheEntry, FuzzySearchResult
+from yokedcache.models import FuzzySearchResult
 
 
 class TestVectorSimilaritySearch:
@@ -340,7 +340,7 @@ class TestRedisVectorSearch:
 
         # Test retrieving vector
         mock_redis.get.return_value = test_vector.tobytes()
-        mock_redis.hgetall.return_value = {b"shape": b"(3,)", b"dtype": b"float64"}
+        mock_redis.hgetall.return_value = {b"shape": b"[3]", b"dtype": b"float64"}
 
         retrieved_vector = await search.get_vector("test_key")
         assert retrieved_vector is not None
@@ -373,7 +373,6 @@ class TestVectorSearchErrorHandling:
 
     def test_vector_search_without_dependencies(self):
         """Test vector search behavior when dependencies are not available."""
-        import importlib
         import sys
 
         # Mock the import to fail and reload the module

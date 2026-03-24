@@ -2,11 +2,7 @@
 Comprehensive tests for CLI module to increase coverage.
 """
 
-import asyncio
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from yokedcache.cli import async_command, get_cache_instance, reset_cache_instance
 
@@ -85,7 +81,7 @@ class TestAsyncCommandDecorator:
         with patch("asyncio.run") as mock_run:
             mock_run.return_value = "test_result"
 
-            result = test_async_func()
+            test_async_func()
             mock_run.assert_called_once()
 
     def test_async_command_decorator_with_args(self):
@@ -98,7 +94,7 @@ class TestAsyncCommandDecorator:
         with patch("asyncio.run") as mock_run:
             mock_run.return_value = 5
 
-            result = test_async_func(2, 3)
+            test_async_func(2, 3)
             mock_run.assert_called_once()
 
     def test_async_command_decorator_preserves_function_name(self):

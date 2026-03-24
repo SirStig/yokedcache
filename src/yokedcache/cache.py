@@ -13,7 +13,7 @@ import inspect
 import logging
 import socket
 import time
-from collections import defaultdict
+from collections import OrderedDict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Set, Union
@@ -41,13 +41,31 @@ from .metrics import CacheMetrics, OperationMetric
 from .models import CacheEntry, CacheStats, FuzzySearchResult, SerializationMethod
 from .utils import (
     calculate_ttl_with_jitter,
-    deserialize_data,
+    deserialize_from_cache,
     normalize_tags,
+    redis_delete_keys,
+    redis_scan_keys,
     sanitize_key,
-    serialize_data,
+    serialize_for_cache,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class _InflightLockMap:
+    def __init__(self, max_keys: int) -> None:
+        self._max = max(1, max_keys)
+        self._locks: "OrderedDict[str, asyncio.Lock]" = OrderedDict()
+
+    def __getitem__(self, key: str) -> asyncio.Lock:
+        if key in self._locks:
+            self._locks.move_to_end(key)
+            return self._locks[key]
+        while len(self._locks) >= self._max:
+            self._locks.popitem(last=False)
+        lk = asyncio.Lock()
+        self._locks[key] = lk
+        return lk
 
 
 class YokedCache:
@@ -185,10 +203,7 @@ class YokedCache:
         # Setup logging
         self._setup_logging()
 
-        # Single-flight in-flight locks per key
-        self._inflight_locks: "defaultdict[str, asyncio.Lock]" = defaultdict(
-            asyncio.Lock
-        )
+        self._inflight_locks = _InflightLockMap(self.config.max_single_flight_locks)
 
     def setup_prefix_routing(self, default_backend_type: str = "redis") -> None:
         """Setup prefix-based routing with the current cache as default backend."""
@@ -321,23 +336,23 @@ class YokedCache:
                         return default
 
                     try:
-                        result = deserialize_data(data, SerializationMethod.JSON)
+                        result = deserialize_from_cache(
+                            data,
+                            self.config.allow_legacy_insecure_deserialization,
+                        )
                     except CacheSerializationError:
-                        try:
-                            result = deserialize_data(data, SerializationMethod.PICKLE)
-                        except CacheSerializationError:
-                            logger.error(f"Error deserializing value for key {key}")
-                            if self._metrics:
-                                metric = OperationMetric(
-                                    operation_type="get",
-                                    key=key,
-                                    duration_ms=0.0,
-                                    success=False,
-                                    error_type="SerializationError",
-                                    cache_hit=False,
-                                )
-                                self._metrics.record_operation(metric)
-                            return default
+                        logger.error(f"Error deserializing value for key {key}")
+                        if self._metrics:
+                            metric = OperationMetric(
+                                operation_type="get",
+                                key=key,
+                                duration_ms=0.0,
+                                success=False,
+                                error_type="SerializationError",
+                                cache_hit=False,
+                            )
+                            self._metrics.record_operation(metric)
+                        return default
 
                     if self._metrics:
                         metric = OperationMetric(
@@ -365,23 +380,23 @@ class YokedCache:
                     return default
 
                 try:
-                    result = deserialize_data(data, SerializationMethod.JSON)
+                    result = deserialize_from_cache(
+                        data,
+                        self.config.allow_legacy_insecure_deserialization,
+                    )
                 except CacheSerializationError:
-                    try:
-                        result = deserialize_data(data, SerializationMethod.PICKLE)
-                    except CacheSerializationError:
-                        logger.error(f"Error deserializing value for key {key}")
-                        if self._metrics:
-                            metric = OperationMetric(
-                                operation_type="get",
-                                key=key,
-                                duration_ms=0.0,
-                                success=False,
-                                error_type="SerializationError",
-                                cache_hit=False,
-                            )
-                            self._metrics.record_operation(metric)
-                        return default
+                    logger.error(f"Error deserializing value for key {key}")
+                    if self._metrics:
+                        metric = OperationMetric(
+                            operation_type="get",
+                            key=key,
+                            duration_ms=0.0,
+                            success=False,
+                            error_type="SerializationError",
+                            cache_hit=False,
+                        )
+                        self._metrics.record_operation(metric)
+                    return default
 
                 if self._metrics:
                     metric = OperationMetric(
@@ -436,7 +451,7 @@ class YokedCache:
             if self._circuit_breaker:
                 async with self._circuit_breaker:
                     actual_ttl = ttl or self.config.default_ttl
-                    serialized_value = serialize_data(
+                    serialized_value = serialize_for_cache(
                         value, self.config.default_serialization
                     )
                     await self._redis.set(key, serialized_value, ex=actual_ttl)
@@ -454,7 +469,7 @@ class YokedCache:
                     return True
             else:
                 actual_ttl = ttl or self.config.default_ttl
-                serialized_value = serialize_data(
+                serialized_value = serialize_for_cache(
                     value, self.config.default_serialization
                 )
                 await self._redis.set(key, serialized_value, ex=actual_ttl)
@@ -764,6 +779,11 @@ class YokedCache:
                                 if k.startswith(prefix)
                             ]
                         return [k for k in self._data.keys() if k == pattern]
+
+                    async def scan_iter(self, match="*", **kwargs):
+                        keys = await self.keys(match)
+                        for k in keys:
+                            yield k
 
                     async def info(self, section=None):
                         if section == "memory":
@@ -1117,16 +1137,16 @@ class YokedCache:
                         cache_hit = False
                         return default
                     try:
-                        value = deserialize_data(data, SerializationMethod.JSON)
+                        value = deserialize_from_cache(
+                            data,
+                            self.config.allow_legacy_insecure_deserialization,
+                        )
                     except CacheSerializationError:
-                        try:
-                            value = deserialize_data(data, SerializationMethod.PICKLE)
-                        except CacheSerializationError:
-                            logger.warning(
-                                "Failed to deserialize data for key: %s",
-                                sanitized_key,
-                            )
-                            return default
+                        logger.warning(
+                            "Failed to deserialize data for key: %s",
+                            sanitized_key,
+                        )
+                        return default
                     self._stats.add_hit()
                     cache_hit = True
                     if touch:
@@ -1241,7 +1261,7 @@ class YokedCache:
         try:
 
             async def _set_operation():
-                serialized_data = serialize_data(value, serialization)
+                serialized_data = serialize_for_cache(value, serialization)
                 async with self._get_redis() as r:
                     await r.set(sanitized_key, serialized_data, ex=actual_ttl)
                     if tags:
@@ -1468,19 +1488,16 @@ class YokedCache:
 
         try:
             async with self._get_redis() as r:
-                # Find matching keys
-                keys = await r.keys(full_pattern)
+                keys = await redis_scan_keys(r, full_pattern)
 
                 if not keys:
                     return 0
 
-                # Convert keys to strings if they're bytes (Redis returns bytes)
                 key_list = [
                     k.decode() if isinstance(k, bytes) else str(k) for k in keys
                 ]
 
-                # Delete all matching keys
-                deleted = await r.delete(*key_list)
+                deleted = await redis_delete_keys(r, keys)
                 # Remove from stale store
                 for k in key_list:
                     self._stale_store.pop(k, None)
@@ -1516,12 +1533,10 @@ class YokedCache:
                     keys = await r.smembers(tag_key)
 
                     if keys:
-                        # Convert keys to strings if they're bytes
                         key_list = [
                             k.decode() if isinstance(k, bytes) else str(k) for k in keys
                         ]
-                        # Delete the actual cache keys
-                        deleted = await r.delete(*key_list)
+                        deleted = await redis_delete_keys(r, list(keys))
                         # Remove from stale store
                         for k in key_list:
                             self._stale_store.pop(k, None)
@@ -1559,19 +1574,16 @@ class YokedCache:
         """
         try:
             async with self._get_redis() as r:
-                # Get all keys with our prefix
                 pattern = self._build_key("*")
-                keys = await r.keys(pattern)
+                keys = await redis_scan_keys(r, pattern)
 
                 if not keys:
                     deleted = 0
                 else:
-                    # Convert keys to strings if they're bytes
                     key_list = [
                         k.decode() if isinstance(k, bytes) else str(k) for k in keys
                     ]
-                    # Delete all matching keys
-                    deleted = await r.delete(*key_list)
+                    deleted = await redis_delete_keys(r, keys)
                     # Remove from stale store
                     for k in key_list:
                         self._stale_store.pop(k, None)
@@ -1688,9 +1700,8 @@ class YokedCache:
                         search_keys_set.update(tag_keys)
                     search_keys = list(search_keys_set)
                 else:
-                    # Search all keys with our prefix
                     pattern = self._build_key("*")
-                    search_keys = await r.keys(pattern)
+                    search_keys = await redis_scan_keys(r, pattern)
 
                 if not search_keys:
                     return results

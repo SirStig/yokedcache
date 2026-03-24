@@ -1,6 +1,6 @@
 # Vector-Based Similarity Search
 
-YokedCache 0.2.0 introduces advanced vector-based similarity search capabilities, enabling semantic search across your cached data. This feature goes beyond traditional string matching to provide intelligent, context-aware search results.
+YokedCache provides advanced vector-based similarity search capabilities, enabling semantic search across your cached data. This feature goes beyond traditional string matching to provide intelligent, context-aware search results.
 
 ## Table of Contents
 
@@ -125,7 +125,7 @@ Vector search requires additional dependencies:
 
 ```bash
 # Install vector search dependencies
-pip install yokedcache[vector]
+pip install "yokedcache[vector]==1.0.0-beta"
 
 # Or install manually
 pip install numpy scipy scikit-learn

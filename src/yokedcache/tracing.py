@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Optional
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Optional
 
 logger = logging.getLogger(__name__)
 

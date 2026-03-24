@@ -48,7 +48,7 @@ Describe the tests that have been performed to verify the changes. Include instr
 - [ ] Integration tests pass
 - [ ] Manual testing performed
 - [ ] Performance testing (if applicable)
-- [ ] Documentation builds correctly (`mkdocs build --strict`)
+- [ ] Documentation site builds (`python scripts/build_docs_site.py` after `pip install -e ".[docs]"`)
 
 ### Test Instructions
 

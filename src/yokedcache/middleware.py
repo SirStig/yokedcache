@@ -14,7 +14,9 @@ Notes:
     - Uses MD5 hash of body as ETag; weak etags (W/) can be enabled later.
     - Honors If-None-Match header and returns 304 when etag matches.
     - Cache key pattern: http:{method}:{path} (no query params by default).
-    - Extend _build_key to include query params if desired.
+    - Security: the default key does not vary by user or cookies. Do not use this
+      middleware on routes that return user-specific bodies unless you pass
+      key_builder (or equivalent) so each principal gets a distinct cache key.
 
 # flake8: noqa
 """
@@ -22,12 +24,16 @@ Notes:
 from __future__ import annotations
 
 import hashlib
-import json
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from starlette.datastructures import Headers
 from starlette.responses import Response
 from starlette.types import ASGIApp, Receive, Scope, Send
+
+if TYPE_CHECKING:
+    _ScopeKeyBuilder = Callable[[Scope], str]
+else:
+    _ScopeKeyBuilder = Any
 
 try:  # pragma: no cover - optional fastapi/starlette usage
     from fastapi import Request
@@ -44,6 +50,7 @@ class HTTPCacheMiddleware:  # pragma: no cover - integration layer
         include_query: bool = False,
         cache_control: Optional[str] = None,
         etag_prefix: str = "",
+        key_builder: Optional["_ScopeKeyBuilder"] = None,
     ) -> None:
         self.app = app
         self.cache = cache
@@ -51,12 +58,34 @@ class HTTPCacheMiddleware:  # pragma: no cover - integration layer
         self.include_query = include_query
         self.cache_control = cache_control or f"public, max-age={default_ttl}"
         self.etag_prefix = etag_prefix
+        self._key_builder = key_builder
+
+    @staticmethod
+    def _strip_etag_token(raw: str) -> str:
+        t = raw.strip()
+        if t.upper().startswith("W/"):
+            t = t[2:].strip()
+        if len(t) >= 2 and t[0] == '"' and t[-1] == '"':
+            return t[1:-1]
+        return t
+
+    def _etag_matches(self, client_val: Optional[str], stored: Optional[str]) -> bool:
+        if not client_val or not stored:
+            return False
+        if client_val.strip() == "*":
+            return True
+        want = self._strip_etag_token(stored)
+        for part in client_val.split(","):
+            if self._strip_etag_token(part) == want:
+                return True
+        return False
 
     def _build_key(self, scope: Scope) -> str:
+        if self._key_builder is not None:
+            return self._key_builder(scope)
         method = scope.get("method", "GET")
         path = scope.get("path", "/")
         key = f"http:{method}:{path}"
-        # (Optionally include query string)
         if self.include_query:
             qs = scope.get("query_string", b"").decode()
             if qs:
@@ -79,7 +108,7 @@ class HTTPCacheMiddleware:  # pragma: no cover - integration layer
         if cached is not None and isinstance(cached, dict):
             body_bytes = cached.get("body", b"")
             etag = cached.get("etag")
-            if client_etag and etag and client_etag == etag:
+            if client_etag and etag and self._etag_matches(client_etag, etag):
                 # Return 304
                 async def send_304(message):
                     if message["type"] == "http.response.start":

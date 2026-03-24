@@ -36,7 +36,10 @@ async def test_memcached_connect_and_health():
 async def test_memcached_get_miss_and_hit():
     with (
         patch("aiomcache.Client") as mock_client_cls,
-        patch("yokedcache.backends.memcached.deserialize_data", return_value="val"),
+        patch(
+            "yokedcache.backends.memcached.deserialize_from_cache",
+            return_value="val",
+        ),
     ):
         mock_client = AsyncMock()
         mock_client.version = AsyncMock()
@@ -60,7 +63,10 @@ async def test_memcached_get_miss_and_hit():
 async def test_memcached_set_with_tags_and_invalidate():
     with (
         patch("aiomcache.Client") as mock_client_cls,
-        patch("yokedcache.backends.memcached.serialize_data", return_value=b"s"),
+        patch(
+            "yokedcache.backends.memcached.serialize_for_cache",
+            return_value=b"s",
+        ),
     ):
         mock_client = AsyncMock()
         mock_client.version = AsyncMock()

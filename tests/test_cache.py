@@ -3,7 +3,6 @@ Tests for the core YokedCache functionality.
 """
 
 import asyncio
-from datetime import datetime, timedelta
 
 import pytest
 

@@ -1,7 +1,7 @@
 """
 YokedCache Advanced Features Demo
 
-This example demonstrates the new advanced caching features introduced in v0.3.0:
+This example demonstrates advanced caching features in YokedCache 1.0.0-beta:
 - HTTP Response Middleware
 - Single-Flight Protection
 - Stale-While-Revalidate
@@ -13,7 +13,7 @@ This example demonstrates the new advanced caching features introduced in v0.3.0
 import asyncio
 import time
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 
 from yokedcache import CacheConfig, YokedCache
 from yokedcache.backends import DiskCacheBackend, SQLiteBackend
@@ -29,7 +29,7 @@ async def main():
 
     # 1. Initialize OpenTelemetry tracing
     print("\n1. Setting up OpenTelemetry tracing...")
-    global_tracer = initialize_tracing(
+    _ = initialize_tracing(
         service_name="yokedcache-demo", enabled=True, sample_rate=1.0
     )
     print("✓ OpenTelemetry tracing initialized")
@@ -93,7 +93,7 @@ async def main():
     results = await asyncio.gather(*tasks)
     end_time = time.time()
 
-    print(f"✓ Single-flight protection working:")
+    print("✓ Single-flight protection working:")
     print(f"  - 5 concurrent requests completed in {end_time - start_time:.2f}s")
     print(f"  - All results identical: {all(r == results[0] for r in results)}")
     print(f"  - Result: {results[0]}")
@@ -110,7 +110,7 @@ async def main():
 
     for key, value in test_data.items():
         await cache.set(key, value, ttl=300)
-        retrieved = await cache.get(key)
+        await cache.get(key)
         print(f"✓ {key} -> {type(cache._prefix_router.get_backend(key)).__name__}")
 
     # 6. Demonstrate stale-while-revalidate

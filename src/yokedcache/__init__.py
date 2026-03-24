@@ -6,7 +6,7 @@ featuring automatic cache invalidation, fuzzy search capabilities, and intellige
 database integration.
 """
 
-__version__ = "0.3.0"
+__version__ = "1.0.0-beta"
 __author__ = "SirStig"
 __email__ = "twogoodgamer2@gmail.com"
 __license__ = "MIT"
@@ -43,7 +43,13 @@ from .exceptions import (
     YokedCacheError,
 )
 from .models import CacheEntry, CacheStats, InvalidationRule
-from .utils import deserialize_data, generate_cache_key, serialize_data
+from .utils import (
+    deserialize_data,
+    deserialize_from_cache,
+    generate_cache_key,
+    serialize_data,
+    serialize_for_cache,
+)
 
 # Import backends with optional dependencies
 try:
@@ -114,6 +120,8 @@ __all__ = [
     "generate_cache_key",
     "serialize_data",
     "deserialize_data",
+    "serialize_for_cache",
+    "deserialize_from_cache",
     # Backends (may be None if dependencies not installed)
     "CacheBackend",
     "RedisBackend",

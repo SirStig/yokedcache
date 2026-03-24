@@ -137,11 +137,12 @@ class PrefixRouter:
         # Check which backends might have matching keys
         backends_to_check = {self.default_backend}
 
-        # If pattern starts with a known prefix, only check that backend
+        best_prefix = ""
         for prefix in self.prefix_map:
-            if pattern.startswith(prefix):
-                backends_to_check = {self.prefix_map[prefix]}
-                break
+            if pattern.startswith(prefix) and len(prefix) > len(best_prefix):
+                best_prefix = prefix
+        if best_prefix:
+            backends_to_check = {self.prefix_map[best_prefix]}
         else:
             # Pattern doesn't match a specific prefix, check all backends
             backends_to_check.update(self.prefix_map.values())

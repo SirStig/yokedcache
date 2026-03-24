@@ -28,7 +28,7 @@ This comprehensive tutorial shows you how to implement high-performance caching 
 Install YokedCache with full features for your FastAPI application:
 
 ```bash
-pip install yokedcache[full]
+pip install "yokedcache[full]==1.0.0-beta"
 ```
 
 This includes:

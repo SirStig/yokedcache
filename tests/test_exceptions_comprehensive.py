@@ -2,8 +2,6 @@
 Comprehensive tests for YokedCache exception classes.
 """
 
-import pytest
-
 from yokedcache.exceptions import (
     CacheConfigurationError,
     CacheConnectionError,

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YokedCache — Python caching for FastAPI with Redis</title>
+  <meta name="description" content="Async Python caching library with Redis auto-invalidation, vector search cache helpers, FastAPI integration, and production monitoring. MIT licensed.">
+  <meta name="keywords" content="python, fastapi, redis, caching, cache invalidation, yokedcache">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://sirstig.github.io/yokedcache/">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "YokedCache",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Linux, macOS, Windows",
+    "programmingLanguage": "Python",
+    "softwareVersion": "1.0.0-beta",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "url": "https://sirstig.github.io/yokedcache",
+    "downloadUrl": "https://pypi.org/project/yokedcache/",
+    "codeRepository": "https://github.com/sirstig/yokedcache",
+    "license": "https://opensource.org/licenses/MIT",
+    "author": {
+      "@type": "Organization",
+      "name": "Project Yoked LLC",
+      "url": "https://www.projectyoked.com"
+    },
+    "maintainer": {
+      "@type": "Person",
+      "name": "Joshua Kac",
+      "jobTitle": "CTO",
+      "worksFor": { "@type": "Organization", "name": "Project Yoked LLC" }
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="header-logo" href="./">Yoked<span>Cache</span></a>
+    <div class="header-spacer"></div>
+    <nav class="header-nav">
+      <a href="getting-started.html">Docs</a>
+      <a href="api/index.html">API</a>
+      <a href="changelog.html">Changelog</a>
+      <a class="header-badge" href="https://pypi.org/project/yokedcache/" target="_blank" rel="noopener">PyPI ↗</a>
+      <a class="header-badge" href="https://github.com/sirstig/yokedcache" target="_blank" rel="noopener" style="margin-left:0.2rem">GitHub ↗</a>
+      <button class="theme-btn" type="button" aria-label="Toggle theme">☀ Light</button>
+    </nav>
+    <button class="menu-btn" type="button" id="menuBtn" aria-label="Open menu">
+      <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true">
+        <rect width="18" height="2" rx="1" fill="currentColor"/>
+        <rect y="6" width="18" height="2" rx="1" fill="currentColor"/>
+        <rect y="12" width="18" height="2" rx="1" fill="currentColor"/>
+      </svg>
+    </button>
+  </header>
+
+  <div class="landing">
+    <section class="hero">
+      <div class="hero-eyebrow">Open source · MIT License</div>
+      <h1>Python caching built<br>for FastAPI</h1>
+      <p class="hero-sub">
+        Redis-backed cache with automatic invalidation, optional vector-search helpers,
+        multi-backend routing, and metrics — without bolting on a separate doc stack.
+      </p>
+      <div class="install-pill">
+        <span class="prompt">$</span>
+        <span>pip install "yokedcache==1.0.0-beta"</span>
+      </div>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="getting-started.html">Documentation</a>
+        <a class="btn btn-ghost" href="api/index.html">API reference</a>
+        <a class="btn btn-ghost" href="https://github.com/sirstig/yokedcache" target="_blank" rel="noopener">GitHub ↗</a>
+      </div>
+    </section>
+
+    <div class="used-strip">
+      <a href="https://www.projectyoked.com" target="_blank" rel="noopener">
+        <img class="used-strip-logo" src="https://projectyoked.com/assets/project-yoked-logo.png" alt="Project Yoked" width="112" height="28">
+        <div class="used-strip-copy">
+          <span class="used-strip-label">From Project Yoked</span>
+          <span class="used-strip-sub">Production-oriented defaults and clear operational hooks</span>
+        </div>
+      </a>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">◇</div>
+        <h3>Auto-invalidation</h3>
+        <p>Tag-aware invalidation and dependency-friendly patterns so stale reads are the exception, not the rule.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">◇</div>
+        <h3>FastAPI-first</h3>
+        <p>Decorators and dependencies that fit existing endpoints without rewriting your app around the cache.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">◇</div>
+        <h3>Multi-backend</h3>
+        <p>Redis, Memcached, memory, disk, and SQLite paths with a consistent configuration model.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">◇</div>
+        <h3>Resilience</h3>
+        <p>Circuit breaker, retries, and stale-if-error style patterns to degrade gracefully under pressure.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">◇</div>
+        <h3>HTTP caching</h3>
+        <p>ETag and Cache-Control middleware for 304-friendly APIs when you want browser and CDN behavior aligned.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">◇</div>
+        <h3>Observability</h3>
+        <p>Prometheus and StatsD hooks plus OpenTelemetry-friendly tracing for cache spans.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">◇</div>
+        <h3>Vector helpers</h3>
+        <p>Optional similarity and vector workflows when your stack needs semantic-style cache keys.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">◇</div>
+        <h3>CLI</h3>
+        <p>Inspect keys, stats, and health from the terminal for debugging and on-call.</p>
+      </div>
+    </div>
+
+    <section class="landing-section">
+      <h2>Documentation</h2>
+      <div class="docs-card">
+        <table>
+          <thead>
+            <tr><th>Topic</th><th>Link</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Install and first run</strong></td>
+              <td><a href="getting-started.html">Getting started →</a></td>
+            </tr>
+            <tr>
+              <td>Usage patterns and FastAPI</td>
+              <td><a href="usage-patterns.html">Usage patterns →</a> · <a href="tutorials/fastapi.html">FastAPI →</a></td>
+            </tr>
+            <tr>
+              <td>Python API</td>
+              <td><a href="api/index.html">Generated API docs (pdoc) →</a></td>
+            </tr>
+            <tr>
+              <td>Releases</td>
+              <td><a href="changelog.html">Changelog →</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <span>MIT License · <a href="https://www.projectyoked.com" target="_blank" rel="noopener">Project Yoked LLC</a></span>
+      <span>
+        <a href="https://github.com/sirstig/yokedcache" target="_blank" rel="noopener">GitHub</a> ·
+        <a href="https://pypi.org/project/yokedcache/" target="_blank" rel="noopener">PyPI</a> ·
+        <a href="changelog.html">Changelog</a> ·
+        <a href="llms.txt">llms.txt</a>
+      </span>
+    </footer>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

@@ -2,9 +2,7 @@
 Comprehensive tests for utility functions.
 """
 
-import hashlib
 import json
-import pickle
 from datetime import datetime, timezone
 from unittest.mock import patch
 
@@ -15,6 +13,7 @@ from yokedcache.models import SerializationMethod
 from yokedcache.utils import (
     calculate_ttl_with_jitter,
     deserialize_data,
+    deserialize_from_cache,
     extract_table_from_query,
     format_bytes,
     generate_cache_key,
@@ -24,6 +23,7 @@ from yokedcache.utils import (
     parse_redis_url,
     sanitize_key,
     serialize_data,
+    serialize_for_cache,
 )
 
 
@@ -173,9 +173,8 @@ class TestSerialization:
 
     def test_serialization_error(self):
         """Test serialization error handling."""
-        # Use an object that will definitely fail JSON serialization
-        import datetime
 
+        # Use an object that will definitely fail JSON serialization
         class UnserializableClass:
             def __repr__(self):
                 return "UnserializableClass()"
@@ -457,8 +456,6 @@ class TestUtilityHelpers:
 
     def test_timing_decorator_with_exception(self):
         """Test timing decorator handles exceptions."""
-        import time
-
         from yokedcache.utils import timing_decorator
 
         @timing_decorator
@@ -625,3 +622,18 @@ class TestUtilityHelpers:
         result1 = _create_query_hash("SELECT * FROM users", params)
         result2 = _create_query_hash("SELECT * FROM users", {"a": 1, "b": 2})
         assert result1 == result2  # Should be order-independent
+
+
+class TestCacheEnvelope:
+    def test_serialize_deserialize_roundtrip(self):
+        blob = serialize_for_cache({"a": 1}, SerializationMethod.JSON)
+        assert deserialize_from_cache(blob, allow_legacy_insecure=False) == {"a": 1}
+
+    def test_legacy_disabled_rejects_raw_json(self):
+        raw = json.dumps({"x": 1}).encode()
+        with pytest.raises(CacheSerializationError):
+            deserialize_from_cache(raw, allow_legacy_insecure=False)
+
+    def test_legacy_enabled_reads_raw_json(self):
+        raw = json.dumps({"x": 1}).encode()
+        assert deserialize_from_cache(raw, allow_legacy_insecure=True) == {"x": 1}

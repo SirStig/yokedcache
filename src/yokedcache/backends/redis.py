@@ -22,10 +22,12 @@ from ..exceptions import (
 from ..models import CacheEntry, CacheStats, FuzzySearchResult, SerializationMethod
 from ..utils import (
     calculate_ttl_with_jitter,
-    deserialize_data,
+    deserialize_from_cache,
     normalize_tags,
+    redis_delete_keys,
+    redis_scan_keys,
     sanitize_key,
-    serialize_data,
+    serialize_for_cache,
 )
 from .base import CacheBackend
 
@@ -45,6 +47,7 @@ class RedisBackend(CacheBackend):
         socket_timeout: int = 5,
         retry_on_timeout: bool = True,
         default_serialization: SerializationMethod = SerializationMethod.JSON,
+        allow_legacy_insecure_deserialization: bool = True,
         **kwargs,
     ):
         """Initialize Redis backend."""
@@ -58,6 +61,9 @@ class RedisBackend(CacheBackend):
         self.socket_timeout = socket_timeout
         self.retry_on_timeout = retry_on_timeout
         self.default_serialization = default_serialization
+        self.allow_legacy_insecure_deserialization = (
+            allow_legacy_insecure_deserialization
+        )
 
         self._pool: Optional[ConnectionPool] = None
         self._redis: Optional[redis.Redis] = None
@@ -153,17 +159,16 @@ class RedisBackend(CacheBackend):
                     self._stats.add_miss()
                     return default
 
-                # Try multiple serialization methods
                 try:
-                    value = deserialize_data(data, SerializationMethod.JSON)
+                    value = deserialize_from_cache(
+                        data,
+                        self.allow_legacy_insecure_deserialization,
+                    )
                 except CacheSerializationError:
-                    try:
-                        value = deserialize_data(data, SerializationMethod.PICKLE)
-                    except CacheSerializationError:
-                        logger.warning(
-                            f"Failed to deserialize data for key: {sanitized_key}"
-                        )
-                        return default
+                    logger.warning(
+                        f"Failed to deserialize data for key: {sanitized_key}"
+                    )
+                    return default
 
                 self._stats.add_hit()
 
@@ -191,7 +196,7 @@ class RedisBackend(CacheBackend):
         actual_ttl = calculate_ttl_with_jitter(ttl or 300)
 
         try:
-            serialized_data = serialize_data(value, self.default_serialization)
+            serialized_data = serialize_for_cache(value, self.default_serialization)
 
             async with self._get_redis() as r:
                 async with r.pipeline() as pipe:
@@ -260,12 +265,12 @@ class RedisBackend(CacheBackend):
 
         try:
             async with self._get_redis() as r:
-                keys = await r.keys(full_pattern)
+                keys = await redis_scan_keys(r, full_pattern)
 
                 if not keys:
                     return 0
 
-                deleted = await r.delete(*keys)
+                deleted = await redis_delete_keys(r, keys)
                 self._stats.total_invalidations += deleted
 
                 return deleted
@@ -287,7 +292,8 @@ class RedisBackend(CacheBackend):
                     keys = await r.smembers(tag_key)
 
                     if keys:
-                        deleted = await r.delete(*keys)
+                        key_list = list(keys)
+                        deleted = await redis_delete_keys(r, key_list)
                         total_invalidated += deleted
 
                         await r.delete(tag_key)
@@ -306,12 +312,12 @@ class RedisBackend(CacheBackend):
         try:
             async with self._get_redis() as r:
                 pattern = self._build_key("*")
-                keys = await r.keys(pattern)
+                keys = await redis_scan_keys(r, pattern)
 
                 if not keys:
                     deleted = 0
                 else:
-                    deleted = await r.delete(*keys)
+                    deleted = await redis_delete_keys(r, keys)
                     self._stats.total_invalidations += deleted
 
                 logger.warning(f"Flushed all cache keys ({deleted} keys deleted)")
@@ -370,7 +376,7 @@ class RedisBackend(CacheBackend):
                     search_keys = list(search_keys_set)
                 else:
                     pattern = self._build_key("*")
-                    search_keys = await r.keys(pattern)
+                    search_keys = await redis_scan_keys(r, pattern)
 
                 if not search_keys:
                     return results
@@ -420,7 +426,7 @@ class RedisBackend(CacheBackend):
 
         try:
             async with self._get_redis() as r:
-                keys = await r.keys(full_pattern)
+                keys = await redis_scan_keys(r, full_pattern)
                 return [
                     key.decode() if isinstance(key, bytes) else str(key) for key in keys
                 ]

@@ -10,10 +10,10 @@ import logging
 import sys
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set, Union
 
-from ..models import CacheEntry, CacheStats, FuzzySearchResult, SerializationMethod
+from ..models import CacheEntry, CacheStats, FuzzySearchResult
 from ..utils import calculate_ttl_with_jitter, normalize_tags, sanitize_key
 from .base import CacheBackend
 

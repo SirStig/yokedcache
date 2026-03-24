@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
 import weakref
 from typing import Any, Callable, Dict, Optional, Set, Union
 

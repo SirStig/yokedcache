@@ -2,8 +2,7 @@
 Comprehensive tests for YokedCache class to increase coverage.
 """
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 

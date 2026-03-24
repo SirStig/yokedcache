@@ -158,13 +158,13 @@ async def fuzzy_search_example():
         # Perform fuzzy search
         results = await cache.fuzzy_search("alice", threshold=70, max_results=5)
 
-        print(f"Fuzzy search results for 'alice':")
+        print("Fuzzy search results for 'alice':")
         for result in results:
             print(f"  Key: {result.key}, Score: {result.score}%, Value: {result.value}")
 
         # Search for profiles
         profile_results = await cache.fuzzy_search("profile", threshold=60)
-        print(f"\nFuzzy search results for 'profile':")
+        print("\nFuzzy search results for 'profile':")
         for result in profile_results:
             print(f"  Key: {result.key}, Score: {result.score}%")
 

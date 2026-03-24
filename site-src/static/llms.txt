@@ -1,0 +1,35 @@
+# yokedcache
+
+> MIT-licensed Python caching library for FastAPI and async services: Redis-focused auto-invalidation, optional vector helpers, multi-backend support, and production metrics.
+
+## Summary
+
+- Package: yokedcache (PyPI), current version **1.0.0-beta**
+- Docs: https://sirstig.github.io/yokedcache/
+- API (HTML): https://sirstig.github.io/yokedcache/api/
+- Changelog: https://sirstig.github.io/yokedcache/changelog.html
+- Repository: https://github.com/sirstig/yokedcache
+
+## Install
+
+```
+pip install "yokedcache==1.0.0-beta"
+```
+
+Extras: `yokedcache[full]` for optional backends and monitoring stacks; see PyPI metadata and getting-started guide.
+
+## Human-maintained guides
+
+- Getting started: https://sirstig.github.io/yokedcache/getting-started.html
+- Configuration: https://sirstig.github.io/yokedcache/configuration.html
+- Usage patterns: https://sirstig.github.io/yokedcache/usage-patterns.html
+- FastAPI: https://sirstig.github.io/yokedcache/tutorials/fastapi.html
+- Backends: https://sirstig.github.io/yokedcache/backends.html
+
+## API reference
+
+Use the generated pdoc site under `/api/` for module and class-level docstrings (authoritative for Python API surface).
+
+## Maintainer
+
+Joshua Kac (Project Yoked LLC). Organization: https://www.projectyoked.com

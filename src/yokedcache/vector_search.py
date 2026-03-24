@@ -5,9 +5,11 @@ This module provides advanced fuzzy search capabilities using vector embeddings
 and similarity calculations for more accurate and semantic search results.
 """
 
+import ast
+import json
 import logging
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 from .models import CacheEntry, FuzzySearchResult
 
@@ -37,6 +39,55 @@ else:
         euclidean = None  # type: ignore[assignment]
         manhattan_distances = None  # type: ignore[assignment]
 
+_MAX_VECTOR_DIMS = 32
+_MAX_VECTOR_AXIS = 10_000_000
+
+
+def _parse_vector_shape(raw: Any) -> tuple:
+    if raw is None:
+        raise ValueError("missing shape")
+    if isinstance(raw, (bytes, bytearray)):
+        raw = raw.decode("utf-8", errors="replace")
+    if isinstance(raw, str):
+        raw_stripped = raw.strip()
+        try:
+            parsed = json.loads(raw_stripped)
+        except json.JSONDecodeError:
+            parsed = ast.literal_eval(raw_stripped)
+    else:
+        parsed = raw
+    if isinstance(parsed, list):
+        shape = tuple(parsed)
+    elif isinstance(parsed, tuple):
+        shape = parsed
+    else:
+        raise ValueError("shape must be tuple or list")
+    if not shape or len(shape) > _MAX_VECTOR_DIMS:
+        raise ValueError("invalid shape rank")
+    for x in shape:
+        if not isinstance(x, int) or isinstance(x, bool):
+            raise ValueError("shape elements must be integers")
+        if x <= 0 or x > _MAX_VECTOR_AXIS:
+            raise ValueError("shape dimension out of range")
+    return shape
+
+
+def _normalize_numpy_dtype(dtype_raw: Any) -> str:
+    if isinstance(dtype_raw, (bytes, bytearray)):
+        dtype_raw = dtype_raw.decode("utf-8", errors="replace")
+    if not isinstance(dtype_raw, str) or not dtype_raw:
+        raise ValueError("invalid dtype")
+    name = dtype_raw.strip()
+    if not VECTOR_DEPS_AVAILABLE or np is None:
+        raise ValueError("numpy required for dtype validation")
+    try:
+        dt: Any = np.dtype(name)
+    except (TypeError, ValueError):
+        raise ValueError("invalid dtype")
+    if dt.kind not in ("b", "i", "u", "f", "c"):
+        raise ValueError("dtype kind not allowed")
+    return str(dt)
+
 
 class VectorSimilaritySearch:
     """Vector-based similarity search for cache entries."""
@@ -62,7 +113,7 @@ class VectorSimilaritySearch:
         if not VECTOR_DEPS_AVAILABLE:
             raise ImportError(
                 "Vector dependencies not available. Install with: "
-                "pip install yokedcache[vector]"
+                'pip install "yokedcache[vector]==1.0.0-beta"'
             )
 
         self.similarity_method = similarity_method
@@ -387,7 +438,10 @@ class RedisVectorSearch:
 
             # Store metadata
             metadata_key = f"{self.vector_key_prefix}:meta:{key}"
-            metadata = {"shape": vector.shape, "dtype": str(vector.dtype)}
+            metadata = {
+                "shape": json.dumps(list(vector.shape)),
+                "dtype": str(vector.dtype),
+            }
 
             await self.redis.hset(metadata_key, mapping=metadata)
 
@@ -410,9 +464,16 @@ class RedisVectorSearch:
             if not vector_bytes or not metadata:
                 return None
 
-            # Reconstruct vector
-            shape = eval(metadata[b"shape"].decode())
-            dtype = metadata[b"dtype"].decode()
+            def _meta_get(field: str) -> Any:
+                b = field.encode()
+                if b in metadata:
+                    return metadata[b]
+                if field in metadata:
+                    return metadata[field]
+                return None
+
+            shape = _parse_vector_shape(_meta_get("shape"))
+            dtype = _normalize_numpy_dtype(_meta_get("dtype"))
 
             if not VECTOR_DEPS_AVAILABLE or np is None:
                 raise ImportError("Vector dependencies not available")

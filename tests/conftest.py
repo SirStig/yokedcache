@@ -12,6 +12,14 @@ import pytest_asyncio
 from yokedcache import CacheConfig, YokedCache
 
 
+def _redis_scan_iter(keys):
+    async def scan_iter(*args, **kwargs):
+        for k in keys:
+            yield k
+
+    return scan_iter
+
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Create an instance of the default event loop for the test session."""
@@ -136,6 +144,7 @@ def mock_redis():
     redis_mock.exists = AsyncMock()
     redis_mock.expire = AsyncMock()
     redis_mock.keys = AsyncMock()
+    redis_mock.scan_iter = _redis_scan_iter([])
     redis_mock.smembers = AsyncMock()
     redis_mock.sadd = AsyncMock()
     redis_mock.close = AsyncMock()

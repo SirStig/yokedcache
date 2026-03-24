@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} — YokedCache</title>
+  <meta name="description" content="{{ description }}">
+  {% if keywords %}<meta name="keywords" content="{{ keywords }}">{% endif %}
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="{{ canonical }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ asset_prefix }}assets/style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "YokedCache",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Linux, macOS, Windows",
+    "programmingLanguage": "Python",
+    "softwareVersion": "{{ version }}",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": {
+      "@type": "Organization",
+      "name": "Project Yoked LLC",
+      "url": "https://www.projectyoked.com"
+    },
+    "maintainer": {
+      "@type": "Person",
+      "name": "Joshua Kac",
+      "jobTitle": "CTO",
+      "worksFor": { "@type": "Organization", "name": "Project Yoked LLC" }
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="header-logo" href="{{ home_href }}">Yoked<span>Cache</span></a>
+    <div class="header-spacer"></div>
+    <nav class="header-nav">
+      <a href="{{ docs_first_href }}">Docs</a>
+      <a href="{{ api_href }}">API</a>
+      <a href="{{ changelog_href }}">Changelog</a>
+      <a class="header-badge" href="https://pypi.org/project/yokedcache/" target="_blank" rel="noopener">PyPI ↗</a>
+      <a class="header-badge" href="https://github.com/sirstig/yokedcache" target="_blank" rel="noopener" style="margin-left:0.2rem">GitHub ↗</a>
+      <button class="theme-btn" type="button" aria-label="Toggle theme">☀ Light</button>
+    </nav>
+    <button class="menu-btn" type="button" id="menuBtn" aria-label="Open menu">
+      <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true">
+        <rect width="18" height="2" rx="1" fill="currentColor"/>
+        <rect y="6" width="18" height="2" rx="1" fill="currentColor"/>
+        <rect y="12" width="18" height="2" rx="1" fill="currentColor"/>
+      </svg>
+    </button>
+  </header>
+
+  <div class="page-layout">
+    <aside class="sidebar" id="sidebar">
+      {% for g in nav_groups %}
+      <div class="sidebar-group">
+        <span class="sidebar-label">{{ g.label }}</span>
+        {% for link in g.links %}
+        <a class="sidebar-link{% if link.current %} active{% endif %}" href="{{ link.href }}">{{ link.title }}</a>
+        {% endfor %}
+      </div>
+      {% if not loop.last %}<div class="sidebar-divider"></div>{% endif %}
+      {% endfor %}
+    </aside>
+
+    <main class="content content--docs">
+      <div class="doc-layout">
+        <div class="content-inner doc-markdown doc-main">
+        {{ body_html | safe }}
+        <footer class="doc-footer">
+          <a href="{{ home_href }}">Home</a>
+          <a href="{{ changelog_href }}">Changelog</a>
+          <a href="{{ api_href }}">API</a>
+          <a href="https://github.com/sirstig/yokedcache" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://pypi.org/project/yokedcache/" target="_blank" rel="noopener">PyPI</a>
+        </footer>
+        </div>
+        {% if toc_html %}
+        <aside class="doc-toc" aria-label="On this page">
+          <div class="doc-toc-sticky">
+            <span class="doc-toc-title">On this page</span>
+            {{ toc_html | safe }}
+          </div>
+        </aside>
+        {% endif %}
+      </div>
+    </main>
+  </div>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+  <script src="{{ asset_prefix }}assets/app.js"></script>
+</body>
+</html>

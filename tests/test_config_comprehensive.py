@@ -4,14 +4,12 @@ Comprehensive tests for configuration management.
 
 import os
 import tempfile
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 from yokedcache.config import (
     CacheConfig,
-    _parse_config_dict,
     _parse_invalidation_rule,
     _parse_table_config,
     create_default_config,

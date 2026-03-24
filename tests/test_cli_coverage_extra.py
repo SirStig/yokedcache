@@ -9,6 +9,14 @@ from yokedcache.cli import main, reset_cache_instance
 from yokedcache.models import CacheStats
 
 
+def _make_scan_iter(keys):
+    async def scan_iter(*args, **kwargs):
+        for k in keys:
+            yield k
+
+    return scan_iter
+
+
 @pytest.fixture(autouse=True)
 def _reset_cache_instance():
     """Ensure global CLI cache instance is reset between tests."""
@@ -72,8 +80,7 @@ def test_cli_list_human_with_limit():
     with patch("yokedcache.cli.YokedCache") as cls:
         cache = _mk_cache(_mk_stats())
         fake_r = AsyncMock()
-        # Two keys so limiting to 1 triggers notice branch
-        fake_r.keys = AsyncMock(return_value=[b"pref:k1", b"pref:k2"])  # noqa: E501
+        fake_r.scan_iter = _make_scan_iter([b"pref:k1", b"pref:k2"])
         cache._get_redis = MagicMock()
 
         class CM:

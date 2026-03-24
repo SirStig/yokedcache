@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://sirstig.github.io/yokedcache/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/getting-started.html</loc><changefreq>monthly</changefreq><priority>0.95</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/core-concepts.html</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/configuration.html</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/usage-patterns.html</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/tutorials/fastapi.html</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/tutorials/fastapi-redis-caching.html</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/tutorials/sqlalchemy.html</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/backends.html</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/vector-search.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/monitoring.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/cli.html</loc><changefreq>monthly</changefreq><priority>0.75</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/performance.html</loc><changefreq>monthly</changefreq><priority>0.75</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/security.html</loc><changefreq>monthly</changefreq><priority>0.75</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/testing.html</loc><changefreq>monthly</changefreq><priority>0.75</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/troubleshooting.html</loc><changefreq>monthly</changefreq><priority>0.75</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/changelog.html</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/llms.txt</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://sirstig.github.io/yokedcache/api/</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+</urlset>

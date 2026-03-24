@@ -13,15 +13,14 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import click
 import yaml
 
 from .cache import YokedCache
 from .config import CacheConfig, load_config_from_file
-from .exceptions import YokedCacheError
-from .utils import format_bytes
+from .utils import format_bytes, redis_scan_keys_max
 
 # Global cache instance for CLI commands
 _cache_instance: Optional[YokedCache] = None
@@ -251,20 +250,20 @@ async def _display_stats(cache: YokedCache, format: str, output: Optional[str] =
     else:  # human format
         click.echo("YokedCache Statistics")
         click.echo("=" * 30)
-        click.echo(f"Cache Operations:")
+        click.echo("Cache Operations:")
         click.echo(f"  Hits:           {stats.total_hits:,}")
         click.echo(f"  Misses:         {stats.total_misses:,}")
         click.echo(f"  Sets:           {stats.total_sets:,}")
         click.echo(f"  Deletes:        {stats.total_deletes:,}")
         click.echo(f"  Invalidations:  {stats.total_invalidations:,}")
         click.echo()
-        click.echo(f"Performance:")
+        click.echo("Performance:")
         click.echo(f"  Hit Rate:       {stats.hit_rate:.2f}%")
         click.echo(f"  Miss Rate:      {stats.miss_rate:.2f}%")
         click.echo(f"  Avg Get Time:   {stats.average_get_time_ms:.2f}ms")
         click.echo(f"  Avg Set Time:   {stats.average_set_time_ms:.2f}ms")
         click.echo()
-        click.echo(f"Memory Usage:")
+        click.echo("Memory Usage:")
         click.echo(f"  Total Keys:     {stats.total_keys:,}")
         click.echo(f"  Memory Used:    {format_bytes(stats.total_memory_bytes)}")
         click.echo()
@@ -316,10 +315,7 @@ async def list(
         # Get keys from Redis
         async with cache._get_redis() as r:
             full_pattern = cache._build_key(search_pattern)
-            keys = await r.keys(full_pattern)
-
-            # Limit results
-            keys = keys[:limit]
+            keys = await redis_scan_keys_max(r, full_pattern, max_keys=limit)
 
             if format == "json":
                 key_list = [
@@ -398,7 +394,7 @@ async def flush(
 
         if all:
             deleted_count = await cache.flush_all()
-            click.echo(f"Flushed all cache keys")
+            click.echo("Flushed all cache keys")
 
         elif key:
             success = await cache.delete(key)

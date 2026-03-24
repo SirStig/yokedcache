@@ -5,7 +5,6 @@ This module provides integration with monitoring systems like Prometheus
 and StatsD for real-time metrics collection in production environments.
 """
 
-import asyncio
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -63,13 +62,7 @@ class PrometheusCollector(MetricsCollector):
         self.namespace = namespace
 
         try:
-            from prometheus_client import (
-                CollectorRegistry,
-                Counter,
-                Gauge,
-                Histogram,
-                Summary,
-            )
+            from prometheus_client import Counter, Gauge, Histogram
 
             if registry is None:
                 from prometheus_client import REGISTRY

@@ -12,11 +12,19 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from yokedcache.backends import RedisBackend
-from yokedcache.exceptions import CacheInvalidationError, CacheSerializationError
+from yokedcache.exceptions import CacheInvalidationError
 
 # (No direct model usage beyond backend operations in these tests)
 
 REDIS_TEST_URL = os.environ.get("YOKEDCACHE_REDIS_URL", "redis://localhost:6379/0")
+
+
+def _make_scan_iter(keys):
+    async def scan_iter(*args, **kwargs):
+        for k in keys:
+            yield k
+
+    return scan_iter
 
 
 @pytest.mark.asyncio
@@ -50,7 +58,7 @@ async def test_redis_set_with_tags_pipeline():
         patch("redis.asyncio.ConnectionPool.from_url", return_value=mock_pool),
         patch("redis.asyncio.Redis") as mock_redis_class,
         patch(
-            "yokedcache.backends.redis.serialize_data",
+            "yokedcache.backends.redis.serialize_for_cache",
             return_value=b"data",
         ),
     ):
@@ -93,7 +101,7 @@ async def test_redis_invalidate_pattern_no_keys():
     ):
         mock_redis = AsyncMock()
         mock_redis.ping = AsyncMock()
-        mock_redis.keys = AsyncMock(return_value=[])
+        mock_redis.scan_iter = _make_scan_iter([])
         mock_redis.close = AsyncMock()
         mock_redis_class.return_value = mock_redis
         await backend.connect()
@@ -113,7 +121,7 @@ async def test_redis_flush_all():
     ):
         mock_redis = AsyncMock()
         mock_redis.ping = AsyncMock()
-        mock_redis.keys = AsyncMock(return_value=[b"test:a", b"test:b"])
+        mock_redis.scan_iter = _make_scan_iter([b"test:a", b"test:b"])
         mock_redis.delete = AsyncMock(return_value=2)
         mock_redis.close = AsyncMock()
         mock_redis_class.return_value = mock_redis
@@ -158,17 +166,17 @@ async def test_redis_fuzzy_search_import_error(monkeypatch):
     ):
         mock_redis = AsyncMock()
         mock_redis.ping = AsyncMock()
-        mock_redis.keys = AsyncMock(return_value=[b"test:key1"])  # Not used
+        mock_redis.scan_iter = _make_scan_iter([b"test:key1"])
         mock_redis.close = AsyncMock()
         mock_redis_class.return_value = mock_redis
-    await backend.connect()
-    # Force ImportError by removing module name
-    import sys
+        await backend.connect()
+        # Force ImportError by removing module name
+        import sys
 
-    monkeypatch.delitem(sys.modules, "fuzzywuzzy", raising=False)
-    results = await backend.fuzzy_search("query")
-    assert results == []
-    await backend.disconnect()
+        monkeypatch.delitem(sys.modules, "fuzzywuzzy", raising=False)
+        results = await backend.fuzzy_search("query")
+        assert results == []
+        await backend.disconnect()
 
 
 @pytest.mark.asyncio
@@ -182,7 +190,7 @@ async def test_redis_get_all_keys_and_size():
     ):
         mock_redis = AsyncMock()
         mock_redis.ping = AsyncMock()
-        mock_redis.keys = AsyncMock(return_value=[b"test:x", b"test:y"])
+        mock_redis.scan_iter = _make_scan_iter([b"test:x", b"test:y"])
         mock_redis.info = AsyncMock(return_value={"used_memory": 999})
         mock_redis.close = AsyncMock()
         mock_redis_class.return_value = mock_redis
@@ -202,7 +210,7 @@ async def test_redis_get_deserialization_fallback():
     with (
         patch("redis.asyncio.ConnectionPool.from_url", return_value=mock_pool),
         patch("redis.asyncio.Redis") as mock_redis_class,
-        patch("yokedcache.backends.redis.deserialize_data") as mock_deser,
+        patch("yokedcache.backends.redis.deserialize_from_cache") as mock_df,
     ):
         mock_redis = AsyncMock()
         mock_redis.ping = AsyncMock()
@@ -210,13 +218,7 @@ async def test_redis_get_deserialization_fallback():
         mock_redis.touch = AsyncMock()
         mock_redis.close = AsyncMock()
         mock_redis_class.return_value = mock_redis
-        # First call fails (JSON); second succeeds (PICKLE)
-        mock_deser.side_effect = [
-            CacheSerializationError(
-                data_type="json", operation="deserialize", original_error=None
-            ),
-            "value",
-        ]
+        mock_df.return_value = "value"
         await backend.connect()
         val = await backend.get("k")
         assert val == "value"

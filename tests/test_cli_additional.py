@@ -23,13 +23,21 @@ def _setup_mock_cache():
     return mock_cache
 
 
+def _make_scan_iter(keys):
+    async def scan_iter(*args, **kwargs):
+        for k in keys:
+            yield k
+
+    return scan_iter
+
+
 def test_cli_list_json_output():
     runner = CliRunner()
     with patch("yokedcache.cli.YokedCache") as mock_cls:
         cache = _setup_mock_cache()
         # Simulate keys
         fake_r = AsyncMock()
-        fake_r.keys = AsyncMock(return_value=[b"prefix:key1", b"prefix:key2"])
+        fake_r.scan_iter = _make_scan_iter([b"prefix:key1", b"prefix:key2"])
         cache._get_redis = MagicMock()
 
         class CM2:

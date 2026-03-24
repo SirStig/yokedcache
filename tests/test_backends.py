@@ -10,10 +10,18 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from yokedcache.backends import MemoryBackend, RedisBackend
+from yokedcache.backends import MEMCACHED_AVAILABLE, MemoryBackend, RedisBackend
 from yokedcache.backends.base import CacheBackend
 from yokedcache.exceptions import CacheConnectionError
 from yokedcache.models import CacheStats
+
+
+def _make_scan_iter(keys):
+    async def scan_iter(*args, **kwargs):
+        for k in keys:
+            yield k
+
+    return scan_iter
 
 
 class TestCacheBackendInterface:
@@ -280,6 +288,7 @@ class TestRedisBackend:
             mock_redis.exists = AsyncMock()
             mock_redis.expire = AsyncMock()
             mock_redis.keys = AsyncMock()
+            mock_redis.scan_iter = _make_scan_iter([])
             mock_redis.smembers = AsyncMock()
             mock_redis.close = AsyncMock()
             mock_redis.info = AsyncMock()
@@ -390,13 +399,12 @@ class TestRedisBackend:
         backend, mock_redis = redis_backend
 
         # Mock finding keys and deleting them
-        mock_redis.keys.return_value = [b"test:user:1", b"test:user:2"]
+        mock_redis.scan_iter = _make_scan_iter([b"test:user:1", b"test:user:2"])
         mock_redis.delete.return_value = 2
 
         invalidated = await backend.invalidate_pattern("user:*")
         assert invalidated == 2
 
-        mock_redis.keys.assert_called_once()
         mock_redis.delete.assert_called_once()
 
     @pytest.mark.asyncio
@@ -413,11 +421,7 @@ class TestRedisBackend:
 
 
 @pytest.mark.skipif(
-    "MemcachedBackend" not in dir()
-    or pytest.importorskip(
-        "yokedcache.backends", reason="Memcached backend not available"
-    ).MEMCACHED_AVAILABLE
-    is False,
+    not MEMCACHED_AVAILABLE,
     reason="Memcached dependencies not available",
 )
 class TestMemcachedBackend:
@@ -458,12 +462,17 @@ class TestMemcachedBackend:
         mock_client.delete.return_value = True
 
         # Test set
-        with patch("yokedcache.utils.serialize_data", return_value=b"test_value"):
+        with patch(
+            "yokedcache.backends.memcached.serialize_for_cache",
+            return_value=b"test_value",
+        ):
             result = await backend.set("test_key", "test_value", ttl=300)
             assert result
 
-        # Test get
-        with patch("yokedcache.utils.deserialize_data", return_value="test_value"):
+        with patch(
+            "yokedcache.backends.memcached.deserialize_from_cache",
+            return_value="test_value",
+        ):
             value = await backend.get("test_key")
             assert value == "test_value"
 

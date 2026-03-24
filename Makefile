@@ -1,6 +1,6 @@
 # Makefile for YokedCache development
 
-.PHONY: install install-dev test test-cov lint format type-check clean docs build publish help
+.PHONY: install install-dev venv test test-cov lint format type-check clean docs build publish help
 
 # Default target
 help:
@@ -8,6 +8,7 @@ help:
 	@echo "==============================="
 	@echo "install      Install package in current environment"
 	@echo "install-dev  Install package with development dependencies"
+	@echo "venv         Create .venv and install package with dev dependencies"
 	@echo "test         Run test suite"
 	@echo "test-cov     Run tests with coverage report"
 	@echo "lint         Run linting checks"
@@ -27,6 +28,12 @@ install:
 install-dev:
 	pip install -e ".[dev]"
 	pre-commit install
+
+venv:
+	python3 -m venv .venv
+	.venv/bin/pip install --upgrade pip
+	.venv/bin/pip install -e ".[dev]"
+	@echo "Activate: source .venv/bin/activate   (or use Cursor’s Python interpreter: .venv/bin/python)"
 
 install-dev-req:
 	pip install -r requirements-dev.txt
@@ -70,8 +77,11 @@ clean:
 
 # Documentation
 docs:
-	@echo "Building documentation..."
-	@echo "Note: Set up MkDocs for full documentation build"
+	python3 -m pip install -q -e ".[docs]"
+	python3 scripts/build_docs_site.py
+	cp CHANGELOG.md site/changelog.md
+	python3 -m pdoc yokedcache -o site/api --template-directory site-src/pdoc-template
+	@echo "Output in site/ — run: cd site && python3 -m http.server 8000"
 
 # Distribution
 build: clean

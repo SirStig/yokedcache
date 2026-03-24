@@ -28,7 +28,7 @@ This directory contains a complete containerized development environment for Yok
 - **VS Code Extensions**: Python, Pylance, Black, isort, flake8, mypy, pytest
 - **Code Quality**: Pre-commit hooks, linting, type checking
 - **Testing**: pytest with coverage reporting
-- **Documentation**: MkDocs for documentation building
+- **Documentation**: Static site via `scripts/build_docs_site.py` and pdoc (`./dev.sh docs`)
 
 ### Optional Monitoring Stack
 - **Redis Insight** (GUI for Redis) - Port 8001

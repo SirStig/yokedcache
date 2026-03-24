@@ -98,9 +98,9 @@ pytest tests/test_cache.py::TestYokedCache::test_basic_get_set
 - Follow Google-style docstring format
 - Update README.md for new features
 - Add examples to the `examples/` directory
-- Update documentation in `docs/` directory as needed
-- Run `mkdocs build --strict` to verify documentation builds correctly
-- Test documentation locally with `mkdocs serve`
+- Update guides under `site-src/pages/` when you change user-facing behavior
+- Run `pip install -e ".[docs]"` then `python scripts/build_docs_site.py` to verify the static site builds
+- Preview: `cd site && python -m http.server 8000` (after copying `CHANGELOG.md` to `site/changelog.md` for the changelog page)
 
 ## Contribution Guidelines
 
@@ -141,7 +141,7 @@ For new features:
    black src tests examples
    flake8 src tests examples
    mypy src --ignore-missing-imports
-   mkdocs build --strict
+   python scripts/build_docs_site.py
    ```
 
 6. **Commit your changes** with a clear commit message:
@@ -196,7 +196,7 @@ yokedcache/
 │   └── cli.py               # Command-line interface
 ├── tests/                   # Test suite
 ├── examples/                # Usage examples
-├── docs/                    # Documentation
+├── site-src/                # Static site sources (Markdown, templates, assets)
 └── pyproject.toml           # Project configuration
 ```
 
@@ -207,8 +207,8 @@ yokedcache/
 3. Create a release PR
 4. After merge, tag the release:
    ```bash
-   git tag -a v0.1.0 -m "Release version 0.1.0"
-   git push origin v0.1.0
+   git tag -a v1.0.0-beta -m "Release version 1.0.0-beta"
+   git push origin v1.0.0-beta
    ```
 5. GitHub Actions will automatically publish to PyPI
 

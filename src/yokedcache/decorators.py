@@ -621,7 +621,7 @@ class CachedDatabaseWrapper:
         def sync_cached_method(*args, **kwargs):
             # For sync methods, we need to run the async cache operations
             try:
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
             except RuntimeError:
                 # No running loop, safe to use asyncio.run
                 return asyncio.run(

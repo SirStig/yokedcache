@@ -10,13 +10,14 @@ import time
 from datetime import datetime
 from typing import Any, List, Optional, Set, Union
 
+from ..exceptions import CacheSerializationError
 from ..models import CacheEntry, CacheStats, FuzzySearchResult, SerializationMethod
 from ..utils import (
     calculate_ttl_with_jitter,
-    deserialize_data,
+    deserialize_from_cache,
     normalize_tags,
     sanitize_key,
-    serialize_data,
+    serialize_for_cache,
 )
 from .base import CacheBackend
 
@@ -41,6 +42,7 @@ class MemcachedBackend(CacheBackend):
         default_serialization: SerializationMethod = SerializationMethod.PICKLE,
         pool_size: int = 2,
         pool_minsize: int = 1,
+        allow_legacy_insecure_deserialization: bool = True,
         **kwargs,
     ):
         """Initialize Memcached backend."""
@@ -55,6 +57,9 @@ class MemcachedBackend(CacheBackend):
         self.servers = servers or ["localhost:11211"]
         self.key_prefix = key_prefix
         self.default_serialization = default_serialization
+        self.allow_legacy_insecure_deserialization = (
+            allow_legacy_insecure_deserialization
+        )
         self.pool_size = pool_size
         self.pool_minsize = pool_minsize
 
@@ -146,18 +151,14 @@ class MemcachedBackend(CacheBackend):
                 self._stats.add_miss()
                 return default
 
-            # Deserialize data
             try:
-                value = deserialize_data(data, self.default_serialization)
-            except Exception:
-                try:
-                    # Fallback to JSON
-                    value = deserialize_data(data, SerializationMethod.JSON)
-                except Exception:
-                    logger.warning(
-                        f"Failed to deserialize data for key: {sanitized_key}"
-                    )
-                    return default
+                value = deserialize_from_cache(
+                    data,
+                    self.allow_legacy_insecure_deserialization,
+                )
+            except CacheSerializationError:
+                logger.warning(f"Failed to deserialize data for key: {sanitized_key}")
+                return default
 
             self._stats.add_hit()
             return value
@@ -181,7 +182,7 @@ class MemcachedBackend(CacheBackend):
         actual_ttl = calculate_ttl_with_jitter(ttl or 300)
 
         try:
-            serialized_data = serialize_data(value, self.default_serialization)
+            serialized_data = serialize_for_cache(value, self.default_serialization)
 
             success = await self._client.set(
                 sanitized_key.encode(), serialized_data, exptime=actual_ttl

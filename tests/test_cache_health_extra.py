@@ -8,6 +8,14 @@ import pytest
 from yokedcache import CacheConfig, YokedCache
 
 
+def _make_scan_iter(keys):
+    async def scan_iter(*args, **kwargs):
+        for k in keys:
+            yield k
+
+    return scan_iter
+
+
 @pytest.mark.asyncio
 async def test_cache_detailed_health_check_paths():
     cfg = CacheConfig(enable_metrics=True, enable_env_overrides=False)
@@ -71,7 +79,7 @@ async def test_delete_prefixed_fallback_raw_first():
 async def test_flush_all_empty():
     cache = YokedCache(CacheConfig(enable_env_overrides=False))
     mock_r = AsyncMock()
-    mock_r.keys.return_value = []
+    mock_r.scan_iter = _make_scan_iter([])
     mock_r.delete.return_value = 0
     cache._connected = True
     cache._redis = mock_r

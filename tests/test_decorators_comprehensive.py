@@ -2,12 +2,11 @@
 Comprehensive tests for decorators module to increase coverage.
 """
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from yokedcache import CacheConfig, YokedCache
+from yokedcache import YokedCache
 from yokedcache.decorators import CachedDatabaseWrapper, cached, cached_dependency
 
 
@@ -379,7 +378,6 @@ class TestDecoratorUtilities:
 
     def test_cached_dependency_function_inspection(self):
         """Test that cached_dependency preserves function metadata."""
-        cache = YokedCache()
 
         @cached_dependency
         def test_dependency():

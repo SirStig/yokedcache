@@ -303,7 +303,7 @@ Find approximate matches across cached keys and optionally search within cached 
 
 ```python
 # Install the fuzzy search dependencies
-# pip install "yokedcache[fuzzy]"
+# pip install "yokedcache[fuzzy]==1.0.0-beta"
 
 from yokedcache import YokedCache, CacheConfig
 
@@ -543,9 +543,9 @@ async def get_with_fallback(key):
     )
 ```
 
-## Advanced Caching Patterns v0.3.0
+## Advanced Caching Patterns
 
-YokedCache 0.3.0 introduces powerful advanced caching patterns designed for high-performance, production-ready applications.
+YokedCache provides advanced caching patterns designed for high-performance, production-ready applications.
 
 ### HTTP Response Middleware
 

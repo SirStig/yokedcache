@@ -7,8 +7,7 @@ Tests the critical fixes and new features based on real-world feedback.
 import asyncio
 import inspect
 import os
-import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -263,34 +262,26 @@ class TestErrorHandling:
     def resilient_cache(self):
         """Create cache with error handling enabled."""
         config = CacheConfig(
-            redis_url="redis://nonexistent:6379/0",  # Invalid Redis URL
+            redis_url="redis://nonexistent.invalid:6379/0",
             enable_circuit_breaker=True,
             circuit_breaker_failure_threshold=2,
             circuit_breaker_timeout=1.0,
             fallback_enabled=True,
             connection_retries=1,
+            enable_memory_fallback=True,
+            enable_env_overrides=False,
         )
         return YokedCache(config)
 
     @pytest.mark.asyncio
     async def test_fallback_behavior_on_connection_failure(self, resilient_cache):
-        """Ensure operations don't hard-fail when Redis is unreachable.
+        """Ensure operations don't hard-fail when Redis is unreachable."""
+        await resilient_cache.connect()
+        result = await resilient_cache.get("test_key", "default_value")
+        assert result == "default_value"
 
-        If a CacheConnectionError is raised before fallback engages we skip
-        the test (environment dependent). Otherwise we assert fallback values.
-        """
-        try:
-            result = await resilient_cache.get("test_key", "default_value")
-            assert result == "default_value"
-        except CacheConnectionError:
-            pytest.skip("Redis unreachable early; skipping fallback assertions")
-
-        try:
-            result = await resilient_cache.set("test_key", "test_value")
-            assert result in (False, None)
-        except CacheConnectionError:
-            # Accept connection error scenario
-            pass
+        result = await resilient_cache.set("test_key", "test_value")
+        assert result in (False, True, None)
 
     @pytest.mark.asyncio
     async def test_circuit_breaker_integration(self, resilient_cache):
@@ -350,7 +341,7 @@ class TestHealthCheck:
             # Status should be one of expected values
             assert health_info["status"] in ["healthy", "degraded", "unhealthy"]
 
-        except Exception as e:
+        except Exception:
             # Expected if Redis is not available
             pass
 

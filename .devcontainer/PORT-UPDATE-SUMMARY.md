@@ -57,7 +57,7 @@ redis-cli -h redis -p 56379
 nc -z memcached 11211
 
 # Documentation server
-mkdocs serve --dev-addr=0.0.0.0:58080
+`./dev.sh docs-serve` (static site on port 58080)
 
 # Jupyter Lab
 jupyter lab --ip=0.0.0.0 --port=58888 --allow-root

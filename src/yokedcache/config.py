@@ -63,6 +63,8 @@ class CacheConfig:
     enable_compression: bool = False
     compression_threshold: int = 1024  # bytes
     default_serialization: SerializationMethod = SerializationMethod.JSON
+    allow_legacy_insecure_deserialization: bool = True
+    max_single_flight_locks: int = 50_000
 
     # Fuzzy search settings
     enable_fuzzy: bool = False
@@ -251,6 +253,11 @@ class CacheConfig:
         if self.circuit_breaker_timeout <= 0:
             raise CacheConfigurationError(
                 "circuit_breaker_timeout", "must be greater than 0"
+            )
+
+        if self.max_single_flight_locks <= 0:
+            raise CacheConfigurationError(
+                "max_single_flight_locks", "must be greater than 0"
             )
 
     def _parse_redis_url(self) -> None:

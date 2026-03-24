@@ -173,6 +173,83 @@ def deserialize_data(
         raise CacheSerializationError("bytes", "deserialize", e)
 
 
+_CACHE_MAGIC_V1 = b"\x89Yc\x01"
+_METHOD_BYTE = {
+    SerializationMethod.JSON: 1,
+    SerializationMethod.PICKLE: 2,
+    SerializationMethod.MSGPACK: 3,
+}
+_BYTE_TO_METHOD = {v: k for k, v in _METHOD_BYTE.items()}
+
+
+def serialize_for_cache(value: Any, method: SerializationMethod) -> bytes:
+    payload = serialize_data(value, method)
+    tag = _METHOD_BYTE[method]
+    return _CACHE_MAGIC_V1 + bytes([tag]) + payload
+
+
+def deserialize_cache_payload_legacy(data: bytes) -> Any:
+    try:
+        return deserialize_data(data, SerializationMethod.JSON)
+    except CacheSerializationError:
+        return deserialize_data(data, SerializationMethod.PICKLE)
+
+
+def deserialize_from_cache(data: bytes, allow_legacy_insecure: bool) -> Any:
+    data = bytes(data)
+    if len(data) >= 5 and data[:4] == _CACHE_MAGIC_V1:
+        code = data[4]
+        method = _BYTE_TO_METHOD.get(code)
+        if method is None:
+            raise CacheSerializationError(
+                "bytes",
+                "deserialize",
+                ValueError("unknown cache payload format"),
+            )
+        return deserialize_data(data[5:], method)
+    if allow_legacy_insecure:
+        return deserialize_cache_payload_legacy(data)
+    raise CacheSerializationError(
+        "bytes",
+        "deserialize",
+        ValueError("legacy cache payload rejected"),
+    )
+
+
+def is_enveloped_cache_payload(data: bytes) -> bool:
+    return len(data) >= 5 and data[:4] == _CACHE_MAGIC_V1
+
+
+async def redis_scan_keys(redis_client: Any, pattern: str) -> List[Any]:
+    out: List[Any] = []
+    async for key in redis_client.scan_iter(match=pattern):
+        out.append(key)
+    return out
+
+
+async def redis_scan_keys_max(
+    redis_client: Any, pattern: str, max_keys: Optional[int] = None
+) -> List[Any]:
+    out: List[Any] = []
+    async for key in redis_client.scan_iter(match=pattern):
+        out.append(key)
+        if max_keys is not None and len(out) >= max_keys:
+            break
+    return out
+
+
+async def redis_delete_keys(
+    redis_client: Any, keys: List[Any], chunk_size: int = 500
+) -> int:
+    if not keys:
+        return 0
+    total = 0
+    for i in range(0, len(keys), chunk_size):
+        chunk = keys[i : i + chunk_size]
+        total += int(await redis_client.delete(*chunk))
+    return total
+
+
 def _json_serializer(obj: Any) -> Any:
     """Custom JSON serializer for non-standard types."""
     if isinstance(obj, datetime):
@@ -339,9 +416,8 @@ def sanitize_key(key: str) -> str:
 
     # Ensure reasonable length (Redis keys can be up to 512MB, but shorter is better)
     if len(sanitized) > 250:
-        # Keep prefix and create hash for the rest
         prefix = sanitized[:100]
-        suffix_hash = hashlib.md5(sanitized[100:].encode()).hexdigest()[:16]
+        suffix_hash = hashlib.sha256(sanitized[100:].encode()).hexdigest()
         sanitized = f"{prefix}#{suffix_hash}"
 
     return sanitized

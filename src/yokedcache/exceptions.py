@@ -5,7 +5,7 @@ This module defines custom exceptions used throughout the YokedCache library
 to provide clear error handling and debugging information.
 """
 
-from typing import Any, Optional
+from typing import Optional
 
 
 class YokedCacheError(Exception):

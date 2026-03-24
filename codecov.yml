@@ -40,7 +40,8 @@ comment:
 ignore:
   - "tests/"
   - "examples/"
-  - "docs/"
+  - "site-src/"
+  - "site/"
   - "htmlcov/"
   - "**/__pycache__/"
   - "*.pyc"

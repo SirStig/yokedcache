@@ -46,7 +46,7 @@ A complete containerized development environment for YokedCache with Redis, Memc
 ### Development Tools
 - **Pre-commit hooks** for code quality
 - **Coverage reporting** with pytest-cov
-- **Documentation building** with MkDocs
+- **Documentation building** with static HTML (`build_docs_site.py`) and pdoc
 - **CLI tools** for cache management
 - **Development helper script** (`./dev.sh`)
 

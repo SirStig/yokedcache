@@ -1,6 +1,6 @@
 # Multi-Backend Architecture
 
-YokedCache 0.2.0 introduces a flexible multi-backend architecture that allows you to choose the best caching solution for your specific needs. Whether you need the speed of in-memory caching, the persistence of Redis, or the simplicity of Memcached, YokedCache provides a unified interface.
+YokedCache offers a flexible multi-backend architecture that allows you to choose the best caching solution for your specific needs. Whether you need the speed of in-memory caching, the persistence of Redis, or the simplicity of Memcached, YokedCache provides a unified interface.
 
 ## Table of Contents
 
@@ -303,7 +303,7 @@ class AdaptiveCache:
 
 ### From Single Backend to Multi-Backend
 
-**Before (v0.1.x):**
+**Before (URL-only `CacheConfig`):**
 ```python
 from yokedcache import YokedCache, CacheConfig
 
@@ -311,7 +311,7 @@ config = CacheConfig(redis_url="redis://localhost:6379/0")
 cache = YokedCache(config)
 ```
 
-**After (v0.2.0):**
+**After (explicit `RedisBackend`):**
 ```python
 from yokedcache import YokedCache, CacheConfig
 from yokedcache.backends import RedisBackend

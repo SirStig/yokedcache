@@ -1,7 +1,6 @@
 """Tests for advanced caching features: routing, SWR, tracing."""
 
 import asyncio
-import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -98,6 +97,21 @@ class TestPrefixRouter:
         # Longer prefix should win
         assert router.get_backend("user:admin:123") == mock_admin_backend
         assert router.get_backend("user:regular:123") == mock_user_backend
+
+    @pytest.mark.asyncio
+    async def test_invalidate_pattern_longest_prefix_match(self):
+        mock_default = AsyncMock()
+        mock_user = AsyncMock()
+        mock_profile = AsyncMock()
+        router = PrefixRouter(mock_default)
+        router.add_route("user:", mock_user)
+        router.add_route("user:profile:", mock_profile)
+        mock_profile.invalidate_pattern = AsyncMock(return_value=4)
+        mock_user.invalidate_pattern = AsyncMock(return_value=0)
+        count = await router.invalidate_pattern("user:profile:*")
+        assert count == 4
+        mock_profile.invalidate_pattern.assert_awaited_once_with("user:profile:*")
+        mock_user.invalidate_pattern.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_router_operations(self):

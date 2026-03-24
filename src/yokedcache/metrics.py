@@ -7,7 +7,6 @@ error tracking, and performance monitoring suitable for production environments.
 
 import asyncio
 import logging
-import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone

@@ -6,10 +6,9 @@ monitoring commands, and enhanced search features.
 """
 
 import csv
-import json
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from click.testing import CliRunner
@@ -411,13 +410,11 @@ class TestCLIConfiguration:
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".yaml", delete=False
         ) as tmp_file:
-            tmp_file.write(
-                """
+            tmp_file.write("""
 redis_url: redis://localhost:6379/1
 default_ttl: 600
 key_prefix: test
-"""
-            )
+""")
             config_path = tmp_file.name
 
         try:

@@ -1,0 +1,51 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  --yc-bg: #07090f;
+  --yc-text: #dce3ee;
+  --yc-muted: #7e8fa5;
+  --yc-accent: #22d3ee;
+  --yc-border: rgba(255, 255, 255, 0.07);
+  --yc-code: rgba(0, 0, 0, 0.38);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --yc-bg: #f0f4fa;
+    --yc-text: #0f172a;
+    --yc-muted: #475569;
+    --yc-accent: #0891b2;
+    --yc-border: rgba(0, 0, 0, 0.08);
+    --yc-code: rgba(0, 0, 0, 0.04);
+  }
+}
+
+body {
+  font-family: "Inter", system-ui, -apple-system, sans-serif !important;
+  background: var(--yc-bg) !important;
+  color: var(--yc-text) !important;
+}
+
+a {
+  color: var(--yc-accent) !important;
+}
+
+code,
+pre {
+  font-family: "IBM Plex Mono", ui-monospace, monospace !important;
+}
+
+pre {
+  background: var(--yc-code) !important;
+  border: 1px solid var(--yc-border) !important;
+  border-radius: 10px !important;
+}
+
+.pdoc {
+  --pdoc-background: var(--yc-bg);
+}
+
+.pdoc-header,
+nav.pdoc-nav {
+  border-color: var(--yc-border) !important;
+}

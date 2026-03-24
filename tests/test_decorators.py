@@ -2,12 +2,11 @@
 Tests for YokedCache decorators.
 """
 
-import asyncio
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from yokedcache import YokedCache, cached, cached_dependency
+from yokedcache import cached, cached_dependency
 from yokedcache.decorators import CachedDatabaseWrapper
 
 

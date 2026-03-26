@@ -219,8 +219,13 @@ li strong { color: var(--text); }
   cursor: pointer;
   color: var(--text);
   flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 .menu-btn svg { display: block; }
+
+body.nav-drawer-open {
+  overflow: hidden;
+}
 
 /* ===== LAYOUT ===== */
 .page-layout {
@@ -229,7 +234,6 @@ li strong { color: var(--text); }
   min-height: 100vh;
   padding-top: var(--header-h);
   position: relative;
-  z-index: 1;
 }
 
 /* ===== SIDEBAR ===== */
@@ -496,8 +500,15 @@ tbody tr:hover td { background: var(--glass); }
   background: rgba(0,0,0,0.55);
   z-index: 150;
   backdrop-filter: blur(2px);
+  -webkit-tap-highlight-color: transparent;
 }
 .sidebar-overlay.visible { display: block; }
+
+@media (min-width: 901px) {
+  .sidebar.sidebar--standalone {
+    display: none;
+  }
+}
 
 /* ===== LANDING ===== */
 .landing { position: relative; z-index: 1; padding-top: var(--header-h); }
@@ -817,14 +828,20 @@ tbody tr:hover td { background: var(--glass); }
     position: fixed;
     top: 0; left: 0;
     height: 100vh;
-    width: var(--sidebar-w);
+    width: min(var(--sidebar-w), 88vw);
+    max-width: 100%;
     z-index: 160;
     transform: translateX(-100%);
     transition: transform 0.24s cubic-bezier(0.4,0,0.2,1);
     padding-top: calc(var(--header-h) + 0.75rem);
     border-right: 1px solid var(--border-md);
+    -webkit-overflow-scrolling: touch;
   }
   .sidebar.open { transform: translateX(0); }
+
+  .sidebar.sidebar--standalone {
+    display: block;
+  }
 
   .menu-btn { display: flex; }
   .content { padding: 1.75rem 1.25rem 3rem; }
@@ -841,6 +858,23 @@ tbody tr:hover td { background: var(--glass); }
   .hero h1 { font-size: 1.7rem; }
   .hero-sub { font-size: 0.95rem; }
   .header-nav a:not(.header-badge) { display: none; }
+  .site-header {
+    padding: 0 0.75rem;
+    gap: 0.5rem;
+  }
+  .header-nav {
+    gap: 0.05rem;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+  .header-nav .header-badge {
+    padding: 0.24rem 0.5rem;
+    font-size: 0.72rem;
+  }
+  .header-nav .theme-btn {
+    padding: 0.28rem 0.45rem;
+    font-size: 0.74rem;
+  }
 }
 
 /* ===== DOC PAGES (long-form readability) ===== */

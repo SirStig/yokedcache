@@ -21,22 +21,49 @@ const sidebar = document.getElementById("sidebar");
 const overlay = document.getElementById("sidebarOverlay");
 const menuBtn = document.getElementById("menuBtn");
 
-function openSidebar() {
-  sidebar?.classList.add("open");
-  overlay?.classList.add("visible");
-}
-function closeSidebar() {
-  sidebar?.classList.remove("open");
-  overlay?.classList.remove("visible");
+function drawerOpen() {
+  return Boolean(sidebar?.classList.contains("open"));
 }
 
-menuBtn?.addEventListener("click", openSidebar);
-overlay?.addEventListener("click", closeSidebar);
+function setDrawerOpen(open) {
+  if (!sidebar || !overlay) return;
+  sidebar.classList.toggle("open", open);
+  overlay.classList.toggle("visible", open);
+  document.body.classList.toggle("nav-drawer-open", open);
+  overlay.setAttribute("aria-hidden", open ? "false" : "true");
+  if (menuBtn) {
+    menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+  }
+}
+
+if (menuBtn && sidebar) {
+  menuBtn.setAttribute("aria-controls", "sidebar");
+  menuBtn.setAttribute("aria-expanded", "false");
+}
+
+menuBtn?.addEventListener("click", () => {
+  if (!sidebar || !overlay) return;
+  setDrawerOpen(!drawerOpen());
+});
+
+overlay?.addEventListener("click", () => setDrawerOpen(false));
 
 sidebar?.querySelectorAll(".sidebar-link").forEach((link) => {
   link.addEventListener("click", () => {
-    if (window.innerWidth < 900) closeSidebar();
+    if (window.innerWidth < 900) setDrawerOpen(false);
   });
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && drawerOpen()) {
+    setDrawerOpen(false);
+    menuBtn?.focus();
+  }
+});
+
+window.addEventListener("resize", () => {
+  if (window.innerWidth >= 900 && drawerOpen()) setDrawerOpen(false);
 });
 
 function attachCopyButton(pre) {

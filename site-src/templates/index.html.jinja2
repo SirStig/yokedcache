@@ -80,6 +80,17 @@
     </button>
   </header>
 
+  <aside class="sidebar sidebar--standalone" id="sidebar" aria-label="Site navigation">
+    <div class="sidebar-group">
+      <span class="sidebar-label">Navigate</span>
+      <a class="sidebar-link" href="getting-started.html">Documentation</a>
+      <a class="sidebar-link" href="api/index.html">API reference</a>
+      <a class="sidebar-link" href="changelog.html">Changelog</a>
+      <a class="sidebar-link sidebar-ext" href="https://pypi.org/project/yokedcache/" target="_blank" rel="noopener">PyPI</a>
+      <a class="sidebar-link sidebar-ext" href="{{ github_repo }}" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </aside>
+
   <div class="landing">
     <section class="hero">
       <div class="hero-eyebrow">Open source · MIT License</div>
@@ -192,6 +203,7 @@
     </footer>
   </div>
 
+  <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
   <script src="assets/app.js"></script>
 </body>
 </html>

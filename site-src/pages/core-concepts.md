@@ -1,416 +1,372 @@
 # Core Concepts
 
-Understanding YokedCache's core concepts will help you use it effectively and troubleshoot issues when they arise.
+Understanding how YokedCache works will help you make good decisions about keys, TTLs, tags, and serialization—and debug things when they don't behave as expected.
 
-## Architecture Overview
+---
 
-YokedCache follows a simple but powerful architecture:
+## Architecture
 
-```mermaid
-graph TB
-    A[Application Code] --> B[YokedCache Wrapper]
-    B --> C{Cache Hit?}
-    C -->|Yes| D[Return Cached Data]
-    C -->|No| E[Execute Function/Query]
-    E --> F[Store in Backend]
-    F --> G[Return Data]
-    H[Write Operation] --> I[Auto-Invalidation]
-    I --> J[Clear Related Cache Tags]
+YokedCache is a thin wrapper that sits in front of a pluggable backend. Every read goes through the wrapper first; on a miss, it calls your function or query, stores the result, and returns it. On a hit, it skips the underlying call entirely.
 
-    subgraph "Backends"
-        K[Memory Backend]
-        L[Redis Backend]
-        M[Memcached Backend]
-    end
-
-    B --> K
-    B --> L
-    B --> M
+```
+Your app
+   │
+   ▼
+YokedCache wrapper
+   │   ├── cache hit?  ─── yes ──▶ return stored value
+   │   └── cache miss? ─── no  ──▶ call function/query ──▶ store result ──▶ return
+   │
+   ▼
+Backend (Memory / Redis / Memcached / Disk / SQLite)
 ```
 
-## Cache Keys
+The same wrapper API works across all backends. Switching from memory to Redis doesn't change your application code.
 
-Cache keys are unique identifiers for cached values. YokedCache builds keys systematically to ensure consistency and prevent conflicts.
+---
 
-### Key Structure
+## Cache keys
 
-All cache keys follow this pattern:
+### Automatic key generation
+
+When you use `@cached` or `cached_dependency`, keys are generated automatically from:
+
+- The configured `key_prefix` (default: `"yokedcache"`)
+- The function name or table name
+- A stable hash of the arguments
+
 ```
-{key_prefix}:{context}:{hash}
+yokedcache:get_user:a3f8c2d1   ← prefix:function:hash_of_args
+yokedcache:table:users:b9e4f721
 ```
 
-- **key_prefix**: Configurable namespace (default: `yokedcache`)
-- **context**: Function name, table name, or operation type
-- **hash**: Stable hash of arguments/parameters
+Different arguments produce different hashes, so `get_user(1)` and `get_user(2)` never collide.
 
-### Key Generation
+### Manual keys
 
-YokedCache automatically generates keys using several inputs:
+For `cache.set()` / `cache.get()`, you pass the key directly:
 
 ```python
-from yokedcache.utils import generate_cache_key
-
-# Function caching
-key = generate_cache_key(
-    prefix="myapp",
-    function_name="get_user",
-    args=(123,),
-    kwargs={"active": True}
-)
-# Result: "myapp:get_user:a1b2c3d4..."
-
-# Database query caching
-key = generate_cache_key(
-    prefix="myapp",
-    table="users",
-    query="SELECT * FROM users WHERE id = ?",
-    params=[123]
-)
-# Result: "myapp:users:query:e5f6g7h8..."
+await cache.set("user:42", {"name": "Alice"}, ttl=300)
+user = await cache.get("user:42")  # returns the dict or None
 ```
 
-### Key Sanitization
+### Key prefix
 
-Keys are automatically sanitized to ensure compatibility with all backends:
-
-- Non-ASCII characters are encoded
-- Special characters are escaped or replaced
-- Length is limited to prevent backend issues
-- Dangerous patterns are removed
+The prefix namespaces all keys. This prevents collisions between different apps or environments sharing the same Redis database:
 
 ```python
-from yokedcache.utils import sanitize_key
-
-# Automatically applied to all generated keys
-safe_key = sanitize_key("my-app:user:josé@example.com")
-# Result: "my-app:user:jos__at__example.com"
+config = CacheConfig(key_prefix="prod_myapp")  # all keys: "prod_myapp:..."
+config = CacheConfig(key_prefix="staging_myapp")
 ```
 
-## TTL and Expiration
+Set it per environment via `YOKEDCACHE_KEY_PREFIX`.
 
-Time-To-Live (TTL) controls how long cache entries remain valid.
+### Key sanitization
 
-### TTL Calculation
+Keys are automatically sanitized before storage—non-ASCII characters are encoded, length is capped, and dangerous patterns are removed. You generally don't need to think about this, but it means keys with special characters may look slightly different in Redis than what you passed in.
 
-YokedCache applies jitter to TTL values to prevent thundering herd problems:
+---
 
-```python
-from yokedcache.utils import calculate_ttl_with_jitter
+## TTL and expiration
 
-# Base TTL: 300 seconds, Jitter: 10%
-actual_ttl = calculate_ttl_with_jitter(300, jitter_percent=10.0)
-# Result: 270-330 seconds (random within range)
+Every cache entry has a TTL (time-to-live) in seconds. After that time, the entry expires and the next read is a miss.
+
+### TTL priority
+
+When multiple TTL sources are configured, the most specific wins:
+
+```
+Explicit TTL on the call              (highest priority)
+  └── Table-specific TTL in CacheConfig
+        └── Global default_ttl in CacheConfig
+              └── Backend default           (lowest priority)
 ```
 
-### TTL Sources
-
-TTL values are determined in this order of precedence:
-
-1. **Explicit TTL**: Passed directly to cache operations
-2. **Table-specific TTL**: Configured per table in config
-3. **Default TTL**: Global default from configuration
-4. **Backend default**: Backend-specific fallback
-
 ```python
-# Explicit TTL (highest precedence)
-await cache.set("key", value, ttl=600)
-
-# Table-specific TTL in config
-config = CacheConfig(
-    tables={
-        "users": TableCacheConfig(ttl=3600),
-        "products": TableCacheConfig(ttl=1800)
-    }
-)
-
-# Global default TTL
+# Global default
 config = CacheConfig(default_ttl=300)
+
+# Per-table override
+config = CacheConfig(
+    default_ttl=300,
+    tables={"users": TableCacheConfig(ttl=3600)},
+)
+
+# Per-call override (highest priority)
+await cache.set("key", value, ttl=60)
 ```
 
-### TTL Best Practices
+### Jitter
 
-- **Hot data**: Short TTL (30-300 seconds) for frequently changing data
-- **Cold data**: Long TTL (1-24 hours) for stable reference data
-- **User sessions**: Medium TTL (15-60 minutes) for user-specific data
-- **Always use jitter**: Prevents synchronized cache misses
+YokedCache adds random jitter to every TTL (default: ±10%). A 300s TTL becomes something between 270–330s.
 
-## Tags and Grouping
-
-Tags allow you to group related cache entries and perform bulk operations.
-
-### Tag Structure
-
-Tags are simple string identifiers that group related cache entries:
+This prevents the **thundering herd** problem: if many cache entries expire at exactly the same time, every entry becomes a miss simultaneously and your database gets flooded with requests at once. Jitter spreads out the expirations.
 
 ```python
-# Table-based tags (automatic)
+# Disable jitter if you need exact TTLs (not recommended for high-traffic systems)
+config = CacheConfig(ttl_jitter_percent=0)
+```
+
+### Choosing TTL values
+
+| Data type | Suggested TTL |
+|-----------|---------------|
+| User sessions | 15–60 minutes |
+| User profiles | 5–60 minutes |
+| Product catalog | 1–24 hours |
+| Config / feature flags | 5–30 minutes |
+| Search results | 1–5 minutes |
+| Aggregations / analytics | 10–60 minutes |
+| Reference data (countries, categories) | 24 hours+ |
+
+Hot data that changes often → short TTL. Stable reference data → long TTL.
+
+---
+
+## Tags
+
+Tags let you group related cache entries and invalidate them together, regardless of their keys.
+
+### Setting tags
+
+```python
+# Manual set
+await cache.set(
+    "product:1",
+    product_data,
+    ttl=600,
+    tags=["products", "category:electronics", "tenant:acme"],
+)
+
+# Via decorator
+@cached(cache=cache, ttl=300, tags=["users", "api_v2"])
+async def get_user(user_id: int):
+    ...
+```
+
+### Invalidating by tag
+
+```python
+# All entries tagged "products" are invalidated
+await cache.invalidate_tags(["products"])
+
+# Multiple tags—any entry with ANY of these tags is invalidated
+await cache.invalidate_tags(["category:electronics", "tenant:acme"])
+```
+
+### Automatic tagging (cached_dependency)
+
+When you use `cached_dependency(get_db, table_name="users")`, YokedCache automatically:
+
+1. Tags all reads with `"table:users"`
+2. Listens for `commit()` calls on the session
+3. Calls `invalidate_tags(["table:users"])` on commit
+
+You never have to manually track what to invalidate after a write.
+
+### Tag design patterns
+
+```python
+# Per-table tags (automatic with cached_dependency)
 "table:users"
 "table:products"
 
-# Feature-based tags (manual)
-"user_data"
-"product_catalog"
-"session_data"
+# Per-entity tags (for fine-grained invalidation)
+f"user:{user_id}"
+f"product:{product_id}"
 
-# Composite tags
-"user:123"
-"tenant:company_a"
+# Feature tags (for grouped invalidation)
+"search_results"
+"homepage_data"
+"analytics"
+
+# Tenant tags (for multi-tenant isolation)
+f"tenant:{tenant_id}"
 ```
 
-### Automatic Tagging
+---
 
-YokedCache automatically applies tags based on context:
+## Invalidation patterns
+
+Beyond tags, YokedCache supports two other invalidation strategies:
+
+### Pattern-based
+
+Invalidates all keys matching a glob pattern:
 
 ```python
-# Function caching with explicit tags
-@cached(ttl=300, tags=["user_data", "api_v1"])
-async def get_user_profile(user_id: int):
-    return fetch_user_from_db(user_id)
-
-# Database dependency caching (automatic table tags)
-cached_get_db = cached_dependency(
-    get_db,
-    cache=cache,
-    ttl=300,
-    table_name="users"  # Automatically adds "table:users" tag
-)
+await cache.invalidate_pattern("user:*")          # all user keys
+await cache.invalidate_pattern("session:temp:*")  # temporary sessions
+await cache.invalidate_pattern("*:stale")         # anything marked stale
 ```
 
-### Tag-Based Operations
+> **Note:** Pattern invalidation on Redis uses `SCAN` + `DEL`, which can be slow if you have millions of keys. Prefer tag-based invalidation for high-traffic systems.
 
-Tags enable powerful bulk operations:
+### Manual delete
 
 ```python
-# Invalidate all user-related data
-await cache.invalidate_tags(["user_data", "table:users"])
-
-# Invalidate specific user's data
-await cache.invalidate_tags([f"user:{user_id}"])
-
-# Search by tags
-results = await cache.fuzzy_search("john", tags={"user_data"})
-
-# Pattern-based invalidation
-await cache.invalidate_pattern("user:*")
+await cache.delete("user:42")
+await cache.delete_many(["user:42", "user:43", "user:44"])
 ```
 
-## Auto-Invalidation
-
-Auto-invalidation automatically clears cache entries when related data changes.
-
-### How It Works
-
-1. **Read Operations**: Cached with appropriate tags
-2. **Write Operations**: Tracked and queued for invalidation
-3. **Transaction Commit**: Triggers invalidation of affected tags
-4. **Cache Cleared**: Related entries removed from cache
-
-```python
-# Setup auto-invalidation
-cached_get_db = cached_dependency(
-    get_db,
-    cache=cache,
-    ttl=300,
-    table_name="users"
-)
-
-# Read operation (cached with "table:users" tag)
-@app.get("/users/{user_id}")
-async def get_user(user_id: int, db=Depends(cached_get_db)):
-    return db.query(User).filter(User.id == user_id).first()
-
-# Write operation (triggers invalidation on commit)
-@app.post("/users")
-async def create_user(user: UserCreate, db=Depends(cached_get_db)):
-    new_user = User(**user.dict())
-    db.add(new_user)
-    await db.commit()  # Auto-invalidates "table:users" tag
-    return new_user
-```
-
-### Table Detection
-
-YokedCache automatically detects affected tables from SQL queries:
-
-```python
-# Simple patterns detected automatically
-"SELECT * FROM users WHERE id = ?"           # → users
-"INSERT INTO products (name) VALUES (?)"     # → products
-"UPDATE orders SET status = ? WHERE id = ?"  # → orders
-"DELETE FROM sessions WHERE expired < ?"     # → sessions
-```
-
-For complex queries, specify tables explicitly:
-
-```python
-cached_get_db = cached_dependency(
-    get_db,
-    cache=cache,
-    ttl=300,
-    table_name="users"  # Explicit table specification
-)
-```
+---
 
 ## Serialization
 
-YokedCache supports multiple serialization methods for different use cases.
+Values are serialized before storage and deserialized on read. Three built-in methods:
 
-### Serialization Methods
+### JSON (default)
+
+Best for simple data types. Portable across languages and tools. YokedCache's JSON encoder handles common Python types automatically:
+
+| Python type | JSON representation |
+|-------------|---------------------|
+| `datetime` | ISO 8601 string |
+| `date` | ISO 8601 string |
+| `Decimal` | String |
+| `UUID` | String |
+| `set` | Array |
+| `bytes` | Base64 string |
+
+```python
+from datetime import datetime
+from decimal import Decimal
+from uuid import uuid4
+
+data = {
+    "id": uuid4(),
+    "price": Decimal("99.99"),
+    "created_at": datetime.now(),
+    "tags": {"featured", "sale"},
+}
+
+await cache.set("item", data)  # serializes transparently
+result = await cache.get("item")  # deserializes back
+```
+
+### Pickle
+
+Supports any Python object. Use when you need to cache complex ORM objects, custom classes, or anything that isn't JSON-serializable.
 
 ```python
 from yokedcache.models import SerializationMethod
 
-# JSON (default) - Best for simple data and interoperability
-await cache.set("key", {"name": "John"}, serialization=SerializationMethod.JSON)
-
-# Pickle - Best for complex Python objects
-await cache.set("key", complex_object, serialization=SerializationMethod.PICKLE)
-
-# MessagePack - Best for binary efficiency
-await cache.set("key", data, serialization=SerializationMethod.MSGPACK)
+await cache.set("session", session_obj, serialization=SerializationMethod.PICKLE)
 ```
 
-### JSON Serialization
+> **Security:** Only use pickle with backends you fully control (private Redis, local memory). Anyone who can write to your cache backend can execute arbitrary code via pickle. See [Security](security.md).
 
-JSON is the default serialization method with custom encoders for common Python types:
+### MessagePack
+
+Compact binary format. Faster than JSON for large or deeply nested data, and more space-efficient.
 
 ```python
-# Automatically handles these types
-data = {
-    "timestamp": datetime.now(),
-    "tags": {"user", "active"},  # Sets converted to lists
-    "decimal": Decimal("123.45"),
-    "uuid": uuid4()
-}
-
-await cache.set("key", data)  # Automatically serialized
-result = await cache.get("key")  # Automatically deserialized
+await cache.set("bulk_data", large_dict, serialization=SerializationMethod.MSGPACK)
 ```
 
-### Custom Serialization
+Requires `pip install "yokedcache[backends]"` or `pip install msgpack`.
 
-Configure serialization per operation or globally:
+### Setting serialization
 
 ```python
-# Per-operation
-await cache.set("key", data, serialization=SerializationMethod.PICKLE)
+# Per call
+await cache.set("key", value, serialization=SerializationMethod.PICKLE)
 
-# Per-table configuration
+# Per table (via CacheConfig)
 config = CacheConfig(
     tables={
-        "users": TableCacheConfig(
-            serialization_method=SerializationMethod.JSON
-        ),
-        "sessions": TableCacheConfig(
-            serialization_method=SerializationMethod.PICKLE
-        )
-    }
-)
-```
-
-### Serialization Best Practices
-
-- **JSON**: Use for simple data types, APIs, and cross-language compatibility
-- **Pickle**: Use for complex Python objects, but only within Python ecosystems
-- **MessagePack**: Use for binary efficiency and cross-language support
-- **Consistency**: Use the same serialization method for related data
-
-## Error Handling and Resilience
-
-YokedCache is designed to fail gracefully and maintain application stability.
-
-### Graceful Degradation
-
-When cache operations fail, YokedCache falls back to the original function:
-
-```python
-@cached(ttl=300)
-async def get_expensive_data():
-    # If cache fails, function still executes normally
-    return expensive_computation()
-```
-
-### Circuit Breaker Pattern
-
-YokedCache implements circuit breaker patterns to prevent cascade failures:
-
-- **Closed**: Normal operation, cache working
-- **Open**: Cache failing, bypass cache temporarily
-- **Half-Open**: Testing if cache has recovered
-
-### Logging and Monitoring
-
-Comprehensive logging helps with debugging and monitoring:
-
-```python
-import logging
-
-# Configure YokedCache logging
-logging.getLogger("yokedcache").setLevel(logging.INFO)
-
-# Log levels:
-# DEBUG: Detailed operation logs
-# INFO: Key operations and stats
-# WARNING: Recoverable issues
-# ERROR: Serious problems
-```
-
-## Performance Considerations
-
-### Memory Usage
-
-- **Key Efficiency**: Keep keys descriptive but concise
-- **Value Size**: Avoid storing very large objects; consider pagination
-- **TTL Strategy**: Balance freshness vs. performance
-
-### Connection Management
-
-- **Connection Pooling**: YokedCache maintains connection pools automatically
-- **Pool Sizing**: Configure `max_connections` based on concurrency needs
-- **Async vs sync**: Prefer async/await in hot paths and inside frameworks; `*_sync` is fine for scripts and low-volume blocking code
-
-### Batch Operations
-
-YokedCache optimizes batch operations internally:
-
-```python
-# These are automatically batched
-await cache.set_many({
-    "key1": value1,
-    "key2": value2,
-    "key3": value3
-}, ttl=300)
-
-# Tag operations are batched
-await cache.invalidate_tags(["tag1", "tag2", "tag3"])
-```
-
-## Configuration
-
-Core concepts can be configured globally or per-operation:
-
-```python
-from yokedcache import CacheConfig, YokedCache
-
-config = CacheConfig(
-    # Global settings
-    default_ttl=300,
-    key_prefix="myapp",
-
-    # Performance settings
-    max_connections=50,
-
-    # Table-specific settings
-    tables={
-        "users": TableCacheConfig(
-            ttl=3600,
-            tags={"user_data"},
-            serialization_method=SerializationMethod.JSON
-        )
+        "sessions": TableCacheConfig(serialization_method=SerializationMethod.PICKLE),
+        "products": TableCacheConfig(serialization_method=SerializationMethod.MSGPACK),
     }
 )
 
-cache = YokedCache(config=config)
+# Global default
+config = CacheConfig(default_serialization=SerializationMethod.JSON)
 ```
 
-Understanding these core concepts will help you design effective caching strategies and troubleshoot issues when they arise. Next, explore the [Configuration Guide](configuration.md) for detailed setup options.
+---
+
+## Error handling and resilience
+
+### Graceful degradation
+
+By default, cache failures don't crash your app. If `cache.get()` throws, the decorated function still runs and returns a real result. The error is logged but not re-raised.
+
+```python
+@cached(cache=cache, ttl=300)
+async def get_data():
+    # If Redis is down, this function still runs normally
+    return await fetch_from_database()
+```
+
+Set `fallback_enabled=False` on `CacheConfig` if you want cache errors to propagate.
+
+### Circuit breaker
+
+For sustained failures (Redis is fully down), the circuit breaker prevents your app from repeatedly trying the cache and failing:
+
+```python
+config = CacheConfig(
+    enable_circuit_breaker=True,
+    circuit_breaker_failure_threshold=5,   # open after 5 consecutive failures
+    circuit_breaker_timeout=60.0,          # try again after 60 seconds
+)
+```
+
+States:
+- **Closed** — normal operation
+- **Open** — cache bypassed, all requests go to the underlying function
+- **Half-open** — testing if the backend has recovered
+
+### Retries
+
+```python
+config = CacheConfig(
+    connection_retries=3,
+    retry_delay=0.1,  # seconds (with exponential backoff)
+)
+```
+
+---
+
+## Connection lifecycle
+
+Always connect before using the cache and disconnect when done:
+
+```python
+# Script usage
+cache = YokedCache(CacheConfig())
+asyncio.run(cache.connect())
+
+# ... use cache ...
+
+asyncio.run(cache.disconnect())
+```
+
+In FastAPI, use the lifespan context manager:
+
+```python
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await cache.connect()
+    yield
+    await cache.disconnect()
+
+app = FastAPI(lifespan=lifespan)
+```
+
+---
+
+## Async vs sync
+
+| Context | Use |
+|---------|-----|
+| Inside FastAPI, Starlette, Django async views, asyncio | `await cache.get(...)`, `await cache.set(...)` |
+| Scripts, blocking functions, sync code | `cache.get_sync(...)`, `cache.set_sync(...)` |
+| `def` functions | `@cached` (auto-detects sync) |
+
+The sync helpers internally run `asyncio.run()`, which creates a new event loop per call. This works fine for occasional use (scripts, startup tasks) but has overhead in tight loops. Prefer `await` in any context that already runs an event loop.
+
+Available sync methods: `get_sync`, `set_sync`, `delete_sync`, `exists_sync`, `invalidate_tags_sync`, `invalidate_pattern_sync`.

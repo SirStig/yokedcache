@@ -1,265 +1,259 @@
 # CLI Reference
 
-YokedCache provides a comprehensive command-line interface for cache management, monitoring, and troubleshooting. This guide covers all available commands and their options.
-
-## Installation and Setup
-
-The CLI is automatically available after installing YokedCache:
+The `yokedcache` CLI ships with the package. It's useful for debugging, inspection, and operational tasks—inspecting keys, checking hit rates, flushing data, and running health checks.
 
 ```bash
-# Install YokedCache
-pip install yokedcache
-
-# Verify CLI installation
-yokedcache --version
-
-# Get help
 yokedcache --help
+yokedcache --version
 ```
 
-## Global Options
+---
 
-All commands support these global options:
+## Global options
 
-```bash
-yokedcache [GLOBAL_OPTIONS] COMMAND [COMMAND_OPTIONS]
+These apply to every command:
 
-Global Options:
-  --config-file PATH     Configuration file path
-  --redis-url URL        Redis connection URL
-  --key-prefix PREFIX    Key prefix for cache operations
-  --log-level LEVEL      Logging level (DEBUG, INFO, WARNING, ERROR)
-  --help                 Show help message
-  --version              Show version information
+```
+--redis-url URL        Redis connection URL (overrides YOKEDCACHE_REDIS_URL)
+--config-file PATH     Path to a YAML config file
+--key-prefix PREFIX    Key prefix (overrides YOKEDCACHE_KEY_PREFIX)
+--log-level LEVEL      DEBUG | INFO | WARNING | ERROR (default: INFO)
+--help                 Show help
+--version              Show version
 ```
 
-## Core Commands
-
-### `ping` - Test Connection
-
-Test connectivity to your cache backend:
+Set defaults via environment variables so you don't have to repeat them:
 
 ```bash
-# Basic connection test
+export YOKEDCACHE_REDIS_URL="redis://localhost:6379/0"
+export YOKEDCACHE_KEY_PREFIX="myapp"
+export YOKEDCACHE_LOG_LEVEL="WARNING"
+```
+
+---
+
+## `ping` — test connection
+
+```bash
 yokedcache ping
+# OK (1.2ms)
 
-# With custom Redis URL
-yokedcache ping --redis-url redis://localhost:6380/1
-
-# Include response time
-yokedcache ping --show-timing
-
-# Test multiple times
-yokedcache ping --count 5 --interval 1
+yokedcache ping --redis-url redis://other-host:6379/0
+yokedcache ping --show-timing    # always show latency
+yokedcache ping --count 5        # ping 5 times
+yokedcache ping --count 10 --interval 0.5  # ping every 0.5 seconds
 ```
 
-### `stats` - Cache Statistics
+Returns exit code `0` on success, `3` on connection failure.
 
-View detailed cache statistics and performance metrics:
+---
+
+## `stats` — cache statistics
 
 ```bash
-# Basic statistics
 yokedcache stats
+```
 
-# Watch mode (auto-refresh)
-yokedcache stats --watch
+Output:
 
-# Custom refresh interval
-yokedcache stats --watch --interval 5
+```
+Hit rate:     87.3%
+Miss rate:    12.7%
+Keys:         1,247
+Memory:       24.8 MB
+Hits:         10,840
+Misses:       1,582
+Total ops:    12,422
+Uptime:       7,200s
+```
 
-# JSON output
-yokedcache stats --format json
+Options:
 
-# CSV output for analysis
+```bash
+yokedcache stats --watch              # live refresh (default interval: 2s)
+yokedcache stats --watch --interval 5 # refresh every 5s
+yokedcache stats --format json        # machine-readable JSON
 yokedcache stats --format csv --output stats.csv
 ```
 
-### `list` - List Cache Keys
-
-List and filter cache keys:
+JSON output for scripting:
 
 ```bash
-# List all keys
-yokedcache list
-
-# List with pattern matching
-yokedcache list --pattern "user:*"
-
-# List by prefix
-yokedcache list --prefix users:
-
-# List by tags
-yokedcache list --tags user_data,active
-
-# Include values
-yokedcache list --include-values
-
-# Output formats
-yokedcache list --format json --output keys.json
-```
-
-### `search` - Fuzzy Search
-
-Perform fuzzy search across cache keys:
-
-```bash
-# Basic fuzzy search
-yokedcache search "alice"
-
-# Adjust similarity threshold
-yokedcache search "alice" --threshold 80
-
-# Limit results
-yokedcache search "alice" --max-results 10
-
-# Search within specific tags
-yokedcache search "alice" --tags users,active
-```
-
-### `flush` - Clear Cache Data
-
-Clear cache data in bulk:
-
-```bash
-# Flush by tags
-yokedcache flush --tags "user_data,expired"
-
-# Flush by pattern
-yokedcache flush --pattern "temp:*" --force
-
-# Confirm before flushing
-yokedcache flush --tags "test_data" --confirm
-```
-
-### `export-config` - Export Configuration
-
-Export current configuration:
-
-```bash
-# Export to YAML
-yokedcache export-config --output config.yaml
-
-# Export to JSON
-yokedcache export-config --format json --output config.json
-```
-
-### `warm` - Cache Warming
-
-Pre-populate cache with data:
-
-```bash
-# Warm from configuration file
-yokedcache warm --config-file warming_config.yaml
-
-# Warm with progress tracking
-yokedcache warm --config-file warming_config.yaml --verbose
-```
-
-## CLI Cookbook
-
-### Monitor Cache Performance
-```bash
-# Watch cache statistics continuously
-yokedcache stats --watch
-
-# Monitor with custom interval
-yokedcache stats --watch --interval 5
-```
-
-### Export Configuration
-```bash
-# Export current config to YAML
-yokedcache export-config --output config.yaml
-
-# Export to JSON format
-yokedcache export-config --format json --output config.json
-```
-
-### List Keys by Prefix
-```bash
-# List all user keys
-yokedcache list --prefix users:
-
-# List with pattern matching
-yokedcache list --pattern "session:*"
-```
-
-### Delete by Pattern
-```bash
-# Delete temporary keys (with confirmation)
-yokedcache flush --pattern "temp:*" --confirm
-
-# Force delete without confirmation
-yokedcache flush --pattern "cache:test:*" --force
-```
-
-### Invalidate by Tags
-```bash
-# Clear user data cache
-yokedcache flush --tags "user_data" --confirm
-
-# Clear multiple tag categories
-yokedcache flush --tags "user_data,session_data" --force
-```
-
-### Search Cache Contents
-```bash
-# Find keys containing "alice"
-yokedcache search "alice" --threshold 80
-
-# Search with higher precision
-yokedcache search "alice" --threshold 90 --max-results 5
-```
-
-## Output Formats
-
-Most commands support multiple output formats:
-
-- **table**: Human-readable table format (default)
-- **json**: JSON format for programmatic processing
-- **csv**: CSV format for data analysis
-
-Example:
-```bash
-# JSON output for scripting
-yokedcache stats --format json
-
-# CSV output for analysis
-yokedcache list --format csv --output keys.csv
-```
-
-## Environment Variables
-
-Configure CLI behavior:
-
-```bash
-# Default Redis URL
-export YOKEDCACHE_REDIS_URL="redis://localhost:6379/0"
-
-# Default configuration file
-export YOKEDCACHE_CONFIG_FILE="/etc/yokedcache/config.yaml"
-
-# Default log level
-export YOKEDCACHE_LOG_LEVEL="INFO"
-```
-
-## Scripting and Automation
-
-Commands return standard exit codes for scripting:
-
-- `0`: Success
-- `1`: General error
-- `2`: Configuration error
-- `3`: Connection error
-
-Process JSON output with tools like `jq`:
-
-```bash
-# Get cache hit rate
 yokedcache stats --format json | jq '.hit_rate'
-
-# List keys with high TTL
-yokedcache list --format json | jq '.[] | select(.ttl > 3600) | .key'
+# 0.873
 ```
 
-The YokedCache CLI provides powerful tools for cache management, monitoring, and troubleshooting.
+---
+
+## `list` — list cache keys
+
+```bash
+yokedcache list
+```
+
+Options:
+
+```bash
+yokedcache list --pattern "user:*"         # glob pattern filter
+yokedcache list --tags user_data           # filter by tag
+yokedcache list --tags "user_data,active"  # multiple tags (comma-separated)
+yokedcache list --include-values           # include cached values
+yokedcache list --limit 100                # max keys to return (default: 1000)
+yokedcache list --format json
+yokedcache list --format json | jq '.[] | .key'  # just the keys
+```
+
+Sample output:
+
+```
+KEY                TTL      TAGS
+user:1             287s     users, tenant:acme
+user:2             241s     users, tenant:acme
+product:99         3520s    products, electronics
+session:abc123     814s     sessions
+```
+
+---
+
+## `search` — fuzzy key search
+
+Find keys by approximate match (requires `yokedcache[fuzzy]`):
+
+```bash
+yokedcache search "alice"
+yokedcache search "alice" --threshold 80       # similarity 0–100 (default: 80)
+yokedcache search "alice" --max-results 10
+yokedcache search "alice" --tags users,active  # restrict to these tags
+yokedcache search "alice" --format json
+```
+
+Output:
+
+```
+KEY              SCORE   VALUE
+user:alice_j     92      {"name": "Alice Johnson", ...}
+user:bob_alice   78      {"name": "Bob Alice", ...}
+```
+
+---
+
+## `flush` — delete keys
+
+Delete keys in bulk. **Irreversible**—use `--confirm` to prompt first.
+
+```bash
+# By tag
+yokedcache flush --tags "user_data" --confirm
+yokedcache flush --tags "user_data,session_data" --force  # skip confirmation
+
+# By pattern
+yokedcache flush --pattern "temp:*" --confirm
+yokedcache flush --pattern "session:expired:*" --force
+
+# Everything under the current key prefix (NOT the entire Redis DB)
+yokedcache flush --all --confirm
+```
+
+`--confirm` shows what would be deleted and prompts before proceeding.
+`--force` deletes immediately without prompting.
+
+---
+
+## `warm` — pre-populate cache
+
+Pre-populate the cache from a YAML config file:
+
+```bash
+yokedcache warm --config-file warming.yaml
+yokedcache warm --config-file warming.yaml --verbose  # show progress
+```
+
+`warming.yaml` format:
+
+```yaml
+entries:
+  - key: config:global
+    value: {env: production, version: "1.2.0"}
+    ttl: 3600
+
+  - key: categories
+    value: [electronics, books, clothing]
+    ttl: 7200
+
+  - key: feature:flags
+    value: {dark_mode: true, new_checkout: false}
+    ttl: 300
+    tags: [features]
+```
+
+---
+
+## `export-config` — dump configuration
+
+Dump the active configuration:
+
+```bash
+yokedcache export-config                         # prints YAML to stdout
+yokedcache export-config --output config.yaml    # write to file
+yokedcache export-config --format json           # JSON format
+yokedcache export-config --format json | jq      # pretty-print
+```
+
+---
+
+## Output formats
+
+Most commands accept `--format`:
+
+| Format | Best for |
+|--------|----------|
+| `table` (default) | Human reading |
+| `json` | Scripts and automation |
+| `csv` | Spreadsheets and data analysis |
+
+---
+
+## Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | General error |
+| 2 | Configuration error (bad URL, invalid option) |
+| 3 | Connection error (can't reach Redis) |
+
+Use in shell scripts:
+
+```bash
+yokedcache ping || echo "Cache is down!" && exit 1
+
+# Check hit rate and alert if low
+HIT_RATE=$(yokedcache stats --format json | jq '.hit_rate')
+if (( $(echo "$HIT_RATE < 0.7" | bc -l) )); then
+    echo "WARNING: cache hit rate is $HIT_RATE"
+fi
+```
+
+---
+
+## Scripting examples
+
+```bash
+# Watch hit rate in a loop
+while true; do
+    yokedcache stats --format json | jq '"\(.hit_rate * 100 | floor)% hit rate, \(.key_count) keys"'
+    sleep 10
+done
+
+# Export all user keys to JSON
+yokedcache list --pattern "user:*" --include-values --format json > users.json
+
+# Clear all expired sessions
+yokedcache flush --tags "session_data" --confirm
+
+# Get keys with TTL > 1 hour
+yokedcache list --format json | jq '.[] | select(.ttl > 3600) | .key'
+
+# Count keys by prefix
+yokedcache list --format json | jq '[.[].key | split(":")[0]] | group_by(.) | map({(.[0]): length}) | add'
+```

@@ -1,113 +1,89 @@
 ---
-title: Getting Started with YokedCache
-description: Install YokedCache, pick a backend (memory or Redis), and use the async-first API—or sync helpers—in FastAPI, scripts, or asyncio.
-keywords: yokedcache, installation, async cache, sync helpers, redis, memcached, multi-backend
+title: Getting Started
+description: Install YokedCache and run your first cache in minutes. Covers async, sync, FastAPI, configuration, and what to try next.
+keywords: yokedcache, installation, getting started, async cache, sync, redis, fastapi
 ---
 
-# Getting Started with YokedCache
+# Getting Started
 
-Install the package, pick a **backend** (in-process memory by default, or Redis for production). The main methods are async (`await cache.get(...)`). Invalidation, tags, and patterns work the same on every store. If you are in sync-only code, use `get_sync` / `set_sync` or `@cached` on a plain function—same implementation underneath.
+YokedCache works out of the box with an in-process memory backend—no Redis required to try it. The main API is async (`await cache.get(...)`), but sync helpers (`get_sync` / `set_sync` / `@cached` on a plain `def`) are available for scripts or blocking code, and they run the same implementation underneath.
 
-## Installation
+---
+
+## Install
 
 ```bash
 pip install yokedcache
 ```
 
-Core install includes an **in-process memory** cache when the `redis` package is not present (since **1.0.1**). For a Redis server, add the extra:
+That's it for local development and single-process apps. The memory backend is built in.
+
+**For Redis** (recommended for production and multi-process apps):
 
 ```bash
 pip install "yokedcache[redis]"
 ```
 
-Optional **preset** extras:
+### Extras
 
-| Extra | Purpose |
-|--------|---------|
-| `redis` | `redis-py` for Redis |
-| `web` | Starlette (HTTP cache middleware) |
-| `backends` | Disk, SQLite, and Memcached deps together |
-| `observability` | Prometheus / StatsD + OpenTelemetry |
-| `full` | Redis, FastAPI, backends, monitoring, tracing, vector, fuzzy, SQLAlchemy |
+| Extra | What it adds |
+|-------|-------------|
+| `redis` | Redis backend via `redis-py` |
+| `web` | Starlette `HTTPCacheMiddleware` |
+| `backends` | Disk, SQLite, Memcached backends |
+| `observability` | Prometheus, StatsD, OpenTelemetry |
+| `fuzzy` | Fuzzy key search |
+| `vector` | TF-IDF vector similarity search |
+| `sqlalchemy` | SQLAlchemy session helpers |
+| `full` | Everything above |
 
-**Upgrade from 1.0.0:** if you depended on transitive `redis` or `fastapi`, add `yokedcache[redis]`, `yokedcache[web]`, or `yokedcache[full]`—see the [changelog](https://github.com/sirstig/yokedcache/blob/main/CHANGELOG.md).
-
-Pin 1.x if needed:
-
-```bash
-pip install "yokedcache>=1.0.1"
-```
-
-### Individual extras
+Mix extras freely:
 
 ```bash
-pip install "yokedcache[vector]"
-pip install "yokedcache[monitoring]"
-pip install "yokedcache[memcached]"
-pip install "yokedcache[fuzzy]"
-pip install "yokedcache[vector,monitoring,fuzzy]"
+pip install "yokedcache[redis,observability]"
+pip install "yokedcache[redis,fuzzy,vector]"
+pip install "yokedcache[full]"
 ```
 
-## Python versions
+### Python version
 
-**YokedCache 1.x** requires **Python 3.10 or newer**. The project is tested in CI on **3.10, 3.11, 3.12, 3.13, and 3.14**.
+YokedCache 1.x requires **Python 3.10+**, tested on 3.10 through 3.14. If you're stuck on Python 3.9, pin `yokedcache==0.3.0` temporarily—that branch doesn't receive security fixes from 1.x.
 
-If you are still on **Python 3.9** (EOL), **pip will not install 1.x**; use the last **0.3** release instead, for example:
+---
 
-```bash
-pip install "yokedcache==0.3.0"
+## First cache (async)
+
+```python
+import asyncio
+from yokedcache import YokedCache
+from yokedcache.config import CacheConfig
+
+async def main():
+    cache = YokedCache(CacheConfig())  # in-process memory
+    await cache.connect()
+
+    await cache.set("greeting", "hello world", ttl=60)
+    value = await cache.get("greeting")
+    print(value)  # "hello world"
+
+    await cache.disconnect()
+
+asyncio.run(main())
 ```
 
-That **`0.3.x` line is legacy**: it does not include 1.x security hardening (envelope format, safer vector metadata parsing, updated minimum **orjson**, patched transitive **filelock** in our lockfile, and so on). Treat it as a temporary bridge and **upgrade Python and yokedcache** when possible. See the repository **[SECURITY.md](https://github.com/sirstig/yokedcache/blob/main/SECURITY.md)** for trust boundaries and dependency notes.
+To switch to Redis, just add `redis_url`:
 
-## Prerequisites
-
-### Redis (optional)
-
-For production or multi-process caching, use Redis. Install `yokedcache[redis]` and run a server:
-
-**Option 1: Docker (Recommended for development)**
-```bash
-# Start Redis with Docker
-docker run -d --name redis -p 6379:6379 redis:7
-
-# Verify Redis is running
-docker exec redis redis-cli ping
+```python
+config = CacheConfig(redis_url="redis://localhost:6379/0")
 ```
 
-**Option 2: Local Installation**
-```bash
-# macOS
-brew install redis
-brew services start redis
+Or set the env var `YOKEDCACHE_REDIS_URL` and leave `CacheConfig()` empty.
 
-# Ubuntu/Debian
-sudo apt-get install redis-server
-sudo systemctl start redis
+---
 
-# Windows
-# Download and install from https://redis.io/download
-```
+## Sync code
 
-**Option 3: Cloud Redis**
-Use managed Redis services like AWS ElastiCache, Azure Cache for Redis, or Google Cloud Memorystore.
-
-### Verify installation
-
-```bash
-python -c "import yokedcache; print(yokedcache.__version__)"
-yokedcache --version
-```
-
-With `yokedcache[redis]` and Redis running:
-
-```bash
-yokedcache ping
-```
-
-## Using from sync code
-
-Prefer `await` when you already have an event loop (for example inside FastAPI). **`_sync` methods are for blocking contexts**—do not use them from inside a running loop; use `await cache.get(...)` there instead.
+The `*_sync` helpers are backed by the same async implementation. Use them from scripts or blocking contexts where there's no running event loop:
 
 ```python
 import asyncio
@@ -116,440 +92,186 @@ from yokedcache.config import CacheConfig
 
 cache = YokedCache(CacheConfig())
 asyncio.run(cache.connect())
-cache.set_sync("user:1", {"name": "Ada"}, ttl=60)
-print(cache.get_sync("user:1"))
+
+cache.set_sync("user:1", {"name": "Ada"}, ttl=300)
+user = cache.get_sync("user:1")
+print(user)  # {'name': 'Ada'}
+
+exists = cache.exists_sync("user:1")
+print(exists)  # True
+
+cache.delete_sync("user:1")
 asyncio.run(cache.disconnect())
 ```
 
-You can also put `@cached` on a normal `def`; it will use the sync cache path automatically.
+> **Don't call `*_sync` from inside a running event loop.** Use `await` there instead. Each `*_sync` call internally spins up an event loop, so calling it from async code will raise a `RuntimeError`.
 
-## Your First Cache
+---
 
-Let's start with a simple example that demonstrates core caching concepts.
+## Decorator caching
 
-### Basic Function Caching
-
-```python
-# basic_cache.py
-import asyncio
-from yokedcache import YokedCache, cached
-
-# Initialize cache (uses Redis at localhost:6379 by default)
-cache = YokedCache()
-
-@cached(ttl=300, tags=["api_data"])
-async def fetch_user_data(user_id: int):
-    """Simulate an expensive API call or database query"""
-    print(f"Fetching user {user_id} from database...")  # You'll see this only once
-
-    # Simulate slow operation
-    await asyncio.sleep(1)
-
-    return {
-        "id": user_id,
-        "name": f"User {user_id}",
-        "email": f"user{user_id}@example.com"
-    }
-
-async def main():
-    # First call - hits the database (slow)
-    print("First call:")
-    user = await fetch_user_data(123)
-    print(f"Result: {user}")
-
-    # Second call - returns cached result (fast)
-    print("\nSecond call:")
-    user = await fetch_user_data(123)
-    print(f"Result: {user}")
-
-    # Check cache statistics
-    stats = await cache.get_stats()
-    print(f"\nCache statistics: {stats}")
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-Run this example:
-```bash
-python basic_cache.py
-```
-
-You should see:
-- First call takes ~1 second (database hit)
-- Second call is instant (cache hit)
-- Cache statistics showing hit/miss rates
-
-### Manual Cache Operations
+The `@cached` decorator caches the return value of a function. Works on both `async def` and plain `def`:
 
 ```python
-# manual_cache.py
 import asyncio
-from yokedcache import YokedCache
+from yokedcache import cached, YokedCache
+from yokedcache.config import CacheConfig
 
-async def main():
-    cache = YokedCache()
+cache = YokedCache(CacheConfig())
 
-    # Store data in cache
-    await cache.set("user:123", {"name": "Alice", "age": 30}, ttl=300)
-    print("Data stored in cache")
-
-    # Retrieve data from cache
-    user = await cache.get("user:123")
-    print(f"Retrieved from cache: {user}")
-
-    # Check if key exists
-    exists = await cache.exists("user:123")
-    print(f"Key exists: {exists}")
-
-    # Store with tags for grouping
-    await cache.set("product:456", {"name": "Laptop", "price": 999},
-                   ttl=600, tags=["products", "electronics"])
-
-    # Invalidate by tags
-    await cache.invalidate_tags(["products"])
-    print("Products cache cleared")
-
-    # Verify product was removed
-    product = await cache.get("product:456")
-    print(f"Product after invalidation: {product}")  # Should be None
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-## FastAPI Integration
-
-YokedCache shines when integrated with web frameworks like FastAPI.
-
-### Simple FastAPI Example
-
-```python
-# fastapi_cache.py
-from fastapi import FastAPI, Depends, HTTPException
-from yokedcache import YokedCache, cached
-import asyncio
-
-app = FastAPI(title="YokedCache Demo")
-cache = YokedCache()
-
-# Simulated database
-USERS_DB = {
-    1: {"id": 1, "name": "Alice", "email": "alice@example.com"},
-    2: {"id": 2, "name": "Bob", "email": "bob@example.com"},
-    3: {"id": 3, "name": "Charlie", "email": "charlie@example.com"},
-}
-
-@cached(ttl=300, tags=["users"])
-async def get_user_from_db(user_id: int):
-    """Simulate database query"""
-    print(f"Querying database for user {user_id}")
-    await asyncio.sleep(0.5)  # Simulate DB latency
-
-    user = USERS_DB.get(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-@app.get("/users/{user_id}")
+@cached(cache=cache, ttl=300, tags=["users"])
 async def get_user(user_id: int):
-    """Get user by ID (cached)"""
-    return await get_user_from_db(user_id)
+    print(f"Fetching user {user_id}...")  # Only prints on cache miss
+    return {"id": user_id, "name": f"User {user_id}"}
 
-@app.get("/users")
-async def list_users():
-    """List all users (cached)"""
-    return list(USERS_DB.values())
+async def main():
+    await cache.connect()
 
-@app.post("/users/{user_id}/invalidate")
-async def invalidate_user_cache(user_id: int):
-    """Manually invalidate user cache"""
-    await cache.invalidate_tags(["users"])
-    return {"message": f"Cache invalidated for user {user_id}"}
+    u1 = await get_user(42)   # miss — prints the fetch message
+    u2 = await get_user(42)   # hit — returns immediately, no print
+    print(u1 == u2)           # True
 
-@app.get("/cache/stats")
-async def cache_stats():
-    """Get cache statistics"""
-    return await cache.get_stats()
+    await cache.disconnect()
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+asyncio.run(main())
 ```
 
-Run the FastAPI example:
-```bash
-pip install fastapi uvicorn
-python fastapi_cache.py
-```
-
-Test the endpoints:
-```bash
-# Get user (first call - slow)
-curl http://localhost:8000/users/1
-
-# Get user again (second call - fast, cached)
-curl http://localhost:8000/users/1
-
-# Check cache statistics
-curl http://localhost:8000/cache/stats
-
-# Invalidate cache
-curl -X POST http://localhost:8000/users/1/invalidate
-```
-
-### Database Integration with Auto-Invalidation
-
-For real applications, you'll want automatic cache invalidation when data changes:
+The cache key is derived from the function name and all arguments automatically. Different arguments = different cache entries.
 
 ```python
-# database_integration.py
+# These are cached separately:
+await get_user(1)    # key: "yokedcache:get_user:<hash of (1,)>"
+await get_user(2)    # key: "yokedcache:get_user:<hash of (2,)>"
+```
+
+### Sync function caching
+
+```python
+@cached(cache=cache, ttl=300)
+def expensive_computation(n: int) -> int:
+    return sum(range(n))
+```
+
+---
+
+## FastAPI
+
+```python
 from fastapi import FastAPI, Depends
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session
 from yokedcache import YokedCache, cached_dependency
+from yokedcache.config import CacheConfig
+from contextlib import asynccontextmanager
 
-# Database setup
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+cache = YokedCache(CacheConfig(redis_url="redis://localhost:6379/0"))
 
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    email = Column(String, unique=True, index=True)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await cache.connect()
+    yield
+    await cache.disconnect()
 
-Base.metadata.create_all(bind=engine)
+app = FastAPI(lifespan=lifespan)
 
-# FastAPI app
-app = FastAPI()
-cache = YokedCache()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-# Cached database dependency with auto-invalidation
+# Wrap the database dependency—reads are cached, writes auto-invalidate
 cached_get_db = cached_dependency(get_db, cache=cache, ttl=300, table_name="users")
 
 @app.get("/users/{user_id}")
 async def get_user(user_id: int, db: Session = Depends(cached_get_db)):
-    """Get user - automatically cached"""
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+    return db.query(User).filter(User.id == user_id).first()
 
 @app.post("/users")
-async def create_user(name: str, email: str, db: Session = Depends(cached_get_db)):
-    """Create user - automatically invalidates cache on commit"""
-    user = User(name=name, email=email)
+async def create_user(data: UserCreate, db: Session = Depends(cached_get_db)):
+    user = User(**data.dict())
     db.add(user)
-    await db.commit()  # This triggers cache invalidation
-    return user
-
-@app.put("/users/{user_id}")
-async def update_user(user_id: int, name: str, email: str, db: Session = Depends(cached_get_db)):
-    """Update user - automatically invalidates cache on commit"""
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    user.name = name
-    user.email = email
-    await db.commit()  # This triggers cache invalidation
+    await db.commit()  # automatically invalidates the "table:users" tag
     return user
 ```
+
+See the [FastAPI tutorial](tutorials/fastapi.md) for a complete working app.
+
+---
+
+## Tags and invalidation
+
+Tags let you group entries and clear them all at once:
+
+```python
+await cache.set("product:1", p1, ttl=600, tags=["products", "electronics"])
+await cache.set("product:2", p2, ttl=600, tags=["products", "books"])
+
+# Clear everything tagged "products"
+await cache.invalidate_tags(["products"])
+
+# Clear only electronics
+await cache.invalidate_tags(["electronics"])
+
+# Pattern-based (by key prefix)
+await cache.invalidate_pattern("product:*")
+```
+
+---
 
 ## Configuration
 
-### Basic Configuration
+Three ways to configure—they compose together:
 
 ```python
-from yokedcache import YokedCache, CacheConfig
-
-# Basic configuration
-config = CacheConfig(
-    redis_url="redis://localhost:6379/0",
-    default_ttl=300,  # 5 minutes default
-    key_prefix="myapp"
-)
-
-cache = YokedCache(config=config)
-```
-
-### Environment-Based Configuration
-
-```bash
-# Set environment variables
-export YOKEDCACHE_REDIS_URL="redis://localhost:6379/0"
-export YOKEDCACHE_DEFAULT_TTL="600"
-export YOKEDCACHE_KEY_PREFIX="myapp"
-```
-
-```python
-# Automatically loads from environment
-cache = YokedCache.from_env()
-```
-
-### YAML Configuration
-
-```yaml
-# config.yaml
-redis_url: redis://localhost:6379/0
-default_ttl: 300
-key_prefix: myapp
-enable_fuzzy: true
-
-tables:
-  users:
-    ttl: 3600
-    tags: ["user_data"]
-  products:
-    ttl: 1800
-    tags: ["product_data"]
-```
-
-```python
-# Load from YAML
-cache = YokedCache.from_yaml("config.yaml")
-```
-
-## Monitoring and Debugging
-
-### Using the CLI
-
-Monitor your cache in real-time:
-
-```bash
-# Test connection
-yokedcache ping
-
-# View statistics
-yokedcache stats
-
-# Watch statistics (auto-refresh)
-yokedcache stats --watch
-
-# List cached keys
-yokedcache list --pattern "user:*"
-
-# Search for keys
-yokedcache search "alice" --threshold 80
-```
-
-### Application Monitoring
-
-```python
-import asyncio
+# Programmatic
 from yokedcache import YokedCache
+from yokedcache.config import CacheConfig
 
-async def monitor_cache():
-    cache = YokedCache()
+cache = YokedCache(CacheConfig(
+    redis_url="redis://localhost:6379/0",
+    default_ttl=300,
+    key_prefix="myapp",
+))
 
-    # Get basic statistics
-    stats = await cache.get_stats()
-    print(f"Hit rate: {stats.hit_rate:.2%}")
-    print(f"Total keys: {stats.key_count}")
-    print(f"Memory usage: {stats.memory_usage_mb:.2f} MB")
+# From environment variables (YOKEDCACHE_REDIS_URL, YOKEDCACHE_DEFAULT_TTL, etc.)
+cache = YokedCache.from_env()
 
-    # Health check
-    health = await cache.health_check()
-    print(f"Cache healthy: {health.is_healthy}")
-
-asyncio.run(monitor_cache())
+# From YAML file
+cache = YokedCache.from_yaml("cache.yaml")
 ```
 
-## Next Steps
+See [Configuration](configuration.md) for the full reference.
 
-Now that you have YokedCache working, explore these advanced features:
+---
 
-### 1. **Multi-Backend Support**
-Learn about different backends in the [Backend Guide](backends.md):
-- Memory backend for development
-- Redis backend for production
-- Memcached backend for specific use cases
+## CLI
 
-### 2. **Advanced Configuration**
-Dive deeper into configuration options in the [Configuration Guide](configuration.md):
-- Table-specific settings
-- Performance tuning
-- Security configurations
-
-### 3. **Usage Patterns**
-Explore different ways to use YokedCache in the [Usage Patterns Guide](usage-patterns.md):
-- Function caching patterns
-- Auto-invalidation strategies
-- Fuzzy search capabilities
-
-### 4. **Production Monitoring**
-Set up comprehensive monitoring with the [Monitoring Guide](monitoring.md):
-- Prometheus integration
-- StatsD metrics
-- Health checks and alerting
-
-### 5. **Vector Search**
-Add semantic search capabilities with the [Vector Search Guide](vector-search.md):
-- TF-IDF similarity
-- Multiple distance metrics
-- Real-time indexing
-
-## Common Issues
-
-### Connection Problems
-
-If you get connection errors:
+A built-in CLI is useful for debugging, inspection, and ops:
 
 ```bash
-# Test Redis connection
-redis-cli ping
-
-# Check Redis is running
-docker ps | grep redis
-
-# Test YokedCache connection
-yokedcache ping --redis-url redis://localhost:6379/0
+yokedcache ping                          # test connection
+yokedcache stats                         # hit rate, key count, memory
+yokedcache stats --watch                 # live refresh
+yokedcache list --pattern "user:*"       # list matching keys
+yokedcache search "alice" --threshold 80 # fuzzy search
+yokedcache flush --tags "stale_data" --confirm
 ```
 
-### Import Errors
+Set `YOKEDCACHE_REDIS_URL` and it'll pick up automatically. Run `yokedcache --help` for the full reference.
 
-If imports fail:
+---
+
+## Verify your install
 
 ```bash
-# Verify installation
-pip list | grep yokedcache
+# Check the version
+python -c "import yokedcache; print(yokedcache.__version__)"
 
-# Reinstall if needed
-pip uninstall yokedcache
-pip install "yokedcache[full]"
+# If you have redis installed and a server running:
+yokedcache ping
 ```
 
-### Performance Issues
+---
 
-For slow cache operations:
+## What's next
 
-```bash
-# Check cache statistics
-yokedcache stats
-
-# Monitor operations
-yokedcache stats --watch
-
-# Check Redis performance
-redis-cli --latency
-```
-
-## Getting Help
-
-- **Documentation**: Explore the full documentation for detailed guides
-- **Examples**: See the [FastAPI tutorial](tutorials/fastapi.html) and [usage patterns](usage-patterns.html)
-- **CLI Help**: Run `yokedcache --help` for command-line assistance
-- **Issues**: Report bugs or request features on GitHub
-
-You're now ready to use YokedCache effectively! Start with simple function caching and gradually explore advanced features as your needs grow.
+- [Core Concepts](core-concepts.md) — how keys, TTL, tags, and serialization work
+- [Backends](backends.md) — Memory, Redis, Memcached, Disk, SQLite, per-prefix routing
+- [Usage Patterns](usage-patterns.md) — decorators, manual ops, invalidation, middleware, resilience
+- [Configuration](configuration.md) — full config reference with all options
+- [FastAPI Tutorial](tutorials/fastapi.md) — step-by-step complete app
+- [Monitoring](monitoring.md) — Prometheus, StatsD, health checks

@@ -1,754 +1,397 @@
 # Usage Patterns
 
-YokedCache offers several patterns for caching data in your applications. Choose the approach that best fits your use case and architectural needs.
+The core ways to read and write cache entries. For invalidation strategies, see [Invalidation](invalidation.md). For resilience patterns (circuit breaker, SWR, stale-if-error), see [Resilience](resilience.md).
 
-## Function Caching
+---
 
-The most straightforward way to add caching to your application is through function decorators.
+## Decorator caching (`@cached`)
 
-### Basic Function Caching
-
-Use the `@cached` decorator to cache function results:
+The simplest way to add caching. Works on both `async def` and plain `def`:
 
 ```python
-from yokedcache import cached
+from yokedcache import cached, YokedCache
+from yokedcache.config import CacheConfig
 
-@cached(ttl=600, tags=["products"])
-async def get_products(category: str, active_only: bool = True):
-    """Expensive database query or API call"""
-    return await database.fetch_products(category, active_only)
+cache = YokedCache(CacheConfig())
+
+@cached(cache=cache, ttl=300, tags=["users"])
+async def get_user(user_id: int):
+    return await db.fetch_user(user_id)
 
 # First call hits the database
-products = await get_products("electronics", active_only=True)
+user = await get_user(42)
 
-# Second call returns cached result
-products = await get_products("electronics", active_only=True)
+# Same arguments → cache hit, no DB call
+user = await get_user(42)
+
+# Different arguments → separate cache entry, DB hit
+other = await get_user(99)
 ```
 
-### Advanced Function Caching
-
-Customize caching behavior with additional parameters:
+### All decorator options
 
 ```python
-from yokedcache import cached
-from yokedcache.models import SerializationMethod
-
 @cached(
-    ttl=1800,                                    # 30 minutes
-    tags=["user_data", "api_v1"],              # Multiple tags
-    serialization=SerializationMethod.PICKLE,   # Custom serialization
-    cache_key_prefix="api"                      # Custom key prefix
+    cache=cache,                              # YokedCache instance (required)
+    ttl=300,                                  # seconds until expiry
+    tags=["users", "api_v2"],                # tags for group invalidation
+    cache_key_prefix="api",                  # override the key namespace
+    serialization=SerializationMethod.JSON,  # JSON (default), PICKLE, MSGPACK
+    single_flight=True,                      # coalesce concurrent misses
+    serve_stale_on_error=True,               # return stale value if backend fails
+    stale_ttl=60,                            # extra seconds to keep stale value
 )
-async def get_user_profile(user_id: int, include_permissions: bool = False):
-    profile = await database.get_user(user_id)
-    if include_permissions:
-        profile.permissions = await database.get_user_permissions(user_id)
-    return profile
+async def get_user(user_id: int, include_prefs: bool = False):
+    ...
 ```
 
-### Conditional Caching
-
-Skip caching based on runtime conditions:
+### Sync functions
 
 ```python
-@cached(ttl=300, tags=["search_results"])
-async def search_products(query: str, use_cache: bool = True):
-    if not use_cache:
-        # Skip cache for this call
-        return await perform_live_search(query)
+@cached(cache=cache, ttl=600)
+def load_config() -> dict:
+    return json.load(open("config.json"))
 
-    return await database.search_products(query)
-
-# Force fresh data
-results = await search_products("laptop", use_cache=False)
+config = load_config()   # first call: reads file
+config = load_config()   # second call: from cache
 ```
 
-## Manual Cache Operations
+### Bypassing the cache
 
-For more control, use YokedCache directly for manual cache operations.
-
-### Basic Operations
+Call the underlying function directly when you need fresh data:
 
 ```python
-from yokedcache import YokedCache
+# These skip the cache:
+result = await get_user.__wrapped__(42)
+result = get_user.__wrapped__(42)  # sync version
 
-cache = YokedCache()
-
-# Store data
-await cache.set("user:123", {"name": "John", "email": "john@example.com"}, ttl=300)
-
-# Retrieve data
-user = await cache.get("user:123")
-
-# Check if key exists
-exists = await cache.exists("user:123")
-
-# Delete specific key
-await cache.delete("user:123")
+# Or pass a flag through:
+@cached(cache=cache, ttl=300)
+async def get_user(user_id: int, bypass: bool = False):
+    if bypass:
+        return await get_user.__wrapped__(user_id)
+    ...
 ```
 
-### Batch Operations
-
-Perform multiple operations efficiently:
+### Cache key inspection
 
 ```python
-# Set multiple keys at once
-data = {
-    "user:123": {"name": "John"},
-    "user:124": {"name": "Jane"},
-    "user:125": {"name": "Bob"}
-}
-await cache.set_many(data, ttl=300, tags=["user_data"])
-
-# Get multiple keys
-keys = ["user:123", "user:124", "user:125"]
-results = await cache.get_many(keys)
-
-# Delete multiple keys
-await cache.delete_many(keys)
+# See what key would be generated for given args
+key = get_user.cache_key(42, include_prefs=False)
+print(key)  # "yokedcache:get_user:a3f8c2d1..."
 ```
 
-### Tag-Based Operations
+---
 
-Use tags to group and manage related cache entries:
+## Manual operations
+
+For cases where you need direct control over keys, values, or options.
+
+### get / set / delete
 
 ```python
-# Store with tags
-await cache.set("product:1", product_data, ttl=600, tags=["products", "category:electronics"])
-await cache.set("product:2", product_data, ttl=600, tags=["products", "category:books"])
+# Set a value
+await cache.set("user:42", {"name": "Alice", "email": "alice@example.com"}, ttl=300)
 
-# Invalidate by tags
-await cache.invalidate_tags(["products"])           # Clear all products
-await cache.invalidate_tags(["category:electronics"]) # Clear electronics only
+# Get a value (returns None if missing or expired)
+user = await cache.get("user:42")
 
-# Pattern-based invalidation
-await cache.invalidate_pattern("user:*")           # Clear all user data
-await cache.invalidate_pattern("session:temp:*")   # Clear temporary sessions
+# Get with a default
+user = await cache.get("user:42") or {"name": "Guest"}
+
+# Delete
+await cache.delete("user:42")
+
+# Check existence (does not reset TTL)
+exists = await cache.exists("user:42")  # True or False
 ```
 
-## FastAPI Integration
+### Batch operations
 
-YokedCache integrates seamlessly with FastAPI through dependency caching.
+Batch operations use pipelining internally for efficiency:
 
-### Database Dependency Caching
+```python
+# Set many at once
+await cache.set_many(
+    {
+        "user:1": {"name": "Alice"},
+        "user:2": {"name": "Bob"},
+        "user:3": {"name": "Charlie"},
+    },
+    ttl=300,
+    tags=["users"],
+)
 
-Replace your database dependencies with cached versions:
+# Get many at once — returns a dict keyed by the input keys
+results = await cache.get_many(["user:1", "user:2", "user:3"])
+# {"user:1": {...}, "user:2": {...}, "user:3": None}  ← None if missing
+
+# Delete many at once
+await cache.delete_many(["user:1", "user:2"])
+```
+
+### Get-or-set pattern
+
+A common pattern: check the cache, fall back to the source, store the result:
+
+```python
+async def get_user_cached(user_id: int):
+    key = f"user:{user_id}"
+    user = await cache.get(key)
+    if user is None:
+        user = await db.fetch_user(user_id)
+        await cache.set(key, user, ttl=300)
+    return user
+```
+
+Or use `get_or_set` if available:
+
+```python
+user = await cache.get_or_set(
+    key=f"user:{user_id}",
+    factory=lambda: db.fetch_user(user_id),
+    ttl=300,
+)
+```
+
+### TTL inspection
+
+```python
+# Remaining TTL in seconds (None if key doesn't exist)
+ttl = await cache.ttl("user:42")
+print(f"Expires in {ttl}s")
+
+# Refresh TTL without changing the value
+await cache.expire("user:42", ttl=600)
+```
+
+---
+
+## FastAPI integration
+
+### Dependency caching
+
+`cached_dependency` wraps a FastAPI dependency. Reads are cached; writes auto-invalidate:
 
 ```python
 from fastapi import FastAPI, Depends
 from yokedcache import YokedCache, cached_dependency
+from yokedcache.config import CacheConfig
+from contextlib import asynccontextmanager
 
-app = FastAPI()
-cache = YokedCache()
+cache = YokedCache(CacheConfig(redis_url="redis://localhost:6379/0"))
 
-# Original database dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await cache.connect()
+    yield
+    await cache.disconnect()
 
-# Cached version
+app = FastAPI(lifespan=lifespan)
+
+# Wrap the dependency—table_name controls which tag to invalidate on commit
 cached_get_db = cached_dependency(get_db, cache=cache, ttl=300, table_name="users")
 
 @app.get("/users/{user_id}")
 async def get_user(user_id: int, db=Depends(cached_get_db)):
-    # Database queries are automatically cached
-    return db.query(User).filter(User.id == user_id).first()
-```
-
-### Custom Dependencies
-
-Cache any dependency, not just database connections:
-
-```python
-from yokedcache import cached_dependency
-
-# Cache external API client
-def get_external_api():
-    return ExternalAPIClient(api_key=settings.api_key)
-
-cached_api = cached_dependency(get_external_api, cache=cache, ttl=3600)
-
-@app.get("/external-data/{resource_id}")
-async def get_external_data(resource_id: str, api=Depends(cached_api)):
-    return await api.fetch_resource(resource_id)
-
-# Cache configuration objects
-def get_config():
-    return load_configuration_from_database()
-
-cached_config = cached_dependency(get_config, cache=cache, ttl=600)
-
-@app.get("/settings")
-async def get_settings(config=Depends(cached_config)):
-    return config.public_settings
-```
-
-## Auto-Invalidation
-
-Auto-invalidation automatically clears cache entries when related data changes, ensuring you never serve stale data.
-
-### How Auto-Invalidation Works
-
-1. **Read Operations**: Cached with appropriate tags based on tables/entities
-2. **Write Operations**: Tracked and queued for invalidation
-3. **Transaction Commit**: Triggers invalidation of affected tags
-4. **Cache Cleared**: Related entries automatically removed
-
-### Database Write Tracking
-
-YokedCache automatically tracks database writes and invalidates related cache entries:
-
-```python
-from yokedcache import YokedCache
-from yokedcache.decorators import cached_dependency
-
-cache = YokedCache()
-cached_get_db = cached_dependency(get_db, cache=cache, ttl=300, table_name="users")
-
-# Read operations are cached with "table:users" tag
-@app.get("/users/{user_id}")
-async def get_user(user_id: int, db=Depends(cached_get_db)):
-    # This query result is cached with tag "table:users"
     return db.query(User).filter(User.id == user_id).first()
 
-# Write operations trigger automatic invalidation
 @app.post("/users")
-async def create_user(user: UserCreate, db=Depends(cached_get_db)):
-    new_user = User(**user.dict())
-    db.add(new_user)
-    await db.commit()  # Automatically invalidates "table:users" tag
-    return new_user
-
-@app.put("/users/{user_id}")
-async def update_user(user_id: int, user: UserUpdate, db=Depends(cached_get_db)):
-    db.query(User).filter(User.id == user_id).update(user.dict())
-    await db.commit()  # Automatically invalidates "table:users" tag
-    return {"status": "updated"}
+async def create_user(data: UserCreate, db=Depends(cached_get_db)):
+    user = User(**data.dict())
+    db.add(user)
+    await db.commit()  # ← this invalidates "table:users" automatically
+    return user
 ```
 
-### Automatic Table Detection
-
-YokedCache extracts table names from SQL queries automatically:
+### Multiple table dependencies
 
 ```python
-# These patterns are automatically detected:
-"SELECT * FROM users WHERE id = ?"           # → table: users
-"INSERT INTO products (name) VALUES (?)"     # → table: products
-"UPDATE orders SET status = ? WHERE id = ?"  # → table: orders
-"DELETE FROM sessions WHERE expired < ?"     # → table: sessions
+# Different dependencies for different tables
+cached_users_db = cached_dependency(get_db, cache=cache, ttl=300, table_name="users")
+cached_orders_db = cached_dependency(get_db, cache=cache, ttl=60, table_name="orders")
 
-# Complex JOIN queries
-"SELECT u.*, p.name FROM users u JOIN profiles p ON u.id = p.user_id"  # → tables: users, profiles
+@app.get("/users/{user_id}/orders")
+async def get_user_orders(
+    user_id: int,
+    users_db=Depends(cached_users_db),
+    orders_db=Depends(cached_orders_db),
+):
+    user = users_db.query(User).filter(User.id == user_id).first()
+    orders = orders_db.query(Order).filter(Order.user_id == user_id).all()
+    return {"user": user, "orders": orders}
 ```
 
-### Manual Invalidation Control
+### Caching non-database dependencies
 
-For complex scenarios, manually control invalidation:
+`cached_dependency` works on any FastAPI dependency, not just databases:
 
 ```python
-# Specify table explicitly
-cached_get_db = cached_dependency(
-    get_db,
-    cache=cache,
-    ttl=300,
-    table_name="users"  # Explicit table specification
-)
+def get_feature_flags():
+    return load_flags_from_remote()
 
-# Multiple table invalidation
-@app.post("/users/{user_id}/change-role")
-async def change_user_role(user_id: int, role: str, db=Depends(cached_get_db)):
-    # This operation affects both users and permissions
-    db.execute("UPDATE users SET role = ? WHERE id = ?", (role, user_id))
-    db.execute("DELETE FROM user_permissions WHERE user_id = ?", (user_id,))
+cached_flags = cached_dependency(get_feature_flags, cache=cache, ttl=60)
 
-    # Manually invalidate multiple tables
-    await cache.invalidate_tags(["table:users", "table:user_permissions"])
-
-    await db.commit()
-    return {"status": "role_changed"}
+@app.get("/features")
+async def features(flags=Depends(cached_flags)):
+    return flags
 ```
 
-### Cross-Service Invalidation
-
-Invalidate cache across multiple services:
+### Route-level caching with `@cached`
 
 ```python
-# Service A: User management
-@app.put("/users/{user_id}")
-async def update_user(user_id: int, user: UserUpdate):
-    # Update user in database
-    await update_user_in_db(user_id, user)
-
-    # Invalidate user-related cache across all services
-    await cache.invalidate_tags([f"user:{user_id}", "table:users"])
-
-    # Optionally publish event for other services
-    await publish_user_updated_event(user_id)
-
-# Service B: Order management
-@app.get("/orders/user/{user_id}")
-async def get_user_orders(user_id: int, db=Depends(cached_get_db)):
-    # This will use fresh user data after the update in Service A
-    return db.query(Order).filter(Order.user_id == user_id).all()
+@app.get("/products/top")
+@cached(cache=cache, ttl=300, tags=["products"])
+async def top_products():
+    return await db.fetch_top_products(limit=20)
 ```
 
-## Fuzzy Search
+---
 
-Find approximate matches across cached keys and optionally search within cached values.
-
-### Enabling Fuzzy Search
+## Listing and inspecting keys
 
 ```python
-# Install the fuzzy search dependencies
-# pip install "yokedcache[fuzzy]"
+# All keys matching a pattern
+keys = await cache.get_keys_by_pattern("user:*")
 
-from yokedcache import YokedCache, CacheConfig
+# All keys (use with care on large caches)
+all_keys = await cache.get_all_keys()
 
-# Enable fuzzy search in configuration
-config = CacheConfig(
-    enable_fuzzy=True,
-    fuzzy_threshold=80  # Minimum similarity score (0-100)
-)
-cache = YokedCache(config=config)
+# Key metadata
+meta = await cache.get_meta("user:42")
+# {"key": "user:42", "ttl": 247, "tags": ["users"], "size_bytes": 128}
 ```
 
-### Basic Fuzzy Search
-
-Search for approximate matches in cache keys:
-
-```python
-# Store some user data
-await cache.set("user:alice_johnson", {"name": "Alice Johnson"}, tags={"users"})
-await cache.set("user:bob_alice", {"name": "Bob Alice"}, tags={"users"})
-await cache.set("user:charlie_brown", {"name": "Charlie Brown"}, tags={"users"})
-
-# Search for keys containing "alice" (case-insensitive, approximate)
-results = await cache.fuzzy_search("alice", threshold=70)
-
-for result in results:
-    print(f"Key: {result.key}, Score: {result.score}")
-# Output:
-# Key: user:alice_johnson, Score: 85
-# Key: user:bob_alice, Score: 78
-```
-
-### Advanced Fuzzy Search
-
-Customize search parameters for better results:
-
-```python
-# Search with filtering and limits
-results = await cache.fuzzy_search(
-    query="alice",
-    threshold=80,           # Higher threshold for more precise matches
-    max_results=10,         # Limit number of results
-    tags={"users"}          # Only search within user-tagged entries
-)
-
-# Search with custom similarity method
-results = await cache.fuzzy_search(
-    query="alice",
-    threshold=75,
-    similarity_method="partial_ratio"  # Better for substring matches
-)
-```
-
-### CLI Fuzzy Search
-
-Use the command line for interactive fuzzy search:
+From the CLI:
 
 ```bash
-# Basic search
-yokedcache search "alice" --threshold 80
-
-# Search with filters
-yokedcache search "alice" --threshold 80 --max-results 5
-
-# Search specific tags
-yokedcache search "alice" --tags users,active
-
-# Export results to file
-yokedcache search "alice" --threshold 80 --output results.json
+yokedcache list --pattern "user:*"
+yokedcache list --tags users
+yokedcache list --include-values --format json
 ```
 
-### Search Within Values
+---
 
-Search not just keys, but also cached values:
+## Stats and health
 
 ```python
-# Store structured data
-user_data = {
-    "name": "Alice Johnson",
-    "email": "alice@example.com",
-    "department": "Engineering",
-    "skills": ["Python", "JavaScript", "Machine Learning"]
-}
-await cache.set("user:123", user_data, tags={"users"})
+# In-process stats
+stats = await cache.get_stats()
+print(f"Hit rate:   {stats.hit_rate:.1%}")
+print(f"Keys:       {stats.key_count}")
+print(f"Memory:     {stats.memory_usage_mb:.1f} MB")
+print(f"Total ops:  {stats.total_operations}")
 
-# Search within cached values (requires additional configuration)
-results = await cache.fuzzy_search_values(
-    query="Machine Learning",
-    threshold=80,
-    search_fields=["skills", "department"]  # Specify which fields to search
-)
+# Health check
+is_healthy = await cache.health()              # bool
+details = await cache.detailed_health_check()  # dict with connection, pool, etc.
 ```
 
-### Fuzzy Search Best Practices
-
-- **Meaningful Keys**: Use descriptive keys that benefit from fuzzy matching
-- **Appropriate Thresholds**: Start with 80, adjust based on your data
-- **Tag Filtering**: Use tags to limit search scope and improve performance
-- **Index Management**: Fuzzy search maintains an index; consider rebuild frequency
-- **Performance**: Fuzzy search is slower than exact lookups; use judiciously
-
-## Cache Warming
-
-Pre-populate cache with frequently accessed data to improve initial performance.
-
-### Programmatic Cache Warming
-
-```python
-from yokedcache.decorators import warm_cache
-
-# Define warming functions
-warming_tasks = [
-    {"func": get_products, "args": ["electronics"], "ttl": 600},
-    {"func": get_products, "args": ["books"], "ttl": 600},
-    {"func": get_user_profile, "args": [123], "kwargs": {"include_permissions": True}, "ttl": 300},
-]
-
-# Warm the cache
-warmed_count = await warm_cache(cache, warming_tasks)
-print(f"Warmed {warmed_count} cache entries")
-```
-
-### Configuration-Based Warming
-
-```yaml
-# cache_warming.yaml
-warming_tasks:
-  - function: get_products
-    args: ["electronics"]
-    ttl: 600
-    tags: ["products", "category:electronics"]
-
-  - function: get_popular_items
-    args: []
-    ttl: 1800
-    tags: ["popular", "homepage"]
-
-  - function: get_user_preferences
-    args: [123, 456, 789]  # Warm for multiple users
-    ttl: 300
-    tags: ["user_data"]
-```
-
-```python
-# Load and execute warming configuration
-with open("cache_warming.yaml") as f:
-    warming_config = yaml.safe_load(f)
-
-await execute_warming_config(cache, warming_config)
-```
-
-### CLI Cache Warming
+From the CLI:
 
 ```bash
-# Warm cache using configuration file
-yokedcache warm --config-file cache_warming.yaml
-
-# Warm specific functions
-yokedcache warm --function get_products --args electronics --ttl 600
-
-# Monitor warming progress
-yokedcache warm --config-file cache_warming.yaml --verbose
+yokedcache stats
+yokedcache stats --watch          # live refresh every 2s
+yokedcache stats --format json    # machine-readable
 ```
 
-## Error Handling Patterns
+---
 
-Implement robust error handling for cache operations.
+## Fuzzy search
 
-### Graceful Degradation
+Find keys by approximate match (requires `yokedcache[fuzzy]`):
 
 ```python
-async def get_user_data(user_id: int):
-    try:
-        # Try cache first
-        cached_data = await cache.get(f"user:{user_id}")
-        if cached_data is not None:
-            return cached_data
-    except Exception as e:
-        # Cache error - log but continue
-        logger.warning(f"Cache read failed: {e}")
-
-    # Fallback to database
-    user_data = await database.get_user(user_id)
-
-    try:
-        # Try to cache for next time
-        await cache.set(f"user:{user_id}", user_data, ttl=300)
-    except Exception as e:
-        # Cache write error - log but return data
-        logger.warning(f"Cache write failed: {e}")
-
-    return user_data
+results = await cache.fuzzy_search(
+    query="alice",
+    threshold=80,        # similarity score 0–100 (default: 80)
+    max_results=10,
+    tags={"users"},      # restrict search to this tag
+)
+for r in results:
+    print(r.key, r.score, r.value)
 ```
 
-### Circuit Breaker Pattern
+CLI:
 
-```python
-from datetime import datetime, timedelta
-
-class CacheCircuitBreaker:
-    def __init__(self, failure_threshold=5, timeout=60):
-        self.failure_threshold = failure_threshold
-        self.timeout = timeout
-        self.failure_count = 0
-        self.last_failure = None
-        self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
-
-    async def call_with_fallback(self, cache_operation, fallback_operation):
-        if self.state == "OPEN":
-            if datetime.now() - self.last_failure > timedelta(seconds=self.timeout):
-                self.state = "HALF_OPEN"
-            else:
-                return await fallback_operation()
-
-        try:
-            result = await cache_operation()
-            if self.state == "HALF_OPEN":
-                self.state = "CLOSED"
-                self.failure_count = 0
-            return result
-        except Exception as e:
-            self.failure_count += 1
-            self.last_failure = datetime.now()
-
-            if self.failure_count >= self.failure_threshold:
-                self.state = "OPEN"
-
-            logger.warning(f"Cache operation failed: {e}")
-            return await fallback_operation()
-
-# Usage
-circuit_breaker = CacheCircuitBreaker()
-
-async def get_with_fallback(key):
-    return await circuit_breaker.call_with_fallback(
-        lambda: cache.get(key),
-        lambda: database.get_data(key)
-    )
+```bash
+yokedcache search "alice" --threshold 80 --tags users
 ```
 
-## Advanced Caching Patterns
+See [Vector Search](vector-search.md) for semantic similarity search.
 
-YokedCache provides advanced caching patterns designed for high-performance, production-ready applications.
+---
 
-### HTTP Response Middleware
+## Cache warming
 
-Add HTTP caching middleware to FastAPI applications for automatic ETag and Cache-Control header management:
+Pre-populate the cache before traffic arrives. Avoids cold-start misses after a deploy.
 
 ```python
-from fastapi import FastAPI
-from yokedcache import YokedCache
+from yokedcache import warm_cache
+
+await warm_cache(cache, [
+    {"key": "config:global", "value": await fetch_config(), "ttl": 3600},
+    {"key": "categories", "value": await fetch_categories(), "ttl": 7200},
+])
+```
+
+Or run concurrently:
+
+```python
+import asyncio
+
+async def warm():
+    top_ids = await db.get_top_user_ids(limit=100)
+    await asyncio.gather(*[get_user(uid) for uid in top_ids])
+
+asyncio.run(warm())
+```
+
+CLI:
+
+```bash
+yokedcache warm --config-file warming.yaml --verbose
+```
+
+---
+
+## HTTP cache middleware
+
+Add `ETag` / `Cache-Control` headers at the HTTP layer (requires `yokedcache[web]`):
+
+```bash
+pip install "yokedcache[web]"
+```
+
+```python
 from yokedcache.middleware import HTTPCacheMiddleware
 
-app = FastAPI()
-cache = YokedCache()
-
-# Add HTTP caching middleware
 app.add_middleware(
     HTTPCacheMiddleware,
     cache=cache,
-    default_ttl=300,
-    include_query=False,
-    cache_control="public, max-age=300"
+    ttl=60,
+    # key_builder is required for authenticated routes to avoid leaking responses
+    key_builder=lambda req: f"{req.url}:{req.headers.get('x-user-id', 'anon')}",
 )
-
-@app.get("/api/users/{user_id}")
-async def get_user(user_id: int):
-    # Response automatically cached with ETag headers
-    # Returns 304 Not Modified for unchanged data
-    return {"id": user_id, "name": "John Doe"}
 ```
 
-### Single-Flight Protection
+See [Middleware](middleware.md) for the full reference.
 
-Prevent cache stampede by ensuring only one request computes a value while others wait:
+---
 
-```python
-from yokedcache import YokedCache, CacheConfig
+## Sync equivalents
 
-config = CacheConfig(
-    redis_url="redis://localhost:6379",
-    enable_single_flight=True
-)
-cache = YokedCache(config)
+Every async method has a `*_sync` counterpart for use in blocking contexts:
 
-async def expensive_computation():
-    # This will only run once, even with concurrent requests
-    await asyncio.sleep(5)
-    return compute_expensive_data()
+| Async | Sync |
+|-------|------|
+| `await cache.get(key)` | `cache.get_sync(key)` |
+| `await cache.set(key, val, ttl)` | `cache.set_sync(key, val, ttl)` |
+| `await cache.delete(key)` | `cache.delete_sync(key)` |
+| `await cache.exists(key)` | `cache.exists_sync(key)` |
+| `await cache.invalidate_tags([...])` | `cache.invalidate_tags_sync([...])` |
+| `await cache.invalidate_pattern(p)` | `cache.invalidate_pattern_sync(p)` |
+| `await cache.get_many(keys)` | `cache.get_many_sync(keys)` |
+| `await cache.set_many({...})` | `cache.set_many_sync({...})` |
 
-# Multiple concurrent requests - only one computation runs
-results = await asyncio.gather(
-    cache.fetch_or_set("expensive_key", expensive_computation, ttl=300),
-    cache.fetch_or_set("expensive_key", expensive_computation, ttl=300),
-    cache.fetch_or_set("expensive_key", expensive_computation, ttl=300),
-)
-# All results are identical, but computation only ran once
-```
-
-### Stale-While-Revalidate (SWR)
-
-Serve stale cached data immediately while refreshing in the background:
-
-```python
-from yokedcache import YokedCache, CacheConfig
-
-config = CacheConfig(
-    redis_url="redis://localhost:6379",
-    enable_stale_while_revalidate=True
-)
-cache = YokedCache(config)
-
-# Function that returns stale data immediately and refreshes in background
-async def get_user_data(user_id: int):
-    return await cache.fetch_or_set(
-        f"user:{user_id}",
-        lambda: fetch_user_from_db(user_id),
-        ttl=60
-    )
-```
-
-### Stale-If-Error
-
-Fallback to cached data when the primary data source fails:
-
-```python
-from yokedcache import YokedCache, CacheConfig
-
-config = CacheConfig(
-    redis_url="redis://localhost:6379",
-    enable_stale_if_error=True,
-    stale_if_error_ttl=120  # Serve stale for up to 2 minutes after TTL expires
-)
-cache = YokedCache(config)
-
-async def get_data_with_fallback(key: str):
-    try:
-        return await fetch_fresh_data(key)
-    except Exception:
-        # Returns stale cached data if available
-        return await cache.get(key, default=None)
-```
-
-### Per-Prefix Backend Routing
-
-Route different cache keys to different backends based on key prefixes:
-
-```python
-from yokedcache import YokedCache
-from yokedcache.backends import DiskCacheBackend, RedisBackend
-
-cache = YokedCache()
-
-# Setup prefix-based routing
-cache.setup_prefix_routing()
-
-# Route different data types to different backends
-cache.add_backend_route("user:", RedisBackend("redis://localhost:6379/0"))
-cache.add_backend_route("temp:", DiskCacheBackend("/tmp/cache"))
-cache.add_backend_route("session:", RedisBackend("redis://localhost:6379/1"))
-
-# Data automatically routed based on key prefix
-await cache.set("user:123", user_data)      # -> Redis DB 0
-await cache.set("temp:abc", temp_data)      # -> Disk cache
-await cache.set("session:xyz", session)     # -> Redis DB 1
-```
-
-### OpenTelemetry Distributed Tracing
-
-Enable distributed tracing for cache operations:
-
-```python
-from yokedcache import YokedCache, CacheConfig
-from yokedcache.tracing import initialize_tracing
-
-# Initialize global tracing
-initialize_tracing(
-    service_name="my-api",
-    enabled=True,
-    sample_rate=1.0
-)
-
-config = CacheConfig(
-    redis_url="redis://localhost:6379",
-    enable_tracing=True
-)
-cache = YokedCache(config)
-
-# All cache operations automatically traced
-async with cache._tracer.trace_operation("get_user", "user:123"):
-    user = await cache.get("user:123")
-    # Span includes timing, hit/miss, backend info
-```
-
-These advanced patterns enable sophisticated caching strategies for high-performance, production applications.
-
-## Performance Optimization Patterns
-
-### Connection Reuse
-
-```python
-# Good: Reuse single cache instance
-cache = YokedCache()
-
-async def handler1():
-    return await cache.get("key1")
-
-async def handler2():
-    return await cache.get("key2")
-
-# Bad: Creating new instances
-async def bad_handler():
-    cache = YokedCache()  # Don't do this
-    return await cache.get("key")
-```
-
-### Batch Operations
-
-```python
-# Good: Batch multiple operations
-keys = [f"user:{i}" for i in user_ids]
-users = await cache.get_many(keys)
-
-# Bad: Individual operations in loop
-users = {}
-for user_id in user_ids:
-    users[user_id] = await cache.get(f"user:{user_id}")  # Inefficient
-```
-
-### Optimal TTL Strategy
-
-```python
-# Hot data: Short TTL
-@cached(ttl=30)
-async def get_live_prices():
-    return await fetch_stock_prices()
-
-# Warm data: Medium TTL
-@cached(ttl=300)
-async def get_user_profile(user_id):
-    return await database.get_user(user_id)
-
-# Cold data: Long TTL
-@cached(ttl=3600)
-async def get_system_config():
-    return await database.get_config()
-```
-
-These usage patterns provide a foundation for implementing effective caching strategies in your applications. Choose the patterns that best fit your use case and combine them as needed for optimal performance.
+Don't call `*_sync` from inside a running event loop. Use `await` there instead.

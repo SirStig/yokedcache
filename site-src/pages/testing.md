@@ -1,554 +1,330 @@
-# Testing Guide
+# Testing
 
-This guide covers testing YokedCache, including running the test suite, writing custom tests, and validating new features.
+How to test code that uses YokedCache—both the library's own test suite and your application's tests.
 
-## Table of Contents
+---
 
-- [Quick Start](#quick-start)
-- [Test Structure](#test-structure)
-- [Running Tests](#running-tests)
-- [Writing Tests](#writing-tests)
-- [Testing New Features](#testing-new-features)
-- [Continuous Integration](#continuous-integration)
-- [Troubleshooting](#troubleshooting)
+## Testing your application
 
-## Quick Start
+### Use the memory backend
 
-### Prerequisites
+The memory backend requires no external services and is the easiest choice for unit and integration tests:
 
-Install the development dependencies:
+```python
+import pytest
+from yokedcache import YokedCache
+from yokedcache.config import CacheConfig
+
+@pytest.fixture
+async def cache():
+    c = YokedCache(CacheConfig())  # memory backend
+    await c.connect()
+    yield c
+    await c.disconnect()
+```
+
+### Basic async test
+
+```python
+import pytest
+
+@pytest.mark.asyncio
+async def test_set_and_get(cache):
+    await cache.set("key", "value", ttl=60)
+    result = await cache.get("key")
+    assert result == "value"
+
+@pytest.mark.asyncio
+async def test_expiry(cache):
+    await cache.set("key", "value", ttl=1)
+    import asyncio
+    await asyncio.sleep(1.1)
+    assert await cache.get("key") is None
+
+@pytest.mark.asyncio
+async def test_tag_invalidation(cache):
+    await cache.set("user:1", {"name": "Alice"}, tags=["users"])
+    await cache.set("user:2", {"name": "Bob"}, tags=["users"])
+    await cache.invalidate_tags(["users"])
+    assert await cache.get("user:1") is None
+    assert await cache.get("user:2") is None
+```
+
+### Testing `@cached` functions
+
+```python
+@cached(cache=cache, ttl=300)
+async def get_user(user_id: int):
+    return await db.fetch_user(user_id)
+
+@pytest.mark.asyncio
+async def test_cached_function(cache, mocker):
+    mock_fetch = mocker.patch("mymodule.db.fetch_user", return_value={"name": "Alice"})
+
+    # First call — hits the DB
+    result1 = await get_user(42)
+    assert mock_fetch.call_count == 1
+
+    # Second call — from cache
+    result2 = await get_user(42)
+    assert mock_fetch.call_count == 1   # not called again
+
+    assert result1 == result2
+```
+
+### Testing cache invalidation
+
+```python
+@pytest.mark.asyncio
+async def test_invalidation_after_write(cache, test_client):
+    # Warm the cache
+    response = test_client.get("/users/1")
+    assert response.json()["name"] == "Alice"
+
+    # Write update
+    test_client.put("/users/1", json={"name": "Alicia"})
+
+    # Cache should be invalidated — next read is fresh
+    response = test_client.get("/users/1")
+    assert response.json()["name"] == "Alicia"
+```
+
+### Testing that caching works (hit/miss counts)
+
+```python
+@pytest.mark.asyncio
+async def test_cache_is_used(cache, mocker):
+    db_call = mocker.patch("mymodule.db.fetch_user", return_value={"id": 1})
+
+    for _ in range(5):
+        await get_user(1)
+
+    # DB should only be called once despite 5 requests
+    assert db_call.call_count == 1
+
+    stats = await cache.get_stats()
+    assert stats.cache_hits == 4
+    assert stats.cache_misses == 1
+```
+
+---
+
+## Using fakeredis for Redis-backed tests
+
+If you need to test Redis-specific behavior without a real server, use `fakeredis`:
 
 ```bash
-# Install with development dependencies
+pip install fakeredis
+```
+
+```python
+import fakeredis.aioredis
+import pytest
+from unittest.mock import patch
+
+@pytest.fixture
+async def redis_cache():
+    with patch("redis.asyncio.Redis", fakeredis.aioredis.FakeRedis):
+        from yokedcache import YokedCache
+        from yokedcache.config import CacheConfig
+        c = YokedCache(CacheConfig(redis_url="redis://localhost:6379/0"))
+        await c.connect()
+        yield c
+        await c.disconnect()
+```
+
+---
+
+## FastAPI test client
+
+```python
+import pytest
+from fastapi.testclient import TestClient
+from yokedcache import YokedCache
+from yokedcache.config import CacheConfig
+
+from myapp import app, cache as app_cache
+
+@pytest.fixture
+def client():
+    # Override the app's cache with an in-memory one
+    test_cache = YokedCache(CacheConfig())
+
+    # If your app uses a module-level cache, patch it
+    import myapp
+    original = myapp.cache
+    myapp.cache = test_cache
+
+    with TestClient(app) as c:
+        import asyncio
+        asyncio.run(test_cache.connect())
+        yield c
+        asyncio.run(test_cache.disconnect())
+
+    myapp.cache = original  # restore
+
+def test_get_user(client):
+    response = client.get("/users/1")
+    assert response.status_code == 200
+
+def test_cache_invalidation(client):
+    # Read
+    r1 = client.get("/users/1")
+    assert r1.status_code == 200
+
+    # Write (should invalidate)
+    client.put("/users/1", json={"name": "New Name"})
+
+    # Re-read
+    r2 = client.get("/users/1")
+    assert r2.json()["name"] == "New Name"
+```
+
+---
+
+## pytest-asyncio setup
+
+YokedCache's tests use `pytest-asyncio` in auto mode. Add this to `pytest.ini` or `pyproject.toml`:
+
+```ini
+# pytest.ini
+[pytest]
+asyncio_mode = auto
+```
+
+```toml
+# pyproject.toml
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+```
+
+---
+
+## Skipping tests for optional dependencies
+
+Use `pytest.importorskip` at the top of test modules:
+
+```python
+# test_vector_search.py
+pytest.importorskip("numpy")   # skip entire module if numpy isn't installed
+pytest.importorskip("sklearn")
+
+from yokedcache.vector_search import VectorSimilaritySearch
+
+def test_vector_search():
+    ...
+```
+
+Or per test:
+
+```python
+@pytest.mark.skipif(
+    not importlib.util.find_spec("prometheus_client"),
+    reason="prometheus_client not installed"
+)
+def test_prometheus_collector():
+    ...
+```
+
+---
+
+## Running the library's own tests
+
+```bash
+# Setup
 pip install -e ".[dev]"
 
-# Or install manually
-pip install pytest pytest-asyncio pytest-cov fakeredis
-```
-
-### Quick Verification
-
-Run the quick verification script to test all features:
-
-```bash
-python test_quick_verification.py
-```
-
-This script tests:
-- ✅ Basic YokedCache functionality
-- ✅ Memory backend operations
-- ✅ Vector similarity search
-- ✅ Monitoring integrations
-- ✅ Backend imports and availability
-
-### Full Test Suite
-
-Run the complete test suite:
-
-```bash
-# Run all tests
+# All tests
 pytest
 
-# Run with coverage
-pytest --cov=yokedcache
-
-# Run specific test modules
-pytest tests/test_backends.py
-pytest tests/test_vector_search.py
-pytest tests/test_monitoring.py
-```
-
-## Test Structure
-
-The test suite is organized by functionality:
-
-```
-tests/
-├── conftest.py              # Shared fixtures and configuration
-├── test_cache.py            # Core cache functionality tests
-├── test_backends.py         # Backend implementation tests
-├── test_decorators.py       # Decorator tests
-├── test_vector_search.py    # Vector search tests
-├── test_monitoring.py       # Monitoring and metrics tests
-└── test_cli.py             # CLI functionality tests
-```
-
-### Test Categories
-
-#### Unit Tests
-- Individual component testing
-- Mock external dependencies
-- Fast execution (< 1 second per test)
-
-#### Integration Tests
-- Cross-component functionality
-- Real backend connections (when available)
-- End-to-end workflows
-
-#### Feature Tests
-- New feature validation
-- Edge case coverage
-- Performance benchmarks
-
-## Running Tests
-
-### Basic Test Execution
-
-```bash
-# Run all tests
-pytest
-
-# Run with verbose output
-pytest -v
-
-# Run specific test file
-pytest tests/test_backends.py
-
-# Run specific test class
-pytest tests/test_backends.py::TestMemoryBackend
-
-# Run specific test method
-pytest tests/test_backends.py::TestMemoryBackend::test_memory_backend_connection
-```
-
-### Test Configuration
-
-```bash
-# Run with coverage reporting
+# With coverage
 pytest --cov=yokedcache --cov-report=html
-
-# Run with specific markers
-pytest -m "not slow"
-
-# Run with parallel execution
-pytest -n auto
+open htmlcov/index.html
 
 # Stop on first failure
 pytest -x
 
-# Show local variables on failure
-pytest -l --tb=long
+# Verbose
+pytest -v
+
+# Specific module
+pytest tests/test_backends.py
+
+# Specific class
+pytest tests/test_backends.py::TestRedisBackend
+
+# Specific test
+pytest tests/test_backends.py::TestRedisBackend::test_basic_set_get
+
+# Skip slow tests
+pytest -m "not slow"
+
+# Parallel (requires pytest-xdist)
+pytest -n auto
 ```
 
-### Environment-Specific Testing
+### With Redis
 
-#### Testing with Redis
+Start a Redis server before running Redis-dependent tests:
 
 ```bash
-# Start Redis (Docker)
-docker run -d -p 6379:6379 redis:alpine
-
-# Run Redis-dependent tests
+docker run -d --name test-redis -p 6379:6379 redis:7-alpine
 pytest tests/test_backends.py::TestRedisBackend
 ```
 
-#### Testing with Memcached
+### With Memcached
 
 ```bash
-# Start Memcached (Docker)
-docker run -d -p 11211:11211 memcached:alpine
-
-# Run Memcached tests
+docker run -d --name test-memcached -p 11211:11211 memcached:alpine
 pytest tests/test_backends.py::TestMemcachedBackend
 ```
 
-#### Testing Optional Dependencies
+---
 
-```bash
-# Test vector search features
-pytest tests/test_vector_search.py
+## Test structure
 
-# Test monitoring features
-pytest tests/test_monitoring.py
-
-# Skip tests for missing dependencies
-pytest --disable-warnings
+```
+tests/
+├── conftest.py              # shared fixtures (cache instances, DB sessions)
+├── test_cache.py            # core YokedCache operations
+├── test_backends.py         # per-backend tests (memory, Redis, Memcached)
+├── test_decorators.py       # @cached and cached_dependency
+├── test_invalidation.py     # tag, pattern, and auto-invalidation
+├── test_vector_search.py    # vector similarity search
+├── test_monitoring.py       # health checks and metrics collectors
+├── test_middleware.py       # HTTP cache middleware
+└── test_cli.py              # CLI commands via Click test runner
 ```
 
-## Writing Tests
-
-### Test Structure
-
-Follow this structure for new tests:
-
-```python
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
-
-from yokedcache import YokedCache
-from yokedcache.backends import MemoryBackend
-
-
-class TestNewFeature:
-    """Test new feature functionality."""
-
-    @pytest.fixture
-    async def setup_feature(self):
-        """Setup test environment."""
-        # Setup code
-        yield test_object
-        # Cleanup code
-
-    @pytest.mark.asyncio
-    async def test_basic_functionality(self, setup_feature):
-        """Test basic feature operation."""
-        # Arrange
-        test_data = {"key": "value"}
-
-        # Act
-        result = await setup_feature.method(test_data)
-
-        # Assert
-        assert result is not None
-        assert isinstance(result, expected_type)
-
-    @pytest.mark.asyncio
-    async def test_error_handling(self, setup_feature):
-        """Test error conditions."""
-        with pytest.raises(ExpectedException):
-            await setup_feature.method(invalid_data)
-```
-
-### Async Testing
-
-Use `pytest.mark.asyncio` for async tests:
-
-```python
-@pytest.mark.asyncio
-async def test_async_operation():
-    """Test asynchronous operation."""
-    backend = MemoryBackend()
-    await backend.connect()
-
-    result = await backend.set("key", "value")
-    assert result is True
-
-    await backend.disconnect()
-```
-
-### Mocking External Dependencies
-
-Mock external services and dependencies:
-
-```python
-@pytest.mark.asyncio
-async def test_with_mocked_redis():
-    """Test with mocked Redis."""
-    with patch('redis.asyncio.Redis') as mock_redis_class:
-        mock_redis = AsyncMock()
-        mock_redis.ping = AsyncMock()
-        mock_redis_class.return_value = mock_redis
-
-        backend = RedisBackend()
-        await backend.connect()
-
-        mock_redis.ping.assert_called_once()
-```
-
-### Testing Optional Features
-
-Handle optional dependencies gracefully:
-
-```python
-@pytest.mark.skipif(
-    not pytest.importorskip("numpy", reason="numpy not available"),
-    reason="Vector search dependencies not available"
-)
-def test_vector_search_feature():
-    """Test vector search when dependencies are available."""
-    from yokedcache.vector_search import VectorSimilaritySearch
-
-    search = VectorSimilaritySearch()
-    # Test implementation
-```
-
-## Testing New Features
-
-### Backend Testing
-
-When adding a new backend:
-
-1. **Create backend tests** in `tests/test_backends.py`
-2. **Test interface compliance** - ensure all abstract methods are implemented
-3. **Test error handling** - connection failures, timeouts, etc.
-4. **Test performance** - basic benchmarks for operations
-
-```python
-class TestNewBackend:
-    """Test new backend implementation."""
-
-    @pytest.fixture
-    async def backend(self):
-        """Create backend instance."""
-        backend = NewBackend(config_params)
-        await backend.connect()
-        yield backend
-        await backend.disconnect()
-
-    @pytest.mark.asyncio
-    async def test_interface_compliance(self, backend):
-        """Test that backend implements required interface."""
-        # Test all CacheBackend methods
-        assert await backend.health_check()
-        assert await backend.set("key", "value")
-        assert await backend.get("key") == "value"
-        assert await backend.delete("key")
-```
-
-### Feature Testing
-
-For new cache features:
-
-1. **Unit tests** - individual components
-2. **Integration tests** - feature interaction with cache
-3. **Edge case tests** - boundary conditions
-4. **Performance tests** - ensure no regression
-
-### CLI Testing
-
-Test CLI functionality with Click's test runner:
+### Testing CLI commands
 
 ```python
 from click.testing import CliRunner
 from yokedcache.cli import cli
 
-def test_cli_command():
-    """Test CLI command execution."""
+def test_ping():
     runner = CliRunner()
-    result = runner.invoke(cli, ['stats', '--format', 'json'])
-
+    result = runner.invoke(cli, ["ping"])
     assert result.exit_code == 0
-    assert 'total_hits' in result.output
+    assert "OK" in result.output
+
+def test_stats():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["stats", "--format", "json"])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert "hit_rate" in data
 ```
-
-## Continuous Integration
-
-### Pre-commit Hooks
-
-Install and configure pre-commit hooks:
-
-```bash
-# Install pre-commit
-pip install pre-commit
-
-# Install hooks
-pre-commit install
-
-# Run manually
-pre-commit run --all-files
-```
-
-The `.pre-commit-config.yaml` includes:
-- **Black** - Code formatting
-- **isort** - Import sorting
-- **MyPy** - Type checking
-- **Pytest** - Test execution
-
-### CI Pipeline
-
-The CI pipeline runs:
-
-1. **Code Quality Checks**
-   - Black formatting
-   - Import sorting
-   - Type checking
-   - Linting
-
-2. **Test Execution**
-   - Unit tests
-   - Integration tests
-   - Coverage reporting
-
-3. **Feature Validation**
-   - Optional dependency tests
-   - Cross-platform testing
-   - Performance benchmarks
-
-### Test Matrix
-
-Tests run across:
-- **Python**: 3.10, 3.11, 3.12, 3.13, 3.14
-- **Operating systems**: Ubuntu, Windows, macOS
-- **Dependency sets**: minimal, full, optional features
-
-## Troubleshooting
-
-### Common Issues
-
-#### Test Hanging
-
-If tests hang indefinitely:
-
-```bash
-# Run with timeout
-pytest --timeout=30
-
-# Run single test to isolate
-pytest tests/test_specific.py::test_method -v
-
-# Check for resource leaks
-pytest --capture=no
-```
-
-#### Import Errors
-
-For missing dependencies:
-
-```bash
-# Check installed packages
-pip list
-
-# Install missing dependencies
-pip install -r requirements-dev.txt
-
-# Verify imports
-python -c "import yokedcache; print('OK')"
-```
-
-#### Mock Issues
-
-For async mocking problems:
-
-```python
-# Use AsyncMock for async methods
-mock_method = AsyncMock()
-
-# Proper async context manager mocking
-mock_context = AsyncMock()
-mock_context.__aenter__ = AsyncMock(return_value=mock_context)
-mock_context.__aexit__ = AsyncMock(return_value=None)
-```
-
-#### Redis Connection Issues
-
-For Redis-related test failures:
-
-```bash
-# Check Redis availability
-redis-cli ping
-
-# Use fake Redis for tests
-pip install fakeredis
-
-# Skip Redis tests if not available
-pytest -k "not redis"
-```
-
-### Debugging Tests
-
-#### Verbose Output
-
-```bash
-# Show print statements
-pytest -s
-
-# Show local variables on failure
-pytest -l
-
-# Full traceback
-pytest --tb=long
-
-# Show warnings
-pytest -W ignore::DeprecationWarning
-```
-
-#### Test Selection
-
-```bash
-# Run only failed tests
-pytest --lf
-
-# Run failed tests first
-pytest --ff
-
-# Run tests matching pattern
-pytest -k "test_memory"
-
-# Run specific markers
-pytest -m "slow"
-```
-
-#### Coverage Analysis
-
-```bash
-# Generate HTML coverage report
-pytest --cov=yokedcache --cov-report=html
-
-# Show missing lines
-pytest --cov=yokedcache --cov-report=term-missing
-
-# Fail if coverage below threshold
-pytest --cov=yokedcache --cov-fail-under=80
-```
-
-## Performance Testing
-
-### Benchmarking
-
-Run performance tests to ensure no regression:
-
-```bash
-# Basic performance test
-python -m pytest tests/test_performance.py
-
-# With profiling
-python -m pytest tests/test_performance.py --profile
-
-# Memory usage analysis
-python -m pytest tests/test_performance.py --memray
-```
-
-### Load Testing
-
-Test with high concurrency:
-
-```python
-import asyncio
-import pytest
-from yokedcache.backends import MemoryBackend
-
-@pytest.mark.asyncio
-async def test_concurrent_operations():
-    """Test high concurrency operations."""
-    backend = MemoryBackend()
-    await backend.connect()
-
-    # Simulate 100 concurrent operations
-    tasks = []
-    for i in range(100):
-        tasks.append(backend.set(f"key_{i}", f"value_{i}"))
-
-    results = await asyncio.gather(*tasks)
-    assert all(results)
-
-    await backend.disconnect()
-```
-
-## Best Practices
-
-### Test Organization
-
-1. **Group related tests** in classes
-2. **Use descriptive names** for test methods
-3. **Follow AAA pattern** (Arrange, Act, Assert)
-4. **Keep tests independent** - no shared state
-5. **Use fixtures** for common setup
-
-### Test Data
-
-1. **Use realistic data** that represents actual usage
-2. **Test edge cases** - empty data, large data, special characters
-3. **Parameterize tests** for multiple input scenarios
-4. **Mock external services** to ensure test reliability
-
-### Maintenance
-
-1. **Update tests** when adding features
-2. **Remove obsolete tests** when refactoring
-3. **Keep tests fast** - use mocks for slow operations
-4. **Document complex test scenarios**
-5. **Review test coverage** regularly
 
 ---
 
-For more information about specific testing scenarios, see the individual test files in the `tests/` directory. Each file contains comprehensive examples and documentation for testing specific components.
+## CI
+
+The project runs tests on Python 3.10–3.14, across Linux, macOS, and Windows. Optional-dependency tests are conditional on those extras being installed.
+
+Pre-commit hooks run Black, isort, flake8, and mypy before every commit:
+
+```bash
+pre-commit install
+pre-commit run --all-files  # run manually
+```

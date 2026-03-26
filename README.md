@@ -6,21 +6,23 @@
 [![Tests](https://github.com/sirstig/yokedcache/actions/workflows/test.yml/badge.svg)](https://github.com/sirstig/yokedcache/actions/workflows/test.yml)
 [![Coverage](https://codecov.io/gh/sirstig/yokedcache/branch/main/graph/badge.svg)](https://codecov.io/gh/sirstig/yokedcache)
 
-Async-first caching with the **same API** across backends: in-process memory (default install), Redis, Memcached, disk, and SQLite. Tag and pattern invalidation, optional Starlette HTTP middleware, and production metrics—use `await` in FastAPI, Starlette, Django async views, workers, or plain `asyncio`. **Sync code** is welcome too: `get_sync` / `set_sync` (and friends) or `@cached` on a normal `def`—same async-backed implementation, not a separate Redis client.
+Async-first caching with the same API across backends: in-process memory (works out of the box), Redis, Memcached, disk, and SQLite. Tag and pattern invalidation, optional HTTP middleware, and production metrics built in.
+
+Use `await` in FastAPI, Django async views, workers, or plain asyncio. Sync code is welcome too—`get_sync` / `set_sync` / `@cached` on a normal `def` run the same async implementation, no separate client needed.
 
 **[Documentation](https://sirstig.github.io/yokedcache/)** · **[Changelog](https://sirstig.github.io/yokedcache/changelog.html)** · **[PyPI](https://pypi.org/project/yokedcache/)** · **[Issues](https://github.com/sirstig/yokedcache/issues)**
 
 ---
 
-## Features
+## What's included
 
-- **Invalidation** — Tags, patterns, and workflows that keep cache and writes aligned
-- **Backends** — Memory (no extra deps), Redis, Memcached, disk, SQLite; per-prefix routing
-- **Framework-agnostic core** — async API in any asyncio context; sync helpers for scripts and blocking functions; FastAPI helpers optional
-- **HTTP** — ETag / `Cache-Control` middleware (`yokedcache[web]` / Starlette)
-- **Resilience** — Circuit breaker, retries, stale-if-error style patterns
+- **Multiple backends** — Memory (zero deps), Redis, Memcached, disk, SQLite; per-prefix routing to mix them
+- **Invalidation** — Tag-based, pattern-based, and auto-invalidation on DB writes
+- **Sync + async** — Full async API; sync helpers for scripts and blocking code
+- **HTTP middleware** — ETag / `Cache-Control` via Starlette (`yokedcache[web]`)
+- **Resilience** — Circuit breaker, retries, stale-if-error
 - **Observability** — Prometheus, StatsD, OpenTelemetry (optional extras)
-- **CLI** — Inspect keys, stats, and health from the shell
+- **CLI** — Inspect keys, stats, and run health checks from the shell
 
 ## Installation
 
@@ -28,31 +30,21 @@ Async-first caching with the **same API** across backends: in-process memory (de
 pip install yokedcache
 ```
 
-A plain install gives you the core package and an **in-process memory** cache when Redis is not configured (see [1.0.1 changelog](https://github.com/sirstig/yokedcache/blob/main/CHANGELOG.md)). If you previously relied on **transitive** `redis` or `fastapi` from yokedcache alone, add `pip install "yokedcache[redis]"`, `"yokedcache[web]"`, or `"yokedcache[full]"`, or declare those libraries in your own requirements.
+The base install ships with an in-process memory backend—no Redis required to get started. Add extras when you need them:
 
-Pin 1.x if your policy requires it:
+| Extra | What it adds |
+|-------|-------------|
+| `redis` | Redis backend via `redis-py` |
+| `web` | Starlette HTTP cache middleware |
+| `backends` | Disk, SQLite, and Memcached deps together |
+| `observability` | Prometheus, StatsD, OpenTelemetry |
+| `full` | Everything above plus fuzzy search, vector search, SQLAlchemy helpers |
 
-```bash
-pip install "yokedcache>=1.0.1"
-```
+Individual extras: `memcached`, `disk`, `sqlite`, `monitoring`, `tracing`, `vector`, `fuzzy`, `sqlalchemy`.
 
-### Preset extras
+## Quick start
 
-| Extra | What you get |
-|--------|----------------|
-| `redis` | `redis-py` for a real Redis server |
-| `web` | Starlette (for `HTTPCacheMiddleware`) |
-| `backends` | Disk + SQLite + Memcached client deps together |
-| `observability` | Prometheus / StatsD + OpenTelemetry |
-| `full` | Redis, FastAPI, all optional backends, monitoring, tracing, vector, fuzzy, SQLAlchemy |
-
-### Individual extras
-
-`memcached`, `disk`, `sqlite`, `monitoring`, `tracing`, `vector`, `fuzzy`, `sqlalchemy` — mix as needed, e.g. `pip install "yokedcache[redis,memcached]"`.
-
-`dev` — tests, linters, type checking (for contributors).
-
-## Quick start (memory, no Redis)
+**Async (memory backend, no Redis needed):**
 
 ```python
 import asyncio
@@ -69,11 +61,7 @@ async def main():
 asyncio.run(main())
 ```
 
-For Redis in production: `pip install "yokedcache[redis]"`, set `redis_url` (or env `YOKEDCACHE_REDIS_URL`), then `connect()` as usual.
-
-### Sync code
-
-Prefer `await` inside apps that already run an event loop. For scripts or blocking call stacks, connect once, then use `*_sync`:
+**Sync (scripts and blocking code):**
 
 ```python
 import asyncio
@@ -87,9 +75,9 @@ print(cache.get_sync("user:1"))
 asyncio.run(cache.disconnect())
 ```
 
-## FastAPI example
+For Redis: `pip install "yokedcache[redis]"`, then set `redis_url="redis://..."` on `CacheConfig` (or the env var `YOKEDCACHE_REDIS_URL`).
 
-Install FastAPI in your app (`pip install fastapi` or use `yokedcache[full]`).
+## FastAPI example
 
 ```python
 from fastapi import FastAPI, Depends
@@ -106,38 +94,26 @@ async def get_user(user_id: int, db=Depends(cached_get_db)):
 
 ## Requirements
 
-| | Notes |
-|---|---|
-| Python | 3.10+ for **yokedcache 1.x** (CI: 3.10–3.14) |
-| Redis | Optional; use `yokedcache[redis]` and a Redis 6+ server when you want a remote store |
+- **Python 3.10+** (tested on 3.10–3.14)
+- **Redis** is optional; install `yokedcache[redis]` and point to a Redis 6+ server when you want a shared remote cache
 
-**Python 3.9** is unsupported on 1.x. Pin **`yokedcache==0.3.0`** only as a temporary bridge; upgrade Python and yokedcache when you can.
-
-## Documentation
-
-- [Getting started](https://sirstig.github.io/yokedcache/getting-started.html)
-- [Backends](https://sirstig.github.io/yokedcache/backends.html)
-- [Usage patterns](https://sirstig.github.io/yokedcache/usage-patterns.html)
-- [FastAPI tutorial](https://sirstig.github.io/yokedcache/tutorials/fastapi.html)
-- [API reference (pdoc)](https://sirstig.github.io/yokedcache/api/)
-- [llms.txt](https://sirstig.github.io/yokedcache/llms.txt)
+Python 3.9 is not supported on 1.x. Pin `yokedcache==0.3.0` only as a temporary bridge—it does not receive security fixes. Upgrade when you can.
 
 ## Security
 
-Treat Redis and Memcached as **trusted** stores: anyone who can write arbitrary keys can affect deserialization. From **1.0.0**, new values are written with a typed envelope; set `allow_legacy_insecure_deserialization=False` on `CacheConfig` once legacy entries are migrated. Do not use `HTTPCacheMiddleware` on authenticated routes without a `key_builder` that varies the key per user or session. See the changelog for details.
+Treat Redis and Memcached as trusted stores—anyone who can write arbitrary keys can affect what your app deserializes. Set `allow_legacy_insecure_deserialization=False` on `CacheConfig` once you've migrated away from legacy entries.
 
-**Optional `disk` extra:** installs **diskcache**, which uses **pickle** by default. **[CVE-2025-69872](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v)** (GHSA-w8v5-vhqr-4h9v) documents unsafe pickle deserialization when an attacker can write the cache directory; **there is no patched diskcache release on PyPI yet**, so dependency scanners may still alert. Use a non-world-writable cache path and skip `yokedcache[disk]` if you do not need disk persistence. Full write-up: **[SECURITY.md](SECURITY.md)** (also covers how we pin transitive deps in `uv.lock`).
+The optional `disk` extra pulls in `diskcache`, which uses pickle. **[CVE-2025-69872](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v)** covers unsafe deserialization if an attacker can write to the cache directory—no patched PyPI release exists yet. Skip the `disk` extra if you don't need it; keep the cache directory non-world-writable if you do. See [SECURITY.md](SECURITY.md).
 
 ## Development
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest
 ```
 
-Build the static docs site locally:
+Build the docs site locally:
 
 ```bash
 pip install -e ".[docs]"
@@ -147,7 +123,7 @@ python -m pdoc yokedcache -o site/api --template-directory site-src/pdoc-templat
 cd site && python -m http.server 8000
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for workflow and review expectations.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
 
 ## License
 

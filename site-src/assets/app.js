@@ -56,6 +56,9 @@ sidebar?.querySelectorAll(".sidebar-link").forEach((link) => {
 });
 
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && document.getElementById("searchModal")?.open) {
+    return;
+  }
   if (e.key === "Escape" && drawerOpen()) {
     setDrawerOpen(false);
     menuBtn?.focus();
@@ -106,3 +109,142 @@ document.querySelectorAll(".code-block pre code").forEach((code) => {
   label.textContent = m[1];
   wrap.insertBefore(label, wrap.firstChild);
 });
+
+(function initDocSearch() {
+  const indexUrl = html.getAttribute("data-search-index");
+  const modal = document.getElementById("searchModal");
+  const openBtn = document.getElementById("searchOpenBtn");
+  const closeBtn = document.getElementById("searchCloseBtn");
+  const input = document.getElementById("searchInput");
+  const resultsEl = document.getElementById("searchResults");
+  const emptyHint = document.getElementById("searchEmptyHint");
+  const kbdHint = document.getElementById("searchKbdHint");
+
+  if (kbdHint) {
+    const mac = /Mac|iPhone|iPad|iPod/i.test(
+      navigator.platform || navigator.userAgentData?.platform || ""
+    );
+    kbdHint.textContent = mac ? "⌘K" : "Ctrl+K";
+  }
+
+  if (!indexUrl || !modal || !input || !resultsEl || typeof Fuse === "undefined") {
+    return;
+  }
+
+  let fuse = null;
+  let loadError = null;
+
+  function ensureFuse() {
+    if (fuse || loadError) return Promise.resolve();
+    return fetch(indexUrl)
+      .then((r) => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then((records) => {
+        fuse = new Fuse(records, {
+          keys: [
+            { name: "title", weight: 0.42 },
+            { name: "text", weight: 0.58 },
+          ],
+          threshold: 0.38,
+          ignoreLocation: true,
+          minMatchCharLength: 2,
+          includeScore: true,
+        });
+      })
+      .catch((err) => {
+        loadError = err;
+      });
+  }
+
+  function renderResults(q) {
+    resultsEl.innerHTML = "";
+    if (loadError) {
+      emptyHint.textContent = "Could not load search index.";
+      emptyHint.hidden = false;
+      return;
+    }
+    if (!fuse) {
+      emptyHint.textContent = "Loading…";
+      emptyHint.hidden = false;
+      return;
+    }
+    const query = q.trim();
+    if (query.length < 2) {
+      emptyHint.textContent = "Type at least 2 characters. Fuzzy matching handles typos.";
+      emptyHint.hidden = false;
+      return;
+    }
+    emptyHint.hidden = true;
+    const hits = fuse.search(query, { limit: 14 });
+    if (!hits.length) {
+      emptyHint.textContent = "No matches. Try different wording.";
+      emptyHint.hidden = false;
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    hits.forEach(({ item }) => {
+      const li = document.createElement("li");
+      li.setAttribute("role", "option");
+      const a = document.createElement("a");
+      a.href = item.href;
+      a.className = "search-result-link";
+      const t = document.createElement("span");
+      t.className = "search-result-title";
+      t.textContent = item.title;
+      a.appendChild(t);
+      li.appendChild(a);
+      frag.appendChild(li);
+    });
+    resultsEl.appendChild(frag);
+  }
+
+  let debounceTimer = null;
+  function scheduleSearch() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => renderResults(input.value), 60);
+  }
+
+  function openSearch() {
+    ensureFuse().then(() => {
+      modal.showModal();
+      input.focus();
+      if (loadError) {
+        renderResults("");
+        return;
+      }
+      input.select();
+      renderResults(input.value);
+    });
+  }
+
+  function closeSearch() {
+    modal.close();
+  }
+
+  openBtn?.addEventListener("click", () => openSearch());
+  closeBtn?.addEventListener("click", () => closeSearch());
+  input?.addEventListener("input", scheduleSearch);
+
+  modal.addEventListener("close", () => {
+    input.value = "";
+    resultsEl.innerHTML = "";
+    emptyHint.textContent = "Type to search. Fuzzy matching handles typos.";
+    emptyHint.hidden = false;
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (!(e.metaKey || e.ctrlKey) || (e.key !== "k" && e.key !== "K")) return;
+    const tag = e.target?.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || e.target?.isContentEditable) {
+      if (e.target !== input) return;
+    }
+    e.preventDefault();
+    if (modal.open) {
+      closeSearch();
+    } else {
+      openSearch();
+    }
+  });
+})();

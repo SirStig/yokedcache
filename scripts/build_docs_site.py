@@ -239,6 +239,68 @@ def write_syntax_highlight_css(path: Path) -> None:
     path.write_text("\n".join(chunks) + "\n", encoding="utf-8")
 
 
+def md_body_to_search_text(body: str, max_len: int = 16000) -> str:
+    t = body
+    t = re.sub(r"(?i)^\[TOC\]\s*\n*", "", t)
+    t = re.sub(r"<[^>]+>", " ", t)
+    t = re.sub(r"`+", " ", t)
+    t = re.sub(r"!\[([^\]]*)\]\([^)]*\)", r"\1 ", t)
+    t = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1 ", t)
+    t = re.sub(r"^#{1,6}\s*(\S.*?)\s*$", r"\1 ", t, flags=re.M)
+    t = re.sub(r"[*_~>|\\]+", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t[:max_len]
+
+
+def build_search_entries() -> list[dict[str, str]]:
+    records: list[dict[str, str]] = []
+    for _group_label, items in NAV:
+        for title, src in items:
+            if src == "__api__":
+                records.append(
+                    {
+                        "title": title,
+                        "href": site_href("api/index.html"),
+                        "text": (
+                            f"{title} Python API reference pdoc modules "
+                            "classes functions yokedcache"
+                        ),
+                    }
+                )
+                continue
+            md_path = PAGES_DIR / src
+            if not md_path.is_file():
+                raise FileNotFoundError(str(md_path))
+            raw = md_path.read_text(encoding="utf-8")
+            _meta, body = parse_frontmatter(raw)
+            plain = md_body_to_search_text(body)
+            records.append(
+                {
+                    "title": title,
+                    "href": site_href(md_to_html_path(src)),
+                    "text": f"{title} {plain}",
+                }
+            )
+    records.append(
+        {
+            "title": "Changelog",
+            "href": site_href("changelog.html"),
+            "text": "changelog release history versions fixes features migrations",
+        }
+    )
+    records.append(
+        {
+            "title": "Home",
+            "href": site_href("index.html"),
+            "text": (
+                "YokedCache async cache redis memcached memory disk sqlite "
+                "python fastapi starlette tag invalidation middleware metrics"
+            ),
+        }
+    )
+    return records
+
+
 def nav_context(current_out: str) -> list[dict]:
     groups = []
     for label, items in NAV:
@@ -275,6 +337,15 @@ def main() -> int:
         shutil.copytree(STATIC_DIR, OUT, dirs_exist_ok=True, ignore=_skip_root_html)
     shutil.copytree(ASSETS_DIR, OUT / "assets")
     write_syntax_highlight_css(OUT / "assets" / "syntax-highlight.css")
+    try:
+        search_entries = build_search_entries()
+    except FileNotFoundError as e:
+        print(f"Search index: missing {e}", file=sys.stderr)
+        return 1
+    (OUT / "assets" / "search-index.json").write_text(
+        json.dumps(search_entries, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
 
     (OUT / ".nojekyll").write_text("", encoding="utf-8")
 
@@ -342,6 +413,7 @@ def main() -> int:
                 asset_style_href=site_href("assets/style.css"),
                 asset_syntax_href=site_href("assets/syntax-highlight.css"),
                 asset_script_href=site_href("assets/app.js"),
+                search_index_href=site_href("assets/search-index.json"),
                 home_href=site_href("index.html"),
                 changelog_href=site_href("changelog.html"),
                 api_href=site_href("api/index.html"),
@@ -365,6 +437,7 @@ def main() -> int:
         "maintainer_same_as": MAINTAINER_SAME_AS,
         "home_canonical": home_canonical,
         "changelog_canonical": f"{SITE_URL}/changelog.html",
+        "search_index_href": site_href("assets/search-index.json"),
     }
     for standalone in ("index.html.jinja2", "changelog.html.jinja2"):
         stpl = env.get_template(standalone)

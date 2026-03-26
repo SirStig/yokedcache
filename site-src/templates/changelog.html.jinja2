@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark" data-changelog-fallback="https://raw.githubusercontent.com/sirstig/yokedcache/main/CHANGELOG.md">
+{% from 'partials/search_macros.html.jinja2' import search_button, search_dialog %}
+<html lang="en" data-theme="dark" data-search-index="{{ search_index_href }}" data-changelog-fallback="https://raw.githubusercontent.com/sirstig/yokedcache/main/CHANGELOG.md">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -61,6 +62,7 @@
     <a class="header-logo" href="./">Yoked<span>Cache</span></a>
     <div class="header-spacer"></div>
     <nav class="header-nav">
+      {{ search_button() }}
       <a href="getting-started.html">Docs</a>
       <a href="api/index.html">API</a>
       <a href="changelog.html" class="active">Changelog</a>
@@ -106,6 +108,8 @@
   </div>
 
   <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+  {{ search_dialog() }}
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@13.0.3/marked.min.js"></script>
   <script src="assets/changelog.js"></script>
   <script src="assets/app.js"></script>

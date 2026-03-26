@@ -1,0 +1,18 @@
+{% macro search_button() %}
+<button type="button" class="search-open-btn" id="searchOpenBtn" aria-haspopup="dialog" aria-controls="searchModal" aria-keyshortcuts="Control+K Meta+K">
+  <span class="search-open-label">Search</span>
+  <span class="search-kbd" id="searchKbdHint" aria-hidden="true"></span>
+</button>
+{% endmacro %}
+
+{% macro search_dialog() %}
+<dialog class="search-modal" id="searchModal" aria-labelledby="searchModalTitle">
+  <div class="search-modal-panel">
+    <h2 id="searchModalTitle" class="visually-hidden">Search documentation</h2>
+    <input type="search" class="search-modal-input" id="searchInput" autocomplete="off" spellcheck="false" placeholder="Search docs…" aria-autocomplete="list" aria-controls="searchResults" />
+    <p class="search-modal-hint" id="searchEmptyHint">Type to search. Fuzzy matching handles typos.</p>
+    <ul class="search-results" id="searchResults" role="listbox" aria-label="Results"></ul>
+    <button type="button" class="search-modal-close" id="searchCloseBtn" aria-label="Close search">Close</button>
+  </div>
+</dialog>
+{% endmacro %}

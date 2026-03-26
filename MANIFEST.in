@@ -5,9 +5,6 @@ include CHANGELOG.md
 include CONTRIBUTING.md
 include requirements-*.txt
 
-# Include configuration examples
-recursive-include examples *.py *.yaml *.yml *.md
-
 # Include tests (optional, for source distributions)
 recursive-include tests *.py
 

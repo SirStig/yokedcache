@@ -39,7 +39,6 @@ comment:
 
 ignore:
   - "tests/"
-  - "examples/"
   - "site-src/"
   - "site/"
   - "htmlcov/"

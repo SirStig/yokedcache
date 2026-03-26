@@ -54,12 +54,12 @@ test-cov:
 
 # Code quality
 lint:
-	flake8 src tests examples
+	flake8 src tests
 	mypy src
 
 format:
-	black src tests examples
-	isort src tests examples
+	black src tests
+	isort src tests
 
 type-check:
 	mypy src

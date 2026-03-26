@@ -530,7 +530,7 @@ redis-cli --latency
 ## Getting Help
 
 - **Documentation**: Explore the full documentation for detailed guides
-- **Examples**: Check the `examples/` directory for complete working examples
+- **Examples**: See the [FastAPI tutorial](tutorials/fastapi.html) and [usage patterns](usage-patterns.html)
 - **CLI Help**: Run `yokedcache --help` for command-line assistance
 - **Issues**: Report bugs or request features on GitHub
 

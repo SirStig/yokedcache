@@ -68,11 +68,11 @@ jobs:
 
     - name: Check formatting with black
       run: |
-        black --check src tests examples
+        black --check src tests
 
     - name: Check import sorting with isort
       run: |
-        isort --check-only --diff src tests examples
+        isort --check-only --diff src tests
 
     - name: Type check with mypy
       run: |
@@ -112,9 +112,28 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev,sqlalchemy,fuzzy]"
 
-    - name: Run integration tests
+    - name: Redis integration smoke
       run: |
-        python examples/basic_usage.py
+        python -c "
+        import asyncio
+        import os
+        from yokedcache import YokedCache
+        from yokedcache.config import CacheConfig
+
+        async def main():
+            url = os.environ.get('YOKEDCACHE_REDIS_URL', 'redis://127.0.0.1:6379/0')
+            c = YokedCache(CacheConfig(redis_url=url))
+            await c.connect()
+            await c.set('ci_smoke', {'ok': True}, ttl=60)
+            v = await c.get('ci_smoke')
+            assert v == {'ok': True}, v
+            await c.delete('ci_smoke')
+            await c.disconnect()
+
+        asyncio.run(main())
+        "
+      env:
+        YOKEDCACHE_REDIS_URL: redis://127.0.0.1:6379/0
     - name: Test CLI
       run: |
         python -m yokedcache ping

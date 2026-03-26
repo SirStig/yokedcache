@@ -89,11 +89,11 @@ jobs:
 
       - name: Check formatting
         run: |
-          black --check src tests examples
+          black --check src tests
 
       - name: Check import sorting
         run: |
-          isort --check-only --diff src tests examples
+          isort --check-only --diff src tests
 
       - name: Type check
         run: |

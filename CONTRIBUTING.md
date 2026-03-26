@@ -58,11 +58,11 @@ Run all checks before committing:
 
 ```bash
 # Format code
-black src tests examples
-isort src tests examples
+black src tests
+isort src tests
 
 # Check linting
-flake8 src tests examples
+flake8 src tests
 
 # Type checking
 mypy src --ignore-missing-imports
@@ -97,7 +97,6 @@ pytest tests/test_cache.py::TestYokedCache::test_basic_get_set
 - Update docstrings for all public functions and classes
 - Follow Google-style docstring format
 - Update README.md for new features
-- Add examples to the `examples/` directory
 - Update guides under `site-src/pages/` when you change user-facing behavior
 - Run `pip install -e ".[docs]"` then `python scripts/build_docs_site.py` to verify the static site builds
 - Preview: `cd site && python -m http.server 8000` (after copying `CHANGELOG.md` to `site/changelog.md` for the changelog page)
@@ -138,8 +137,8 @@ For new features:
 5. **Run the test suite** and ensure all tests pass:
    ```bash
    pytest
-   black src tests examples
-   flake8 src tests examples
+   black src tests
+   flake8 src tests
    mypy src --ignore-missing-imports
    python scripts/build_docs_site.py
    ```
@@ -195,7 +194,6 @@ yokedcache/
 │   ├── exceptions.py        # Custom exceptions
 │   └── cli.py               # Command-line interface
 ├── tests/                   # Test suite
-├── examples/                # Usage examples
 ├── site-src/                # Static site sources (Markdown, templates, assets)
 └── pyproject.toml           # Project configuration
 ```
@@ -214,7 +212,7 @@ yokedcache/
 
 ## Getting Help
 
-- **Documentation:** Check the README and examples
+- **Documentation:** Check the README and the docs site
 - **Issues:** Search existing issues or create a new one
 - **Discussions:** Use GitHub Discussions for questions
 - **Chat:** Join our community chat (link TBD)

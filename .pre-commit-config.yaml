@@ -18,7 +18,7 @@ repos:
     hooks:
       - id: mypy
         args: [--ignore-missing-imports, --no-strict-optional, --disable-error-code=unused-ignore]
-        exclude: ^(scripts/|examples/)
+        exclude: ^scripts/
         additional_dependencies:
           - types-PyYAML
           - types-redis

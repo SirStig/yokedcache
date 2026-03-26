@@ -57,19 +57,24 @@ NAV: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Advanced",
         [
+            ("Invalidation", "invalidation.md"),
+            ("Resilience", "resilience.md"),
+            ("HTTP Middleware", "middleware.md"),
             ("Vector Search", "vector-search.md"),
             ("Monitoring & Health", "monitoring.md"),
+            ("Deployment", "deployment.md"),
         ],
     ),
     (
         "Reference",
         [
+            ("API Reference", "api-reference.md"),
             ("CLI Tool", "cli.md"),
             ("Performance", "performance.md"),
             ("Security", "security.md"),
             ("Testing", "testing.md"),
             ("Troubleshooting", "troubleshooting.md"),
-            ("API Reference", "__api__"),
+            ("Auto-Generated API", "__api__"),
         ],
     ),
 ]

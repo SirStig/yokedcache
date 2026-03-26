@@ -44,6 +44,7 @@ NAV: list[tuple[str, list[tuple[str, str]]]] = [
         "Usage",
         [
             ("Usage Patterns", "usage-patterns.md"),
+            ("Backends & setup", "backends.md"),
             ("FastAPI Integration", "tutorials/fastapi.md"),
             ("FastAPI Redis Caching Tutorial", "tutorials/fastapi-redis-caching.md"),
             ("SQLAlchemy Integration", "tutorials/sqlalchemy.md"),
@@ -52,7 +53,6 @@ NAV: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Advanced",
         [
-            ("Backends & Setup", "backends.md"),
             ("Vector Search", "vector-search.md"),
             ("Monitoring & Health", "monitoring.md"),
         ],

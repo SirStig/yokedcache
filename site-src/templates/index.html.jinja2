@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>YokedCache — Python caching for FastAPI with Redis</title>
-  <meta name="description" content="Async Python caching library with Redis auto-invalidation, vector search cache helpers, FastAPI integration, and production monitoring. MIT licensed.">
-  <meta name="keywords" content="python, fastapi, redis, sqlalchemy, caching, cache invalidation, memcached, prometheus, yokedcache, Joshua Kac, Project Yoked">
+  <title>YokedCache — Async multi-backend cache for Python</title>
+  <meta name="description" content="Async Python cache with the same API across memory, Redis, Memcached, disk, and SQLite. Tag invalidation, optional Starlette HTTP caching, metrics, and FastAPI-friendly helpers. MIT licensed.">
+  <meta name="keywords" content="python, async cache, redis, memcached, sqlalchemy, caching, cache invalidation, starlette, fastapi, prometheus, yokedcache, Joshua Kac, Project Yoked">
   <meta name="author" content="Joshua Kac">
   <meta name="robots" content="index,follow">
   <link rel="canonical" href="{{ home_canonical }}">
@@ -15,15 +15,15 @@
   <meta property="og:type" content="website">
   <meta property="og:locale" content="en_US">
   <meta property="og:url" content="{{ home_canonical }}">
-  <meta property="og:title" content="YokedCache — Python caching for FastAPI with Redis">
-  <meta property="og:description" content="Async Python caching library with Redis auto-invalidation, vector search cache helpers, FastAPI integration, and production monitoring. MIT licensed.">
+  <meta property="og:title" content="YokedCache — Async multi-backend cache for Python">
+  <meta property="og:description" content="Async Python cache with the same API across memory, Redis, Memcached, disk, and SQLite. Tag invalidation, optional HTTP middleware, metrics. MIT licensed.">
   <meta property="og:image" content="{{ og_image_url }}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:site_name" content="YokedCache">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="YokedCache — Python caching for FastAPI with Redis">
-  <meta name="twitter:description" content="Async Python caching library with Redis auto-invalidation, vector search cache helpers, FastAPI integration, and production monitoring. MIT licensed.">
+  <meta name="twitter:title" content="YokedCache — Async multi-backend cache for Python">
+  <meta name="twitter:description" content="Same async API for memory, Redis, Memcached, disk, and SQLite. Invalidation, optional HTTP caching, observability. MIT licensed.">
   <meta name="twitter:image" content="{{ og_image_url }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,6 +41,7 @@
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     "url": "{{ site_url }}",
     "downloadUrl": "https://pypi.org/project/yokedcache/",
+    "description": "Async multi-backend Python cache: memory, Redis, Memcached, disk, SQLite; tag invalidation; optional Starlette HTTP caching.",
     "codeRepository": "{{ github_repo }}",
     "license": "https://opensource.org/licenses/MIT",
     "author": {
@@ -94,10 +95,10 @@
   <div class="landing">
     <section class="hero">
       <div class="hero-eyebrow">Open source · MIT License</div>
-      <h1>Python caching built<br>for FastAPI</h1>
+      <h1>One async cache API,<br>your choice of backend</h1>
       <p class="hero-sub">
-        Redis-backed cache with automatic invalidation, optional vector-search helpers,
-        multi-backend routing, and metrics — without bolting on a separate doc stack.
+        Memory, Redis, Memcached, disk, or SQLite — same invalidation and patterns.
+        Optional Starlette HTTP caching, FastAPI-ready decorators, metrics, and a small CLI.
       </p>
       <div class="install-pill">
         <span class="prompt">$</span>
@@ -128,13 +129,13 @@
       </div>
       <div class="feature-card">
         <div class="feature-icon">◇</div>
-        <h3>FastAPI-first</h3>
-        <p>Decorators and dependencies that fit existing endpoints without rewriting your app around the cache.</p>
+        <h3>Multi-backend</h3>
+        <p>Redis, Memcached, in-process memory, disk, and SQLite share one interface — swap stores without rewriting call sites.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">◇</div>
-        <h3>Multi-backend</h3>
-        <p>Redis, Memcached, memory, disk, and SQLite paths with a consistent configuration model.</p>
+        <h3>Async everywhere</h3>
+        <p>Use from FastAPI, Starlette, Django async views, workers, or plain <code>asyncio</code>. Optional dependency helpers for FastAPI.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">◇</div>
@@ -144,7 +145,7 @@
       <div class="feature-card">
         <div class="feature-icon">◇</div>
         <h3>HTTP caching</h3>
-        <p>ETag and Cache-Control middleware for 304-friendly APIs when you want browser and CDN behavior aligned.</p>
+        <p>Starlette ASGI middleware for ETag and Cache-Control — 304-friendly responses when you enable the <code>web</code> extra.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">◇</div>
@@ -176,8 +177,8 @@
               <td><a href="getting-started.html">Getting started →</a></td>
             </tr>
             <tr>
-              <td>Usage patterns and FastAPI</td>
-              <td><a href="usage-patterns.html">Usage patterns →</a> · <a href="tutorials/fastapi.html">FastAPI →</a></td>
+              <td>Patterns, backends, FastAPI</td>
+              <td><a href="usage-patterns.html">Usage patterns →</a> · <a href="backends.html">Backends →</a> · <a href="tutorials/fastapi.html">FastAPI →</a></td>
             </tr>
             <tr>
               <td>Python API</td>

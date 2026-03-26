@@ -7,6 +7,7 @@ Environment variables:
   RANGE: git revision range (e.g. prev..HEAD or HEAD)
 Output: writes markdown to stdout
 """
+
 from __future__ import annotations
 
 import os

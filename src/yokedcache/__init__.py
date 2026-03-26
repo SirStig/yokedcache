@@ -13,12 +13,14 @@ __license__ = "MIT"
 try:
     from .cache import YokedCache
 except ImportError as exc:
+    _cache_import_error = exc
+
     class YokedCache:  # type: ignore
         def __init__(self, *args, **kwargs):
             raise ImportError(
                 "Could not import YokedCache. Check core dependencies "
                 "(orjson, pyyaml, click) or see the package README."
-            ) from exc
+            ) from _cache_import_error
 
 
 try:

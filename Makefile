@@ -1,4 +1,6 @@
 # Makefile for YokedCache development
+# requires-python is >=3.10 (see pyproject.toml); venv uses python3.10 by default.
+PYTHON_VENV ?= python3.10
 
 .PHONY: install install-dev venv test test-cov lint format type-check clean docs build publish help
 
@@ -8,7 +10,7 @@ help:
 	@echo "==============================="
 	@echo "install      Install package in current environment"
 	@echo "install-dev  Install package with development dependencies"
-	@echo "venv         Create .venv and install package with dev dependencies"
+	@echo "venv         Create .venv with Python 3.10+ and install dev deps (override: PYTHON_VENV=python3.11)"
 	@echo "test         Run test suite"
 	@echo "test-cov     Run tests with coverage report"
 	@echo "lint         Run linting checks"
@@ -30,7 +32,8 @@ install-dev:
 	pre-commit install
 
 venv:
-	python3 -m venv .venv
+	@$(PYTHON_VENV) -c 'import sys; assert sys.version_info >= (3, 10), "Need Python 3.10+ (set PYTHON_VENV=python3.11 etc. if needed)"'
+	$(PYTHON_VENV) -m venv .venv
 	.venv/bin/pip install --upgrade pip
 	.venv/bin/pip install -e ".[dev]"
 	@echo "Activate: source .venv/bin/activate   (or use Cursor’s Python interpreter: .venv/bin/python)"

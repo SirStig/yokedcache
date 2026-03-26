@@ -390,6 +390,23 @@ tbody tr:hover td { background: var(--glass); }
   padding-top: 2.15rem;
 }
 
+.doc-markdown .codehilite {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.code-block .codehilite pre {
+  background: transparent;
+  border: none;
+}
+
+.codehilite code span {
+  font-style: inherit;
+  font-weight: inherit;
+}
+
 .code-block {
   position: relative;
   margin: 1rem 0;

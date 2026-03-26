@@ -176,6 +176,69 @@ def wrap_tables(html: str) -> str:
     )
 
 
+def _fence_opener_langs(md_body: str) -> list[str]:
+    langs: list[str] = []
+    in_fence = False
+    for line in md_body.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```") and not in_fence:
+            in_fence = True
+            header = stripped[3:].strip()
+            langs.append(header.split()[0] if header else "")
+        elif stripped == "```" and in_fence:
+            in_fence = False
+    return langs
+
+
+_CODEHILITE_CODE_OPEN = re.compile(
+    r'(<div class="codehilite">\s*<pre>)(?:<span></span>)?<code(?!\s+class=)>',
+    re.IGNORECASE,
+)
+
+
+def inject_codehilite_lang_classes(md_body: str, html: str) -> str:
+    langs = _fence_opener_langs(md_body)
+    if not langs:
+        return html
+    it = iter(langs)
+
+    def repl(m: re.Match[str]) -> str:
+        try:
+            lang = next(it)
+        except StopIteration:
+            return m.group(0)
+        if not lang:
+            return m.group(0)
+        safe = lang.replace('"', "&quot;")
+        return f'{m.group(1)}<code class="language-{safe}">'
+
+    return _CODEHILITE_CODE_OPEN.sub(repl, html)
+
+
+def write_syntax_highlight_css(path: Path) -> None:
+    try:
+        from pygments.formatters import HtmlFormatter
+    except ImportError:
+        path.write_text(
+            "/* Syntax highlighting skipped: install pygments (docs extra). */\n",
+            encoding="utf-8",
+        )
+        return
+
+    def scoped(style: str, theme: str) -> str:
+        fmt = HtmlFormatter(
+            style=style,
+            cssclass="codehilite",
+            nobackground=True,
+            wrapcode=True,
+        )
+        raw = fmt.get_style_defs(f'[data-theme="{theme}"] .codehilite')
+        return "\n".join(ln for ln in raw.splitlines() if ".codehilite" in ln)
+
+    chunks = [scoped("monokai", "dark"), scoped("xcode", "light")]
+    path.write_text("\n".join(chunks) + "\n", encoding="utf-8")
+
+
 def nav_context(current_out: str) -> list[dict]:
     groups = []
     for label, items in NAV:
@@ -211,6 +274,7 @@ def main() -> int:
 
         shutil.copytree(STATIC_DIR, OUT, dirs_exist_ok=True, ignore=_skip_root_html)
     shutil.copytree(ASSETS_DIR, OUT / "assets")
+    write_syntax_highlight_css(OUT / "assets" / "syntax-highlight.css")
 
     (OUT / ".nojekyll").write_text("", encoding="utf-8")
 
@@ -221,12 +285,16 @@ def main() -> int:
     tpl = env.get_template("doc_page.html.jinja2")
 
     md_engine = markdown.Markdown(
-        extensions=["tables", "fenced_code", "toc", "sane_lists", "nl2br"],
+        extensions=["tables", "fenced_code", "codehilite", "toc", "sane_lists", "nl2br"],
         extension_configs={
             "toc": {
                 "permalink": False,
                 "title": "",
                 "toc_depth": "2-6",
+            },
+            "codehilite": {
+                "guess_lang": True,
+                "css_class": "codehilite",
             },
         },
     )
@@ -248,7 +316,8 @@ def main() -> int:
                 md_body = "[TOC]\n\n" + md_body
             md_engine.reset()
             raw_html = md_engine.convert(md_body)
-            body_html, toc_html = split_toc(wrap_tables(fix_md_hrefs(raw_html)))
+            raw_html = inject_codehilite_lang_classes(md_body, fix_md_hrefs(raw_html))
+            body_html, toc_html = split_toc(wrap_tables(raw_html))
             out_rel = md_to_html_path(src)
             out_path = OUT / out_rel
             out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -271,6 +340,7 @@ def main() -> int:
                 toc_html=toc_html,
                 nav_groups=nav_context(out_rel),
                 asset_style_href=site_href("assets/style.css"),
+                asset_syntax_href=site_href("assets/syntax-highlight.css"),
                 asset_script_href=site_href("assets/app.js"),
                 home_href=site_href("index.html"),
                 changelog_href=site_href("changelog.html"),

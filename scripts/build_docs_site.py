@@ -25,6 +25,12 @@ INIT_PY = ROOT / "src" / "yokedcache" / "__init__.py"
 SITE_URL = "https://sirstig.github.io/yokedcache"
 GITHUB_REPO = "https://github.com/sirstig/yokedcache"
 
+MAINTAINER_SAME_AS: list[str] = [
+    "https://github.com/SirStig",
+    "https://solutions.ironcoffee.com",
+    "https://www.linkedin.com/in/joshua-kac-aa50b7131",
+]
+
 NAV: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "Start",
@@ -172,7 +178,13 @@ def main() -> int:
     OUT.mkdir(parents=True)
 
     if STATIC_DIR.is_dir():
-        shutil.copytree(STATIC_DIR, OUT, dirs_exist_ok=True)
+
+        def _skip_root_html(src: str, names: list[str]) -> set[str]:
+            if Path(src).resolve() == STATIC_DIR.resolve():
+                return {n for n in names if n in ("index.html", "changelog.html")}
+            return set()
+
+        shutil.copytree(STATIC_DIR, OUT, dirs_exist_ok=True, ignore=_skip_root_html)
     shutil.copytree(ASSETS_DIR, OUT / "assets")
 
     (OUT / ".nojekyll").write_text("", encoding="utf-8")
@@ -243,8 +255,26 @@ def main() -> int:
                 favicon_href=site_href("favicon.png"),
                 favicon_svg_href=site_href("favicon.svg"),
                 og_image_url=f"{SITE_URL}/og-image.png",
+                site_url=SITE_URL,
+                github_repo=GITHUB_REPO,
+                maintainer_same_as=MAINTAINER_SAME_AS,
             )
             out_path.write_text(html, encoding="utf-8")
+
+    home_canonical = f"{SITE_URL}/"
+    standalone_ctx = {
+        "site_url": SITE_URL,
+        "github_repo": GITHUB_REPO,
+        "og_image_url": f"{SITE_URL}/og-image.png",
+        "version": version,
+        "maintainer_same_as": MAINTAINER_SAME_AS,
+        "home_canonical": home_canonical,
+        "changelog_canonical": f"{SITE_URL}/changelog.html",
+    }
+    for standalone in ("index.html.jinja2", "changelog.html.jinja2"):
+        stpl = env.get_template(standalone)
+        out_name = standalone.replace(".jinja2", "")
+        (OUT / out_name).write_text(stpl.render(**standalone_ctx), encoding="utf-8")
 
     print(f"Built site -> {OUT} ({version})")
     return 0

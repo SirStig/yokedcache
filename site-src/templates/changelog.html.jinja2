@@ -6,27 +6,54 @@
   <title>Changelog — YokedCache</title>
   <meta name="description" content="Release history for YokedCache: features, fixes, and migrations.">
   <meta name="keywords" content="yokedcache, changelog, releases, python, fastapi, redis">
+  <meta name="author" content="Joshua Kac">
   <meta name="robots" content="index,follow">
-  <link rel="canonical" href="https://sirstig.github.io/yokedcache/changelog.html">
+  <link rel="canonical" href="{{ changelog_canonical }}">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
   <link rel="apple-touch-icon" href="favicon.png">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://sirstig.github.io/yokedcache/changelog.html">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:url" content="{{ changelog_canonical }}">
   <meta property="og:title" content="Changelog — YokedCache">
   <meta property="og:description" content="Release history for YokedCache: features, fixes, and migrations.">
-  <meta property="og:image" content="https://sirstig.github.io/yokedcache/og-image.png">
+  <meta property="og:image" content="{{ og_image_url }}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:site_name" content="YokedCache">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Changelog — YokedCache">
   <meta name="twitter:description" content="Release history for YokedCache: features, fixes, and migrations.">
-  <meta name="twitter:image" content="https://sirstig.github.io/yokedcache/og-image.png">
+  <meta name="twitter:image" content="{{ og_image_url }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Changelog — YokedCache",
+    "description": "Release history for YokedCache: features, fixes, and migrations.",
+    "url": "{{ changelog_canonical }}",
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": "YokedCache",
+      "url": "{{ home_canonical }}"
+    },
+    "about": {
+      "@type": "SoftwareApplication",
+      "name": "YokedCache",
+      "url": "{{ site_url }}",
+      "codeRepository": "{{ github_repo }}"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Joshua Kac",
+      "sameAs": {{ maintainer_same_as | tojson }}
+    }
+  }
+  </script>
 </head>
 <body>
 
@@ -38,7 +65,7 @@
       <a href="api/index.html">API</a>
       <a href="changelog.html" class="active">Changelog</a>
       <a class="header-badge" href="https://pypi.org/project/yokedcache/" target="_blank" rel="noopener">PyPI ↗</a>
-      <a class="header-badge" href="https://github.com/sirstig/yokedcache" target="_blank" rel="noopener" style="margin-left:0.2rem">GitHub ↗</a>
+      <a class="header-badge" href="{{ github_repo }}" target="_blank" rel="noopener" style="margin-left:0.2rem">GitHub ↗</a>
       <button class="theme-btn" type="button" aria-label="Toggle theme">☀ Light</button>
     </nav>
     <button class="menu-btn" type="button" id="menuBtn" aria-label="Open menu">
@@ -53,7 +80,7 @@
   <div style="position:relative;z-index:1;padding-top:var(--header-h)">
     <div class="changelog-wrap">
       <h1 class="page-title">Changelog</h1>
-      <p class="page-sub">Release history for <code>yokedcache</code> · <a href="https://github.com/sirstig/yokedcache/blob/main/CHANGELOG.md" target="_blank" rel="noopener">View on GitHub ↗</a></p>
+      <p class="page-sub">Release history for <code>yokedcache</code> · <a href="{{ github_repo }}/blob/main/CHANGELOG.md" target="_blank" rel="noopener">View on GitHub ↗</a></p>
 
       <p id="changelog-status" style="color:var(--muted);font-size:0.9rem">Loading…</p>
       <article id="changelog-body" aria-live="polite"></article>
@@ -62,7 +89,7 @@
         <a href="./">Home</a>
         <a href="getting-started.html">Docs</a>
         <a href="api/index.html">API</a>
-        <a href="https://github.com/sirstig/yokedcache" target="_blank" rel="noopener">GitHub</a>
+        <a href="{{ github_repo }}" target="_blank" rel="noopener">GitHub</a>
       </footer>
     </div>
   </div>

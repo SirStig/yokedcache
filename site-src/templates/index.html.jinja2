@@ -5,24 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>YokedCache — Python caching for FastAPI with Redis</title>
   <meta name="description" content="Async Python caching library with Redis auto-invalidation, vector search cache helpers, FastAPI integration, and production monitoring. MIT licensed.">
-  <meta name="keywords" content="python, fastapi, redis, caching, cache invalidation, yokedcache">
+  <meta name="keywords" content="python, fastapi, redis, sqlalchemy, caching, cache invalidation, memcached, prometheus, yokedcache, Joshua Kac, Project Yoked">
+  <meta name="author" content="Joshua Kac">
   <meta name="robots" content="index,follow">
-  <link rel="canonical" href="https://sirstig.github.io/yokedcache/">
+  <link rel="canonical" href="{{ home_canonical }}">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
   <link rel="apple-touch-icon" href="favicon.png">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://sirstig.github.io/yokedcache/">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:url" content="{{ home_canonical }}">
   <meta property="og:title" content="YokedCache — Python caching for FastAPI with Redis">
   <meta property="og:description" content="Async Python caching library with Redis auto-invalidation, vector search cache helpers, FastAPI integration, and production monitoring. MIT licensed.">
-  <meta property="og:image" content="https://sirstig.github.io/yokedcache/og-image.png">
+  <meta property="og:image" content="{{ og_image_url }}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:site_name" content="YokedCache">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="YokedCache — Python caching for FastAPI with Redis">
   <meta name="twitter:description" content="Async Python caching library with Redis auto-invalidation, vector search cache helpers, FastAPI integration, and production monitoring. MIT licensed.">
-  <meta name="twitter:image" content="https://sirstig.github.io/yokedcache/og-image.png">
+  <meta name="twitter:image" content="{{ og_image_url }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -35,11 +37,11 @@
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Linux, macOS, Windows",
     "programmingLanguage": "Python",
-    "softwareVersion": "1.0.0",
+    "softwareVersion": "{{ version }}",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-    "url": "https://sirstig.github.io/yokedcache",
+    "url": "{{ site_url }}",
     "downloadUrl": "https://pypi.org/project/yokedcache/",
-    "codeRepository": "https://github.com/sirstig/yokedcache",
+    "codeRepository": "{{ github_repo }}",
     "license": "https://opensource.org/licenses/MIT",
     "author": {
       "@type": "Organization",
@@ -50,7 +52,8 @@
       "@type": "Person",
       "name": "Joshua Kac",
       "jobTitle": "CTO",
-      "worksFor": { "@type": "Organization", "name": "Project Yoked LLC" }
+      "worksFor": { "@type": "Organization", "name": "Project Yoked LLC" },
+      "sameAs": {{ maintainer_same_as | tojson }}
     }
   }
   </script>
@@ -65,7 +68,7 @@
       <a href="api/index.html">API</a>
       <a href="changelog.html">Changelog</a>
       <a class="header-badge" href="https://pypi.org/project/yokedcache/" target="_blank" rel="noopener">PyPI ↗</a>
-      <a class="header-badge" href="https://github.com/sirstig/yokedcache" target="_blank" rel="noopener" style="margin-left:0.2rem">GitHub ↗</a>
+      <a class="header-badge" href="{{ github_repo }}" target="_blank" rel="noopener" style="margin-left:0.2rem">GitHub ↗</a>
       <button class="theme-btn" type="button" aria-label="Toggle theme">☀ Light</button>
     </nav>
     <button class="menu-btn" type="button" id="menuBtn" aria-label="Open menu">
@@ -92,7 +95,7 @@
       <div class="hero-ctas">
         <a class="btn btn-primary" href="getting-started.html">Documentation</a>
         <a class="btn btn-ghost" href="api/index.html">API reference</a>
-        <a class="btn btn-ghost" href="https://github.com/sirstig/yokedcache" target="_blank" rel="noopener">GitHub ↗</a>
+        <a class="btn btn-ghost" href="{{ github_repo }}" target="_blank" rel="noopener">GitHub ↗</a>
       </div>
     </section>
 
@@ -181,7 +184,7 @@
     <footer class="site-footer">
       <span>MIT License · <a href="https://www.projectyoked.com" target="_blank" rel="noopener">Project Yoked LLC</a></span>
       <span>
-        <a href="https://github.com/sirstig/yokedcache" target="_blank" rel="noopener">GitHub</a> ·
+        <a href="{{ github_repo }}" target="_blank" rel="noopener">GitHub</a> ·
         <a href="https://pypi.org/project/yokedcache/" target="_blank" rel="noopener">PyPI</a> ·
         <a href="changelog.html">Changelog</a> ·
         <a href="llms.txt">llms.txt</a>

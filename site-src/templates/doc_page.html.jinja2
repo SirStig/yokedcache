@@ -6,12 +6,14 @@
   <title>{{ title }} — YokedCache</title>
   <meta name="description" content="{{ description }}">
   {% if keywords %}<meta name="keywords" content="{{ keywords }}">{% endif %}
+  <meta name="author" content="Joshua Kac">
   <meta name="robots" content="index,follow">
   <link rel="canonical" href="{{ canonical }}">
   <link rel="icon" type="image/svg+xml" href="{{ favicon_svg_href }}">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ favicon_href }}">
   <link rel="apple-touch-icon" href="{{ favicon_href }}">
   <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
   <meta property="og:url" content="{{ canonical }}">
   <meta property="og:title" content="{{ title }} — YokedCache">
   <meta property="og:description" content="{{ description }}">
@@ -37,6 +39,10 @@
     "programmingLanguage": "Python",
     "softwareVersion": "{{ version }}",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "url": "{{ site_url }}",
+    "downloadUrl": "https://pypi.org/project/yokedcache/",
+    "codeRepository": "{{ github_repo }}",
+    "license": "https://opensource.org/licenses/MIT",
     "author": {
       "@type": "Organization",
       "name": "Project Yoked LLC",
@@ -46,7 +52,8 @@
       "@type": "Person",
       "name": "Joshua Kac",
       "jobTitle": "CTO",
-      "worksFor": { "@type": "Organization", "name": "Project Yoked LLC" }
+      "worksFor": { "@type": "Organization", "name": "Project Yoked LLC" },
+      "sameAs": {{ maintainer_same_as | tojson }}
     }
   }
   </script>
@@ -61,7 +68,7 @@
       <a href="{{ api_href }}">API</a>
       <a href="{{ changelog_href }}">Changelog</a>
       <a class="header-badge" href="https://pypi.org/project/yokedcache/" target="_blank" rel="noopener">PyPI ↗</a>
-      <a class="header-badge" href="https://github.com/sirstig/yokedcache" target="_blank" rel="noopener" style="margin-left:0.2rem">GitHub ↗</a>
+      <a class="header-badge" href="{{ github_repo }}" target="_blank" rel="noopener" style="margin-left:0.2rem">GitHub ↗</a>
       <button class="theme-btn" type="button" aria-label="Toggle theme">☀ Light</button>
     </nav>
     <button class="menu-btn" type="button" id="menuBtn" aria-label="Open menu">
@@ -94,7 +101,7 @@
           <a href="{{ home_href }}">Home</a>
           <a href="{{ changelog_href }}">Changelog</a>
           <a href="{{ api_href }}">API</a>
-          <a href="https://github.com/sirstig/yokedcache" target="_blank" rel="noopener">GitHub</a>
+          <a href="{{ github_repo }}" target="_blank" rel="noopener">GitHub</a>
           <a href="https://pypi.org/project/yokedcache/" target="_blank" rel="noopener">PyPI</a>
         </footer>
         </div>

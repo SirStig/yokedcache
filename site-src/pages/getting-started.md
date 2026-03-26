@@ -1,12 +1,12 @@
 ---
 title: Getting Started with YokedCache
-description: Install YokedCache, choose a cache backend (memory or Redis), and use the same async API across FastAPI, Starlette, or plain asyncio.
-keywords: yokedcache, installation, async cache, redis, memcached, multi-backend
+description: Install YokedCache, pick a backend (memory or Redis), and use the async-first API—or sync helpers—in FastAPI, scripts, or asyncio.
+keywords: yokedcache, installation, async cache, sync helpers, redis, memcached, multi-backend
 ---
 
 # Getting Started with YokedCache
 
-Install the package, pick a **backend** (in-process memory by default, or Redis for production), and use one async API everywhere. Invalidation, tags, and patterns work the same no matter which store you use.
+Install the package, pick a **backend** (in-process memory by default, or Redis for production). The main methods are async (`await cache.get(...)`). Invalidation, tags, and patterns work the same on every store. If you are in sync-only code, use `get_sync` / `set_sync` or `@cached` on a plain function—same implementation underneath.
 
 ## Installation
 
@@ -104,6 +104,24 @@ With `yokedcache[redis]` and Redis running:
 ```bash
 yokedcache ping
 ```
+
+## Using from sync code
+
+Prefer `await` when you already have an event loop (for example inside FastAPI). **`_sync` methods are for blocking contexts**—do not use them from inside a running loop; use `await cache.get(...)` there instead.
+
+```python
+import asyncio
+from yokedcache import YokedCache
+from yokedcache.config import CacheConfig
+
+cache = YokedCache(CacheConfig())
+asyncio.run(cache.connect())
+cache.set_sync("user:1", {"name": "Ada"}, ttl=60)
+print(cache.get_sync("user:1"))
+asyncio.run(cache.disconnect())
+```
+
+You can also put `@cached` on a normal `def`; it will use the sync cache path automatically.
 
 ## Your First Cache
 

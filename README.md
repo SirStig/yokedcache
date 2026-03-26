@@ -6,7 +6,7 @@
 [![Tests](https://github.com/sirstig/yokedcache/actions/workflows/test.yml/badge.svg)](https://github.com/sirstig/yokedcache/actions/workflows/test.yml)
 [![Coverage](https://codecov.io/gh/sirstig/yokedcache/branch/main/graph/badge.svg)](https://codecov.io/gh/sirstig/yokedcache)
 
-Async-first caching with the **same API** across backends: in-process memory (default install), Redis, Memcached, disk, and SQLite. Tag and pattern invalidation, optional Starlette HTTP middleware, and production metrics—usable from FastAPI, Starlette, Django async code, workers, or plain `asyncio`.
+Async-first caching with the **same API** across backends: in-process memory (default install), Redis, Memcached, disk, and SQLite. Tag and pattern invalidation, optional Starlette HTTP middleware, and production metrics—use `await` in FastAPI, Starlette, Django async views, workers, or plain `asyncio`. **Sync code** is welcome too: `get_sync` / `set_sync` (and friends) or `@cached` on a normal `def`—same async-backed implementation, not a separate Redis client.
 
 **[Documentation](https://sirstig.github.io/yokedcache/)** · **[Changelog](https://sirstig.github.io/yokedcache/changelog.html)** · **[PyPI](https://pypi.org/project/yokedcache/)** · **[Issues](https://github.com/sirstig/yokedcache/issues)**
 
@@ -16,7 +16,7 @@ Async-first caching with the **same API** across backends: in-process memory (de
 
 - **Invalidation** — Tags, patterns, and workflows that keep cache and writes aligned
 - **Backends** — Memory (no extra deps), Redis, Memcached, disk, SQLite; per-prefix routing
-- **Framework-agnostic core** — `YokedCache` and decorators work in any asyncio context; FastAPI helpers are optional
+- **Framework-agnostic core** — async API in any asyncio context; sync helpers for scripts and blocking functions; FastAPI helpers optional
 - **HTTP** — ETag / `Cache-Control` middleware (`yokedcache[web]` / Starlette)
 - **Resilience** — Circuit breaker, retries, stale-if-error style patterns
 - **Observability** — Prometheus, StatsD, OpenTelemetry (optional extras)
@@ -70,6 +70,22 @@ asyncio.run(main())
 ```
 
 For Redis in production: `pip install "yokedcache[redis]"`, set `redis_url` (or env `YOKEDCACHE_REDIS_URL`), then `connect()` as usual.
+
+### Sync code
+
+Prefer `await` inside apps that already run an event loop. For scripts or blocking call stacks, connect once, then use `*_sync`:
+
+```python
+import asyncio
+from yokedcache import YokedCache
+from yokedcache.config import CacheConfig
+
+cache = YokedCache(CacheConfig())
+asyncio.run(cache.connect())
+cache.set_sync("user:1", {"name": "Ada"}, ttl=60)
+print(cache.get_sync("user:1"))
+asyncio.run(cache.disconnect())
+```
 
 ## FastAPI example
 

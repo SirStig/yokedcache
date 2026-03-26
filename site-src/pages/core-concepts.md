@@ -367,7 +367,7 @@ logging.getLogger("yokedcache").setLevel(logging.INFO)
 
 - **Connection Pooling**: YokedCache maintains connection pools automatically
 - **Pool Sizing**: Configure `max_connections` based on concurrency needs
-- **Async Operations**: Use async/await consistently for best performance
+- **Async vs sync**: Prefer async/await in hot paths and inside frameworks; `*_sync` is fine for scripts and low-volume blocking code
 
 ### Batch Operations
 

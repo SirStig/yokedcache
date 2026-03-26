@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>YokedCache — Async multi-backend cache for Python</title>
-  <meta name="description" content="Async Python cache with the same API across memory, Redis, Memcached, disk, and SQLite. Tag invalidation, optional Starlette HTTP caching, metrics, and FastAPI-friendly helpers. MIT licensed.">
+  <title>YokedCache — Multi-backend Python cache (async-first)</title>
+  <meta name="description" content="Async-first Python cache across memory, Redis, Memcached, disk, and SQLite. Sync helpers for scripts and plain functions. Tag invalidation, optional HTTP caching, metrics. MIT licensed.">
   <meta name="keywords" content="python, async cache, redis, memcached, sqlalchemy, caching, cache invalidation, starlette, fastapi, prometheus, yokedcache, Joshua Kac, Project Yoked">
   <meta name="author" content="Joshua Kac">
   <meta name="robots" content="index,follow">
@@ -15,15 +15,15 @@
   <meta property="og:type" content="website">
   <meta property="og:locale" content="en_US">
   <meta property="og:url" content="{{ home_canonical }}">
-  <meta property="og:title" content="YokedCache — Async multi-backend cache for Python">
-  <meta property="og:description" content="Async Python cache with the same API across memory, Redis, Memcached, disk, and SQLite. Tag invalidation, optional HTTP middleware, metrics. MIT licensed.">
+  <meta property="og:title" content="YokedCache — Multi-backend Python cache (async-first)">
+  <meta property="og:description" content="Async-first cache across memory, Redis, Memcached, disk, SQLite. Sync helpers when you need them. Invalidation, optional HTTP middleware, metrics. MIT licensed.">
   <meta property="og:image" content="{{ og_image_url }}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:site_name" content="YokedCache">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="YokedCache — Async multi-backend cache for Python">
-  <meta name="twitter:description" content="Same async API for memory, Redis, Memcached, disk, and SQLite. Invalidation, optional HTTP caching, observability. MIT licensed.">
+  <meta name="twitter:title" content="YokedCache — Multi-backend Python cache (async-first)">
+  <meta name="twitter:description" content="Async-first; sync helpers for scripts. Same API across memory, Redis, Memcached, disk, SQLite. Invalidation, HTTP caching, observability. MIT licensed.">
   <meta name="twitter:image" content="{{ og_image_url }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,7 +41,7 @@
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     "url": "{{ site_url }}",
     "downloadUrl": "https://pypi.org/project/yokedcache/",
-    "description": "Async multi-backend Python cache: memory, Redis, Memcached, disk, SQLite; tag invalidation; optional Starlette HTTP caching.",
+    "description": "Async-first multi-backend Python cache (memory, Redis, Memcached, disk, SQLite) with sync helpers; tag invalidation; optional Starlette HTTP caching.",
     "codeRepository": "{{ github_repo }}",
     "license": "https://opensource.org/licenses/MIT",
     "author": {
@@ -94,11 +94,14 @@
 
   <div class="landing">
     <section class="hero">
-      <div class="hero-eyebrow">Open source · MIT License</div>
-      <h1>One async cache API,<br>your choice of backend</h1>
+      <div class="hero-meta">
+        <div class="hero-eyebrow">Open source · MIT License</div>
+        <a class="header-badge hero-version" href="https://pypi.org/project/yokedcache/{{ version }}/" target="_blank" rel="noopener" title="Latest release on PyPI" aria-label="Latest release on PyPI, version {{ version }}">v{{ version }}</a>
+      </div>
+      <h1>One cache API,<br>your choice of backend</h1>
       <p class="hero-sub">
-        Memory, Redis, Memcached, disk, or SQLite — same invalidation and patterns.
-        Optional Starlette HTTP caching, FastAPI-ready decorators, metrics, and a small CLI.
+        Async-first across memory, Redis, Memcached, disk, and SQLite — same invalidation and patterns.
+        Sync helpers when you are not in an async app. Optional HTTP caching, FastAPI decorators, metrics, CLI.
       </p>
       <div class="install-pill">
         <span class="prompt">$</span>
@@ -134,8 +137,8 @@
       </div>
       <div class="feature-card">
         <div class="feature-icon">◇</div>
-        <h3>Async everywhere</h3>
-        <p>Use from FastAPI, Starlette, Django async views, workers, or plain <code>asyncio</code>. Optional dependency helpers for FastAPI.</p>
+        <h3>Fits async and sync</h3>
+        <p>Use <code>await</code> in FastAPI, Starlette, Django async, and workers. For blocking code, <code>get_sync</code> / <code>set_sync</code> or <code>@cached</code> on a normal function.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">◇</div>

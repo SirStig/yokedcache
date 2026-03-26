@@ -8,7 +8,7 @@ build-backend = "hatchling.build"
 [project]
 name = "yokedcache"
 dynamic = ["version"]
-description = "Async multi-backend cache (memory, Redis, Memcached, disk, SQLite) with tag invalidation, optional HTTP middleware, and production metrics"
+description = "Async-first multi-backend cache (memory, Redis, Memcached, disk, SQLite); sync helpers for scripts; tag invalidation, optional HTTP middleware, metrics"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
@@ -17,6 +17,7 @@ authors = [
 ]
 keywords = [
     "async cache",
+    "sync helpers",
     "cache invalidation",
     "multi-backend cache",
     "redis",

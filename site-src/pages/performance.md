@@ -25,3 +25,8 @@
 
 - Reuse a single `YokedCache` instance; avoid reconnecting per request.
 - Use pipeline where appropriate (handled internally for set/tag ops).
+
+## Sync helpers
+
+- `get_sync` / `set_sync` / `delete_sync` / `exists_sync` each run the async work via `asyncio.run`; reuse one cache instance, but avoid tight loops of many `*_sync` calls if throughput matters.
+- Prefer `await` inside apps that already have an event loop.

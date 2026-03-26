@@ -1,8 +1,9 @@
 """
-YokedCache — async caching with pluggable backends and tag-based invalidation.
+YokedCache — async-first caching with pluggable backends and tag-based invalidation.
 
-Core installs use an in-memory store unless you add optional extras (e.g. ``redis``,
-``web`` for Starlette HTTP middleware, ``memcached``, ``full``).
+Use ``await`` in apps; ``get_sync`` / ``set_sync`` and ``@cached`` on plain functions
+for sync code. Core installs use in-memory storage unless you add extras (``redis``,
+``web``, ``memcached``, ``full``, etc.).
 """
 
 __version__ = "1.0.1"

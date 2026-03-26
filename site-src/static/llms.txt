@@ -1,10 +1,11 @@
 # yokedcache
 
-> MIT-licensed async Python cache: same API for in-process memory, Redis, Memcached, disk, and SQLite; tag/pattern invalidation; optional Starlette HTTP middleware and metrics.
+> MIT-licensed Python cache: async-first, same API for in-process memory, Redis, Memcached, disk, and SQLite; sync helpers (`*_sync`, `@cached` on plain functions); tag/pattern invalidation; optional Starlette HTTP middleware and metrics.
 
 ## Summary
 
 - Package: yokedcache (PyPI). **Python 3.10+** (CI: 3.10–3.14). Plain `pip install yokedcache` uses **embedded memory** when `redis` is not installed (1.0.1+). Add `yokedcache[redis]` for Redis, `yokedcache[web]` for HTTP middleware, `yokedcache[full]` for the full optional stack.
+- **Async-first** (`await` for `get` / `set` / `connect`). **Sync-friendly**: `get_sync` / `set_sync` / `delete_sync` / `exists_sync` and `@cached` on a normal `def` use the same async-backed implementation—not a separate blocking Redis client.
 - Docs: https://sirstig.github.io/yokedcache/
 - API (HTML): https://sirstig.github.io/yokedcache/api/
 - Changelog: https://sirstig.github.io/yokedcache/changelog.html

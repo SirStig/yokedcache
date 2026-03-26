@@ -3,12 +3,14 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 
 import markdown
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -21,6 +23,8 @@ STATIC_DIR = SITE_SRC / "static"
 ASSETS_DIR = SITE_SRC / "assets"
 OUT = ROOT / "site"
 INIT_PY = ROOT / "src" / "yokedcache" / "__init__.py"
+
+PYPI_PACKAGE = "yokedcache"
 
 SITE_URL = "https://sirstig.github.io/yokedcache"
 GITHUB_REPO = "https://github.com/sirstig/yokedcache"
@@ -75,6 +79,22 @@ def read_version() -> str:
     text = INIT_PY.read_text(encoding="utf-8")
     m = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', text, re.M)
     return m.group(1) if m else "0.0.0"
+
+
+def fetch_pypi_latest_version(timeout: float = 4.0) -> str | None:
+    url = f"https://pypi.org/pypi/{PYPI_PACKAGE}/json"
+    req = Request(url, headers={"User-Agent": "yokedcache-docs-build/1"})
+    try:
+        with urlopen(req, timeout=timeout) as resp:
+            data = json.load(resp)
+        ver = data.get("info", {}).get("version")
+        return ver if isinstance(ver, str) and ver else None
+    except OSError:
+        return None
+
+
+def resolve_public_version() -> str:
+    return fetch_pypi_latest_version() or read_version()
 
 
 def md_to_html_path(md_rel: str) -> str:
@@ -206,7 +226,7 @@ def main() -> int:
         },
     )
 
-    version = read_version()
+    version = resolve_public_version()
 
     for _group_label, items in NAV:
         for _title, src in items:

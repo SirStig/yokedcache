@@ -7,7 +7,14 @@ including Redis, Memcached, and in-memory storage.
 
 from .base import CacheBackend
 from .memory import MemoryBackend
-from .redis import RedisBackend
+
+try:
+    from .redis import RedisBackend
+
+    REDIS_BACKEND_AVAILABLE = True
+except ImportError:
+    RedisBackend = None  # type: ignore[misc,assignment]
+    REDIS_BACKEND_AVAILABLE = False
 
 # Optional disk backend
 try:  # pragma: no cover
@@ -38,6 +45,7 @@ except ImportError:
 __all__ = [
     "CacheBackend",
     "RedisBackend",
+    "REDIS_BACKEND_AVAILABLE",
     "MemoryBackend",
     "MemcachedBackend",
     "MEMCACHED_AVAILABLE",

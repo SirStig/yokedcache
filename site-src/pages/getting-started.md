@@ -1,55 +1,50 @@
 ---
-title: Getting Started with YokedCache - Python FastAPI Redis Caching
-description: Complete installation and setup guide for YokedCache, the Python caching library for FastAPI with Redis auto-invalidation and vector search.
-keywords: yokedcache installation, python fastapi redis setup, cache library installation, redis caching tutorial
+title: Getting Started with YokedCache
+description: Install YokedCache, choose a cache backend (memory or Redis), and use the same async API across FastAPI, Starlette, or plain asyncio.
+keywords: yokedcache, installation, async cache, redis, memcached, multi-backend
 ---
 
-# Getting Started with YokedCache - Python FastAPI Redis Caching
+# Getting Started with YokedCache
 
-This guide will walk you through installing YokedCache and setting up your first Redis caching implementation in a FastAPI application. By the end, you'll have a working cache that dramatically improves your application's performance with automatic invalidation.
+Install the package, pick a **backend** (in-process memory by default, or Redis for production), and use one async API everywhere. Invalidation, tags, and patterns work the same no matter which store you use.
 
-## Installation - Python FastAPI Redis Caching Library
-
-### Basic Installation
+## Installation
 
 ```bash
-# Install the core YokedCache package for Python FastAPI Redis caching
 pip install yokedcache
 ```
 
-If you want an explicit 1.x floor (optional):
+Core install includes an **in-process memory** cache when the `redis` package is not present (since **1.0.1**). For a Redis server, add the extra:
 
 ```bash
-pip install "yokedcache>=1.0.0"
+pip install "yokedcache[redis]"
 ```
 
-### Recommended Installation for Production FastAPI Applications
+Optional **preset** extras:
 
-For production FastAPI applications, install YokedCache with all Redis caching features:
+| Extra | Purpose |
+|--------|---------|
+| `redis` | `redis-py` for Redis |
+| `web` | Starlette (HTTP cache middleware) |
+| `backends` | Disk, SQLite, and Memcached deps together |
+| `observability` | Prometheus / StatsD + OpenTelemetry |
+| `full` | Redis, FastAPI, backends, monitoring, tracing, vector, fuzzy, SQLAlchemy |
+
+**Upgrade from 1.0.0:** if you depended on transitive `redis` or `fastapi`, add `yokedcache[redis]`, `yokedcache[web]`, or `yokedcache[full]`—see the [changelog](https://github.com/sirstig/yokedcache/blob/main/CHANGELOG.md).
+
+Pin 1.x if needed:
 
 ```bash
-# Install with all Redis caching features (recommended for FastAPI)
-pip install "yokedcache[full]"
+pip install "yokedcache>=1.0.1"
 ```
 
-### Feature-Specific Installation for Custom Python Setups
-
-Install only the Redis caching features you need for your Python application:
+### Individual extras
 
 ```bash
-# Vector similarity search caching
 pip install "yokedcache[vector]"
-
-# Production monitoring for Redis cache (Prometheus, StatsD)
 pip install "yokedcache[monitoring]"
-
-# Memcached backend support
 pip install "yokedcache[memcached]"
-
-# Fuzzy search capabilities for cached data
 pip install "yokedcache[fuzzy]"
-
-# Combine multiple caching features
 pip install "yokedcache[vector,monitoring,fuzzy]"
 ```
 
@@ -67,9 +62,9 @@ That **`0.3.x` line is legacy**: it does not include 1.x security hardening (env
 
 ## Prerequisites
 
-### Redis Setup
+### Redis (optional)
 
-YokedCache uses Redis as its default backend. You'll need a Redis instance:
+For production or multi-process caching, use Redis. Install `yokedcache[redis]` and run a server:
 
 **Option 1: Docker (Recommended for development)**
 ```bash
@@ -97,18 +92,16 @@ sudo systemctl start redis
 **Option 3: Cloud Redis**
 Use managed Redis services like AWS ElastiCache, Azure Cache for Redis, or Google Cloud Memorystore.
 
-### Verify Installation
-
-Test your YokedCache installation:
+### Verify installation
 
 ```bash
-# Check version
 python -c "import yokedcache; print(yokedcache.__version__)"
-
-# Test CLI
 yokedcache --version
+```
 
-# Test Redis connection
+With `yokedcache[redis]` and Redis running:
+
+```bash
 yokedcache ping
 ```
 

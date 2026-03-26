@@ -7,9 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-03-26
+
+Slimmer default install and clearer optional extras. Behavior for a **Redis server** is unchanged once you install the `redis` extra (or `full`).
+
+### Changed
+
+- **Core dependencies** are now `orjson`, `pyyaml`, `click`, and `typing-extensions` only. **`redis`** and **`fastapi`** are no longer installed by a plain `pip install yokedcache`.
+- Without `redis`, `YokedCache.connect()` uses an **in-process memory** store so the same async API works for local scripts and tests without Redis.
+- **`HTTPCacheMiddleware`** depends on **Starlette** only; install `yokedcache[web]` (or `full`). Docstrings use Starlette as the primary example.
+- New grouped extras in metadata: **`redis`**, **`web`**, **`backends`** (disk + sqlite + memcached), **`observability`** (monitoring + tracing). Granular extras (`memcached`, `disk`, `sqlite`, `monitoring`, `tracing`, etc.) are unchanged. **`full`** still pulls the former “batteries included” set, including `redis` and `fastapi`.
+
+### Fixed
+
+- Misleading `ImportError` in `yokedcache.__init__` that always blamed Redis when `YokedCache` failed to import.
+
 ### Documentation
 
+- README and getting-started emphasize multi-backend installs and extras.
 - Documented the optional **diskcache** advisory (**CVE-2025-69872** / [GHSA-w8v5-vhqr-4h9v](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v)) in `SECURITY.md`, the README Security section, the docs site *Security* page, `CONTRIBUTING.md`, and the GitHub bug report template (no patched upstream wheel at the time of writing; trust boundaries and mitigations).
+
+### Upgrade note (read this if you upgrade from 1.0.0)
+
+If your project relied on **transitive** `redis` or `fastapi` from `pip install yokedcache` without listing them in your own requirements, add explicit dependencies or install:
+
+`pip install "yokedcache[redis]"` for Redis, `pip install "yokedcache[web]"` for HTTP middleware, or `pip install "yokedcache[full]"` to approximate the old default footprint.
 
 ## [1.0.0] - 2026-03-23
 
@@ -143,7 +165,8 @@ First stable 1.x release. Published as **1.0.0** (not a PEP 440 pre-release) so 
 
 - Initial release: core Redis cache, FastAPI-oriented usage, CLI, configuration, baseline documentation.
 
-[Unreleased]: https://github.com/sirstig/yokedcache/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/sirstig/yokedcache/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/sirstig/yokedcache/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/sirstig/yokedcache/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/sirstig/yokedcache/compare/v0.2.4...v0.3.0
 [0.2.4]: https://github.com/sirstig/yokedcache/compare/v0.2.3...v0.2.4

@@ -1,26 +1,24 @@
 """
-YokedCache - A robust, performance-focused caching library for Python backends.
+YokedCache — async caching with pluggable backends and tag-based invalidation.
 
-YokedCache provides seamless caching integration for FastAPI applications with Redis,
-featuring automatic cache invalidation, fuzzy search capabilities, and intelligent
-database integration.
+Core installs use an in-memory store unless you add optional extras (e.g. ``redis``,
+``web`` for Starlette HTTP middleware, ``memcached``, ``full``).
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "SirStig"
 __email__ = "twogoodgamer2@gmail.com"
 __license__ = "MIT"
 
 try:
     from .cache import YokedCache
-except ImportError:
-    # If Redis is not available, create a placeholder that gives helpful error
+except ImportError as exc:
     class YokedCache:  # type: ignore
         def __init__(self, *args, **kwargs):
             raise ImportError(
-                "Redis is required for YokedCache. Please install with: "
-                "pip install redis>=4.0.0"
-            )
+                "Could not import YokedCache. Check core dependencies "
+                "(orjson, pyyaml, click) or see the package README."
+            ) from exc
 
 
 try:

@@ -6,7 +6,7 @@
 [![Tests](https://github.com/sirstig/yokedcache/actions/workflows/test.yml/badge.svg)](https://github.com/sirstig/yokedcache/actions/workflows/test.yml)
 [![Coverage](https://codecov.io/gh/sirstig/yokedcache/branch/main/graph/badge.svg)](https://codecov.io/gh/sirstig/yokedcache)
 
-Async-first Python caching for FastAPI and other asyncio services: Redis-oriented invalidation, pluggable backends, optional vector helpers, and metrics that fit real deployments.
+Async-first caching with the **same API** across backends: in-process memory (default install), Redis, Memcached, disk, and SQLite. Tag and pattern invalidation, optional Starlette HTTP middleware, and production metrics—usable from FastAPI, Starlette, Django async code, workers, or plain `asyncio`.
 
 **[Documentation](https://sirstig.github.io/yokedcache/)** · **[Changelog](https://sirstig.github.io/yokedcache/changelog.html)** · **[PyPI](https://pypi.org/project/yokedcache/)** · **[Issues](https://github.com/sirstig/yokedcache/issues)**
 
@@ -15,42 +15,65 @@ Async-first Python caching for FastAPI and other asyncio services: Redis-oriente
 ## Features
 
 - **Invalidation** — Tags, patterns, and workflows that keep cache and writes aligned
-- **FastAPI** — Dependency-friendly helpers (`cached_dependency`, decorators) without rewriting routes
-- **Backends** — Redis (default), Memcached, memory, disk, SQLite; per-prefix routing
-- **HTTP** — ETag / `Cache-Control` middleware and 304-friendly responses
+- **Backends** — Memory (no extra deps), Redis, Memcached, disk, SQLite; per-prefix routing
+- **Framework-agnostic core** — `YokedCache` and decorators work in any asyncio context; FastAPI helpers are optional
+- **HTTP** — ETag / `Cache-Control` middleware (`yokedcache[web]` / Starlette)
 - **Resilience** — Circuit breaker, retries, stale-if-error style patterns
-- **Observability** — Prometheus, StatsD, OpenTelemetry hooks
+- **Observability** — Prometheus, StatsD, OpenTelemetry (optional extras)
 - **CLI** — Inspect keys, stats, and health from the shell
 
 ## Installation
-
-Install the latest **1.x** from PyPI; you do not need to pin an exact version unless your policy requires it.
 
 ```bash
 pip install yokedcache
 ```
 
-To require 1.x or newer explicitly:
+A plain install gives you the core package and an **in-process memory** cache when Redis is not configured (see [1.0.1 changelog](https://github.com/sirstig/yokedcache/blob/main/CHANGELOG.md)). If you previously relied on **transitive** `redis` or `fastapi` from yokedcache alone, add `pip install "yokedcache[redis]"`, `"yokedcache[web]"`, or `"yokedcache[full]"`, or declare those libraries in your own requirements.
+
+Pin 1.x if your policy requires it:
 
 ```bash
-pip install "yokedcache>=1.0.0"
+pip install "yokedcache>=1.0.1"
 ```
 
-Optional extras:
+### Preset extras
 
-| Extra | Purpose |
-|--------|---------|
-| `memcached` | Memcached backend |
-| `monitoring` | Prometheus / StatsD |
-| `vector` | Vector / similarity helpers |
-| `fuzzy` | Fuzzy matching utilities |
-| `disk` | Disk backend |
-| `sqlite` | SQLite backend |
-| `tracing` | OpenTelemetry API/SDK |
-| `full` | All of the above |
-| `dev` | Tests, linters, type checking |
+| Extra | What you get |
+|--------|----------------|
+| `redis` | `redis-py` for a real Redis server |
+| `web` | Starlette (for `HTTPCacheMiddleware`) |
+| `backends` | Disk + SQLite + Memcached client deps together |
+| `observability` | Prometheus / StatsD + OpenTelemetry |
+| `full` | Redis, FastAPI, all optional backends, monitoring, tracing, vector, fuzzy, SQLAlchemy |
 
-## Quick start
+### Individual extras
+
+`memcached`, `disk`, `sqlite`, `monitoring`, `tracing`, `vector`, `fuzzy`, `sqlalchemy` — mix as needed, e.g. `pip install "yokedcache[redis,memcached]"`.
+
+`dev` — tests, linters, type checking (for contributors).
+
+## Quick start (memory, no Redis)
+
+```python
+import asyncio
+from yokedcache import YokedCache
+from yokedcache.config import CacheConfig
+
+async def main():
+    cache = YokedCache(CacheConfig())
+    await cache.connect()
+    await cache.set("user:1", {"name": "Ada"}, ttl=60)
+    print(await cache.get("user:1"))
+    await cache.disconnect()
+
+asyncio.run(main())
+```
+
+For Redis in production: `pip install "yokedcache[redis]"`, set `redis_url` (or env `YOKEDCACHE_REDIS_URL`), then `connect()` as usual.
+
+## FastAPI example
+
+Install FastAPI in your app (`pip install fastapi` or use `yokedcache[full]`).
 
 ```python
 from fastapi import FastAPI, Depends
@@ -67,22 +90,21 @@ async def get_user(user_id: int, db=Depends(cached_get_db)):
 
 ## Requirements
 
-| | Minimum |
+| | Notes |
 |---|---|
-| Python | 3.10+ for **yokedcache 1.x** (tested on 3.10 through 3.14 in CI) |
-| Redis | 4.x client; server 6+ typical for production |
+| Python | 3.10+ for **yokedcache 1.x** (CI: 3.10–3.14) |
+| Redis | Optional; use `yokedcache[redis]` and a Redis 6+ server when you want a remote store |
 
-**Python 3.9** is unsupported on 1.x (transitive deps such as patched **filelock** require 3.10+). If you must stay on 3.9, pin **`yokedcache==0.3.0`** (or `0.3.x`); that release line is **not** maintained for new security fixes—plan an upgrade.
-
-Other backends impose their own dependencies when you install the matching extra.
+**Python 3.9** is unsupported on 1.x. Pin **`yokedcache==0.3.0`** only as a temporary bridge; upgrade Python and yokedcache when you can.
 
 ## Documentation
 
 - [Getting started](https://sirstig.github.io/yokedcache/getting-started.html)
+- [Backends](https://sirstig.github.io/yokedcache/backends.html)
 - [Usage patterns](https://sirstig.github.io/yokedcache/usage-patterns.html)
 - [FastAPI tutorial](https://sirstig.github.io/yokedcache/tutorials/fastapi.html)
 - [API reference (pdoc)](https://sirstig.github.io/yokedcache/api/)
-- [llms.txt](https://sirstig.github.io/yokedcache/llms.txt) for tool-oriented summaries
+- [llms.txt](https://sirstig.github.io/yokedcache/llms.txt)
 
 ## Security
 

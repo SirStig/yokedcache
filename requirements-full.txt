@@ -1,12 +1,14 @@
-# Full requirements for YokedCache with all optional features
-# Install with: pip install -r requirements-full.txt
+# Mirrors `pip install "yokedcache[full]"` (all optional features).
+# Prefer: pip install "yokedcache[full]"
 
-# Core dependencies
-redis>=4.0.0
-fastapi>=0.68.0
+# Core
+orjson>=3.11.6
 pyyaml>=6.0
 click>=8.0.0
 typing-extensions>=4.0.0
+
+redis>=4.0.0
+fastapi>=0.68.0
 
 # Optional dependencies - SQLAlchemy support
 sqlalchemy>=1.4.0

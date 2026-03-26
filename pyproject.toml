@@ -8,7 +8,7 @@ build-backend = "hatchling.build"
 [project]
 name = "yokedcache"
 dynamic = ["version"]
-description = "Python caching library for FastAPI with Redis auto-invalidation, vector search caching, and intelligent cache management"
+description = "Async multi-backend cache (memory, Redis, Memcached, disk, SQLite) with tag invalidation, optional HTTP middleware, and production metrics"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
@@ -16,27 +16,19 @@ authors = [
     { name = "Project Yoked LLC" },
 ]
 keywords = [
-    "python caching library",
-    "fastapi caching",
-    "redis caching",
-    "cache auto-invalidation",
-    "vector search caching",
-    "python redis",
-    "fastapi redis",
-    "intelligent caching",
-    "database caching",
-    "cache",
-    "caching",
-    "fastapi",
-    "redis",
-    "database",
-    "orm",
-    "sqlalchemy",
-    "performance",
-    "async caching",
+    "async cache",
     "cache invalidation",
+    "multi-backend cache",
+    "redis",
     "memcached",
-    "cache management",
+    "python caching",
+    "fastapi",
+    "starlette",
+    "asgi",
+    "sqlalchemy",
+    "tag invalidation",
+    "prometheus",
+    "opentelemetry",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -64,14 +56,14 @@ classifiers = [
 ]
 dependencies = [
     "orjson>=3.11.6",
-    "redis>=4.0.0",
-    "fastapi>=0.68.0",
     "pyyaml>=6.0",
     "click>=8.0.0",
     "typing-extensions>=4.0.0",
 ]
 
 [project.optional-dependencies]
+redis = ["redis>=4.0.0"]
+web = ["starlette>=0.27.0"]
 sqlalchemy = ["sqlalchemy>=1.4.0"]
 fuzzy = ["fuzzywuzzy>=0.18.0", "python-levenshtein>=0.12.0"]
 memcached = ["aiomcache>=0.8.0,<1.0.0"]
@@ -94,7 +86,20 @@ tracing = [
     "opentelemetry-api>=1.15.0",
     "opentelemetry-sdk>=1.15.0",
 ]
+backends = [
+    "diskcache>=5.0.0",
+    "aiosqlite>=0.19.0",
+    "aiomcache>=0.8.0,<1.0.0",
+]
+observability = [
+    "prometheus_client>=0.16.0",
+    "statsd>=4.0.0",
+    "opentelemetry-api>=1.15.0",
+    "opentelemetry-sdk>=1.15.0",
+]
 full = [
+    "redis>=4.0.0",
+    "fastapi>=0.68.0",
     "sqlalchemy>=1.4.0",
     "fuzzywuzzy>=0.18.0",
     "python-levenshtein>=0.12.0",
@@ -124,6 +129,8 @@ dev = [
     "httpx>=0.24.0",
     "types-PyYAML>=6.0.0",
     "types-redis>=4.0.0",
+    "redis>=4.0.0",
+    "fastapi>=0.68.0",
     "fuzzywuzzy>=0.18.0",
     "python-levenshtein>=0.12.0",
     "aiomcache>=0.8.0,<1.0.0",

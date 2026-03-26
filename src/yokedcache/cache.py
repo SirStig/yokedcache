@@ -68,17 +68,99 @@ class _InflightLockMap:
         return lk
 
 
+class EmbeddedMemoryRedis:
+    """Minimal async Redis-like store for core installs without redis-py."""
+
+    def __init__(self) -> None:
+        self._data: Dict[str, Any] = {}
+        self._sets: Dict[str, Set[Any]] = {}
+
+    async def ping(self) -> bool:
+        return True
+
+    async def aclose(self) -> None:
+        return None
+
+    async def close(self) -> None:
+        return None
+
+    async def get(self, key: str) -> Any:
+        return self._data.get(key)
+
+    async def set(self, key: str, value: Any, ex: Any = None) -> bool:
+        self._data[key] = value
+        return True
+
+    async def delete(self, *keys: str) -> int:
+        deleted = 0
+        for k in keys:
+            if k in self._data:
+                del self._data[k]
+                deleted += 1
+            if k in self._sets:
+                del self._sets[k]
+                deleted += 1
+        return deleted
+
+    async def exists(self, *keys: str) -> int:
+        return sum(1 for k in keys if k in self._data or k in self._sets)
+
+    async def flushdb(self) -> bool:
+        self._data.clear()
+        self._sets.clear()
+        return True
+
+    async def touch(self, key: str) -> bool:
+        return True
+
+    async def sadd(self, key: str, member: Any) -> int:
+        s = self._sets.setdefault(key, set())
+        before = len(s)
+        s.add(member)
+        return 1 if len(s) > before else 0
+
+    async def smembers(self, key: str) -> Set[Any]:
+        return self._sets.get(key, set())
+
+    async def expire(self, key: str, ttl: int) -> bool:
+        return True
+
+    async def keys(self, pattern: str) -> List[str]:
+        if pattern == "*":
+            return list(self._data.keys()) + list(self._sets.keys())
+        if pattern.endswith("*"):
+            prefix = pattern[:-1]
+            return [
+                k
+                for k in list(self._data.keys()) + list(self._sets.keys())
+                if k.startswith(prefix)
+            ]
+        return [k for k in self._data.keys() if k == pattern]
+
+    async def scan_iter(self, match: str = "*", **kwargs: Any):
+        keys = await self.keys(match)
+        for k in keys:
+            yield k
+
+    async def info(self, section: Any = None) -> Dict[str, Any]:
+        if section == "memory":
+            return {"used_memory": sum(len(str(v)) for v in self._data.values())}
+        if section == "keyspace":
+            return {"db0": {"keys": len(self._data)}}
+        return {}
+
+    async def dbsize(self) -> int:
+        return len(self._data)
+
+
 class YokedCache:
     """
-    Main caching class that provides intelligent caching with Redis backend.
+    Async cache with Redis-compatible operations.
 
-    Features:
-    - Automatic cache invalidation based on database operations
-    - Variable TTLs per table/query type
-    - Tag-based cache grouping and invalidation
-    - Fuzzy search capabilities
-    - Performance metrics and monitoring
-    - Async/await support for FastAPI integration
+    Without ``redis`` installed, ``connect()`` uses an in-process memory store.
+    With ``redis``, connects to ``redis_url`` (see ``CacheConfig``).
+
+    Features include tag/pattern invalidation, optional metrics, and resilience helpers.
     """
 
     # Class-level annotations for late initialization in __init__
@@ -655,15 +737,28 @@ class YokedCache:
         logger.setLevel(getattr(logging, self.config.log_level.upper(), logging.INFO))
 
     async def connect(self) -> None:
-        """Establish connection to Redis.
+        """Connect to Redis when redis-py is installed; otherwise use embedded memory.
 
         Tests patch `redis.asyncio.from_url`; use that path for compatibility.
         """
         if self._connected:
             return
+        self._fallback_mode = getattr(self, "_fallback_mode", False)
+        self._fallback_degraded = getattr(self, "_fallback_degraded", False)
+
+        if redis is None:
+            self._redis = EmbeddedMemoryRedis()
+            self._connected = True
+            self._fallback_mode = True
+            self._fallback_degraded = False
+            logger.info(
+                "redis package not installed; using in-process memory store. "
+                "Install yokedcache[redis] for a Redis server backend."
+            )
+            return
+
         attempts = 0
         max_attempts = 1
-        # Backwards compatibility with legacy attribute used in tests
         if hasattr(self.config, "max_retries"):
             try:
                 max_attempts = int(getattr(self.config, "max_retries")) + 1
@@ -672,16 +767,11 @@ class YokedCache:
         else:
             max_attempts = self.config.connection_retries + 1
         last_error: Optional[Exception] = None
-        # Track fallback usage so operations can alter behavior when no real backend
-        self._fallback_mode = getattr(self, "_fallback_mode", False)
-        self._fallback_degraded = getattr(self, "_fallback_degraded", False)
 
         while attempts < max_attempts and not self._connected:
             attempts += 1
             try:
                 pool_config = self.config.get_connection_pool_config()
-                if redis is None:  # pragma: no cover
-                    raise CacheConnectionError("redis library not available")
                 self._redis = redis.from_url(self.config.redis_url, **pool_config)
                 await self._redis.ping()
                 self._connected = True
@@ -708,99 +798,7 @@ class YokedCache:
                     )
                 )
 
-                class _InMemoryRedis:
-                    """Very small async-compatible subset of Redis used for fallback."""
-
-                    def __init__(self):  # pragma: no cover - simple container
-                        self._data: Dict[str, Any] = {}
-                        self._sets: Dict[str, Set[Any]] = {}
-
-                    async def ping(self):
-                        return True
-
-                    async def aclose(self):  # compatibility with redis client
-                        return True
-
-                    async def close(self):  # fallback
-                        return True
-
-                    async def get(self, key):
-                        return self._data.get(key)
-
-                    async def set(self, key, value, ex=None):
-                        self._data[key] = value
-                        return True
-
-                    async def delete(self, *keys):
-                        deleted = 0
-                        for k in keys:
-                            if k in self._data:
-                                del self._data[k]
-                                deleted += 1
-                            if k in self._sets:
-                                del self._sets[k]
-                                deleted += 1
-                        return deleted
-
-                    async def exists(self, *keys):
-                        return sum(
-                            1 for k in keys if k in self._data or k in self._sets
-                        )
-
-                    async def flushdb(self):
-                        self._data.clear()
-                        self._sets.clear()
-                        return True
-
-                    async def touch(self, key):
-                        return True
-
-                    async def sadd(self, key, member):
-                        s = self._sets.setdefault(key, set())
-                        before = len(s)
-                        s.add(member)
-                        return 1 if len(s) > before else 0
-
-                    async def smembers(self, key):
-                        return self._sets.get(key, set())
-
-                    async def expire(self, key, ttl):
-                        return True
-
-                    async def keys(self, pattern):
-                        if pattern == "*":
-                            return list(self._data.keys()) + list(self._sets.keys())
-                        if pattern.endswith("*"):
-                            prefix = pattern[:-1]
-                            return [
-                                k
-                                for k in list(self._data.keys())
-                                + list(self._sets.keys())
-                                if k.startswith(prefix)
-                            ]
-                        return [k for k in self._data.keys() if k == pattern]
-
-                    async def scan_iter(self, match="*", **kwargs):
-                        keys = await self.keys(match)
-                        for k in keys:
-                            yield k
-
-                    async def info(self, section=None):
-                        if section == "memory":
-                            return {
-                                "used_memory": sum(
-                                    len(str(v)) for v in self._data.values()
-                                )
-                            }
-                        if section == "keyspace":
-                            # Match structure used by redis info keyspace
-                            return {"db0": {"keys": len(self._data)}}
-                        return {}
-
-                    async def dbsize(self):
-                        return len(self._data)
-
-                self._redis = _InMemoryRedis()
+                self._redis = EmbeddedMemoryRedis()
                 self._connected = True
                 self._fallback_mode = True
                 self._fallback_degraded = hard_fail

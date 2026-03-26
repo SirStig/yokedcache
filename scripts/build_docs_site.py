@@ -233,7 +233,7 @@ def main() -> int:
                 title = Path(src).stem.replace("-", " ").title()
             desc = meta.get(
                 "description",
-                "YokedCache — Python caching for FastAPI with Redis and auto-invalidation.",
+                "YokedCache — async multi-backend cache with tag invalidation and optional HTTP middleware.",
             )
             canonical = f"{SITE_URL}/{out_rel}"
 

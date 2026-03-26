@@ -1,12 +1,14 @@
-"""HTTP caching middleware (FastAPI) providing ETag & Cache-Control support.
+"""HTTP caching middleware (Starlette ASGI) providing ETag & Cache-Control support.
+
+Requires the ``web`` extra: ``pip install "yokedcache[web]"`` (installs Starlette).
 
 Usage:
-    from fastapi import FastAPI
+    from starlette.applications import Starlette
     from yokedcache.middleware import HTTPCacheMiddleware
     from yokedcache.cache import YokedCache
 
     cache = YokedCache()
-    app = FastAPI()
+    app = Starlette()
     app.add_middleware(HTTPCacheMiddleware, cache=cache, default_ttl=60)
 
 Notes:
@@ -34,11 +36,6 @@ if TYPE_CHECKING:
     _ScopeKeyBuilder = Callable[[Scope], str]
 else:
     _ScopeKeyBuilder = Any
-
-try:  # pragma: no cover - optional fastapi/starlette usage
-    from fastapi import Request
-except Exception:  # pragma: no cover
-    Request = Any  # type: ignore[assignment,misc]
 
 
 class HTTPCacheMiddleware:  # pragma: no cover - integration layer

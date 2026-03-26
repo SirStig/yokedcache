@@ -7,6 +7,35 @@ on:
     branches: [ main ]
 
 jobs:
+  minimal-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install core only (no redis / fastapi)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Smoke test embedded memory backend
+        run: |
+          python -c "
+          import asyncio
+          from yokedcache import YokedCache
+          from yokedcache.config import CacheConfig
+
+          async def main():
+              c = YokedCache(CacheConfig())
+              await c.connect()
+              await c.set('k', {'a': 1})
+              assert await c.get('k') == {'a': 1}
+              await c.disconnect()
+
+          asyncio.run(main())
+          "
+
   test:
     runs-on: ubuntu-latest
     strategy:

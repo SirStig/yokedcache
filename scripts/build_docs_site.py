@@ -356,7 +356,14 @@ def main() -> int:
     tpl = env.get_template("doc_page.html.jinja2")
 
     md_engine = markdown.Markdown(
-        extensions=["tables", "fenced_code", "codehilite", "toc", "sane_lists", "nl2br"],
+        extensions=[
+            "tables",
+            "fenced_code",
+            "codehilite",
+            "toc",
+            "sane_lists",
+            "nl2br",
+        ],
         extension_configs={
             "toc": {
                 "permalink": False,

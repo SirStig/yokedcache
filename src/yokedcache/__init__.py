@@ -6,7 +6,7 @@ for sync code. Core installs use in-memory storage unless you add extras (``redi
 ``web``, ``memcached``, ``full``, etc.).
 """
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __author__ = "SirStig"
 __email__ = "twogoodgamer2@gmail.com"
 __license__ = "MIT"

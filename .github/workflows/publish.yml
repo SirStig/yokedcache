@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'PEP 440 version only, e.g. 1.0.0 (not v1.0.0 — must match __version__ in src/yokedcache/__init__.py)'
+        description: 'PEP 440 version only, e.g. 1.0.2 (not v1.0.2 — must match __version__ in src/yokedcache/__init__.py)'
         required: true
         type: string
       environment:

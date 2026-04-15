@@ -40,6 +40,8 @@ The base install ships with an in-process memory backend—no Redis required to 
 | `observability` | Prometheus, StatsD, OpenTelemetry |
 | `full` | Everything above plus fuzzy search, vector search, SQLAlchemy helpers |
 
+To require a minimum patch line (for example after a security release): `pip install "yokedcache>=1.0.2"`.
+
 Individual extras: `memcached`, `disk`, `sqlite`, `monitoring`, `tracing`, `vector`, `fuzzy`, `sqlalchemy`.
 
 ## Quick start
@@ -103,7 +105,7 @@ Python 3.9 is not supported on 1.x. Pin `yokedcache==0.3.0` only as a temporary 
 
 Treat Redis and Memcached as trusted stores—anyone who can write arbitrary keys can affect what your app deserializes. Set `allow_legacy_insecure_deserialization=False` on `CacheConfig` once you've migrated away from legacy entries.
 
-The optional `disk` extra pulls in `diskcache`, which uses pickle. **[CVE-2025-69872](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v)** covers unsafe deserialization if an attacker can write to the cache directory—no patched PyPI release exists yet. Skip the `disk` extra if you don't need it; keep the cache directory non-world-writable if you do. See [SECURITY.md](SECURITY.md).
+The optional `disk` extra pulls in `diskcache`. **From 1.0.2**, the disk backend stores JSON-safe wrappers around the same **bytes envelope** as other backends (no pickle for cached payloads). **[CVE-2025-69872](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v)** still applies to the upstream package metadata until a patched wheel ships—automated scanners may flag it. Skip the `disk` extra if you don't need it; keep the cache directory non-world-writable if you do. See [SECURITY.md](SECURITY.md).
 
 ## Development
 

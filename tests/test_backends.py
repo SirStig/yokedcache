@@ -1,7 +1,7 @@
 """
 Tests for YokedCache backend implementations.
 
-This module tests Redis, Memory, and Memcached backends.
+This module tests Redis, Memory, Memcached, and disk backends.
 """
 
 import asyncio
@@ -479,3 +479,20 @@ class TestMemcachedBackend:
         # Test delete
         deleted = await backend.delete("test_key")
         assert deleted
+
+
+@pytest.mark.asyncio
+async def test_disk_cache_backend_json_envelope_roundtrip(tmp_path):
+    pytest.importorskip("diskcache")
+    from yokedcache.backends.disk import DiskCacheBackend
+
+    backend = DiskCacheBackend(directory=str(tmp_path / "yoked-disk"))
+    await backend.connect()
+    try:
+        assert await backend.set("k1", {"a": 1}, ttl=600)
+        assert await backend.get("k1") == {"a": 1}
+        assert await backend.exists("k1")
+        assert await backend.delete("k1")
+        assert not await backend.exists("k1")
+    finally:
+        await backend.disconnect()

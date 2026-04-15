@@ -8,26 +8,24 @@ Treat Redis and Memcached as **trusted stores**. Anyone who can write arbitrary 
 
 ## Disk backend (`diskcache`)
 
-The `yokedcache[disk]` extra pulls in [diskcache](https://pypi.org/project/diskcache/), which persists values with **pickle** by default.
+The `yokedcache[disk]` extra pulls in [diskcache](https://pypi.org/project/diskcache/). **From yokedcache 1.0.2**, `DiskCacheBackend` uses **diskcache.JSONDisk** and stores only JSON-safe wrappers around **bytes** produced by `serialize_for_cache` / read by `deserialize_from_cache`, so application cache values are not persisted via pickle on that path.
 
 | | |
 |---|---|
 | **Advisory** | [GHSA-w8v5-vhqr-4h9v](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v) (CVE-2025-69872) |
-| **Affected** | diskcache through 5.6.3 (current PyPI line) |
-| **Patched release** | None yet—scanners will flag this until upstream ships a fix |
+| **Upstream package** | diskcache through 5.6.3 (current PyPI line); **no patched wheel** yet—automated scanners may still flag the dependency. |
+| **YokedCache behavior** | Disk backend avoids pickle for stored cache payloads as above. **Upgrade note:** on-disk data from **before 1.0.2** used the default pickle-backed layout and is **not compatible**—remove or move the cache directory when upgrading. |
 
-If an attacker can write files under the cache directory, they can supply a malicious pickle payload that leads to arbitrary code execution when your process reads it.
+If an attacker can still write or replace files under the cache directory (including SQLite metadata used by diskcache), treat the directory as a **trust boundary**—use strict permissions and avoid shared volumes with untrusted writers.
 
 **What to do:**
 - Skip `yokedcache[disk]` unless you specifically need filesystem-backed caching.
 - Keep the cache directory writable only by the application user—no shared paths, no world-writable directories, no network mounts where untrusted users could write.
 - Prefer Redis, SQLite, or memory backends when filesystem trust is uncertain.
 
-Note: `diskcache` ships a `JSONDisk` driver that avoids pickle, but YokedCache's `DiskCacheBackend` currently uses the default pickle-backed disk. Callers who need disk without pickle should use a custom integration or a different backend for now.
-
 ## Dependency scanning
 
-`uv.lock` keeps **filelock** on a current, patched line. **Black** and **orjson** minimum versions in `pyproject.toml` reflect published security fixes.
+The repo uses `[tool.uv] constraint-dependencies` so `uv.lock` keeps **filelock**, **cryptography**, **pygments**, and **requests** on current, patched lines where advisories apply. **Black**, **orjson**, and **pytest** (dev) minimum versions in `pyproject.toml` reflect published security fixes for dev tooling, JSON parsing, and tests.
 
 ## Python 3.9 and yokedcache 0.3.x
 

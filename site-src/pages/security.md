@@ -30,21 +30,19 @@ This rejects any entry not written with the 1.x envelope, preventing a class of 
 
 ## Disk backend (diskcache)
 
-The `yokedcache[disk]` extra uses `diskcache`, which serializes with **pickle** by default.
+The `yokedcache[disk]` extra uses [diskcache](https://pypi.org/project/diskcache/). **From yokedcache 1.0.2**, `DiskCacheBackend` uses **JSONDisk** and stores only JSON-safe wrappers around **bytes** from the same envelope helpers as Redis—application cache values are **not** persisted with pickle on that path. **Clear the cache directory** when upgrading from pre-1.0.2 disk data.
 
 | | |
 |---|---|
 | **Advisory** | [GHSA-w8v5-vhqr-4h9v](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v) (CVE-2025-69872) |
-| **Affected** | diskcache ≤ 5.6.3 (current PyPI) |
-| **Patched release** | None yet—dependency scanners will flag this |
-
-**Threat:** If an attacker can write files under the cache directory, they can insert a malicious pickle payload that executes arbitrary code when your process reads it.
+| **Upstream package** | diskcache ≤ 5.6.3 (current PyPI); **no patched wheel** yet—scanners may still flag the dependency. |
+| **YokedCache** | Disk backend avoids pickle for stored cache payloads as above; the cache directory remains a **trust boundary** (SQLite metadata and files). |
 
 **Mitigations:**
-- Skip `yokedcache[disk]` if you don't need filesystem-backed caching—Redis or SQLite are safer alternatives
+- Skip `yokedcache[disk]` if you don't need filesystem-backed caching—Redis or SQLite are alternatives
 - Keep the cache directory writable only by the application user: `chmod 700 /var/cache/myapp`
-- Never use shared or network-mounted paths for the disk cache
-- Avoid the disk backend in multi-tenant environments
+- Never use shared or network-mounted paths where untrusted users can write
+- Avoid the disk backend in multi-tenant environments when filesystem trust is unclear
 
 ---
 

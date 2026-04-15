@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.0.2] - 2026-04-15
+
+### Security
+
+- `[tool.uv] constraint-dependencies` pins **cryptography** ≥46.0.7, **pygments** ≥2.20.0, and **requests** ≥2.33.0 so `uv.lock` resolves to releases that address CVE-2026-34073 / CVE-2026-39892, CVE-2026-4539, and CVE-2026-25645 respectively (per `pip-audit` at lock refresh time).
+- **Dev** optional dependency **pytest** raised to **≥9.0.3** (CVE-2025-71176). Regenerated `uv.lock`.
+- **Disk backend:** `DiskCacheBackend` now uses **diskcache.JSONDisk** and stores JSON-safe wrappers around **bytes** from `serialize_for_cache` / `deserialize_from_cache`, avoiding pickle for application cache values on disk. **Remove or move the cache directory** when upgrading from pre-1.0.2 disk data (old pickle-backed entries are not read). Automated scanners may still flag the **diskcache** package until upstream publishes a patched release.
+
+### Documentation
+
+- `SECURITY.md`, README, and docs site *Security* updated for JSONDisk behavior, directory trust boundaries, and the diskcache advisory ([GHSA-w8v5-vhqr-4h9v](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v)).
+
 ## [1.0.1] - 2026-03-26
 
 Slimmer default install and clearer optional extras. Behavior for a **Redis server** is unchanged once you install the `redis` extra (or `full`).
@@ -19,11 +33,6 @@ Slimmer default install and clearer optional extras. Behavior for a **Redis serv
 ### Fixed
 
 - Misleading `ImportError` in `yokedcache.__init__` that always blamed Redis when `YokedCache` failed to import.
-
-### Documentation
-
-- README and getting-started emphasize multi-backend installs and extras.
-- Documented the optional **diskcache** advisory (**CVE-2025-69872** / [GHSA-w8v5-vhqr-4h9v](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v)) in `SECURITY.md`, the README Security section, the docs site *Security* page, `CONTRIBUTING.md`, and the GitHub bug report template (no patched upstream wheel at the time of writing; trust boundaries and mitigations).
 
 ### Upgrade note (read this if you upgrade from 1.0.0)
 
@@ -163,7 +172,8 @@ First stable 1.x release. Published as **1.0.0** (not a PEP 440 pre-release) so 
 
 - Initial release: core Redis cache, FastAPI-oriented usage, CLI, configuration, baseline documentation.
 
-[Unreleased]: https://github.com/sirstig/yokedcache/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/sirstig/yokedcache/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/sirstig/yokedcache/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/sirstig/yokedcache/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/sirstig/yokedcache/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/sirstig/yokedcache/compare/v0.2.4...v0.3.0

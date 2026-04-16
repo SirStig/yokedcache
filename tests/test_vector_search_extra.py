@@ -13,6 +13,13 @@ from yokedcache.vector_search import (
     _parse_vector_shape,
 )
 
+
+def _vector_search_runtime_globals():
+    init = VectorSimilaritySearch.__init__
+    func = getattr(init, "__func__", init)
+    return func.__globals__
+
+
 # ---------------------------------------------------------------------------
 # _parse_vector_shape tests
 # ---------------------------------------------------------------------------
@@ -161,9 +168,7 @@ def test_vector_search_initialization():
 @pytest.mark.skipif(not VECTOR_DEPS_AVAILABLE, reason="vector deps required")
 def test_vector_search_raises_without_deps():
     """Test that ImportError is raised when deps not available by mocking."""
-    from unittest.mock import patch
-
-    with patch("yokedcache.vector_search.VECTOR_DEPS_AVAILABLE", False):
+    with patch.dict(_vector_search_runtime_globals(), {"VECTOR_DEPS_AVAILABLE": False}):
         with pytest.raises(ImportError):
             VectorSimilaritySearch()
 
@@ -296,13 +301,11 @@ def test_vector_search_extract_text_other_value():
 @pytest.mark.skipif(not VECTOR_DEPS_AVAILABLE, reason="vector deps required")
 def test_vector_search_search_returns_empty_for_no_deps_mock():
     """Test search returns [] when vector deps not available during search."""
-    from unittest.mock import patch
-
     vss = VectorSimilaritySearch()
     cache_data = {"a": "apple", "b": "banana"}
     vss.fit(cache_data)
 
-    with patch("yokedcache.vector_search.VECTOR_DEPS_AVAILABLE", False):
+    with patch.dict(_vector_search_runtime_globals(), {"VECTOR_DEPS_AVAILABLE": False}):
         results = vss.search("apple", cache_data)
         assert results == []
 
@@ -512,7 +515,7 @@ def test_fit_with_documents_that_produce_no_text():
 def test_calculate_similarity_no_deps():
     """Test _calculate_similarity raises when deps unavailable."""
     vss = VectorSimilaritySearch()
-    with patch("yokedcache.vector_search.VECTOR_DEPS_AVAILABLE", False):
+    with patch.dict(_vector_search_runtime_globals(), {"VECTOR_DEPS_AVAILABLE": False}):
         with pytest.raises(ImportError):
             vss._calculate_similarity(None, None)
 

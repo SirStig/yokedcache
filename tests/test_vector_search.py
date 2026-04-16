@@ -375,17 +375,23 @@ class TestVectorSearchErrorHandling:
         """Test vector search behavior when dependencies are not available."""
         import sys
 
-        # Mock the import to fail and reload the module
-        with patch.dict("sys.modules", {"numpy": None, "sklearn": None, "scipy": None}):
-            # Remove the module from cache so it gets reloaded with mocked dependencies
-            if "yokedcache.vector_search" in sys.modules:
-                del sys.modules["yokedcache.vector_search"]
+        saved_vector_search = sys.modules.get("yokedcache.vector_search")
+        try:
+            with patch.dict(
+                "sys.modules", {"numpy": None, "sklearn": None, "scipy": None}
+            ):
+                if "yokedcache.vector_search" in sys.modules:
+                    del sys.modules["yokedcache.vector_search"]
 
-            # Import should work but initialization should fail
-            from yokedcache.vector_search import VectorSimilaritySearch
+                from yokedcache.vector_search import VectorSimilaritySearch
 
-            with pytest.raises(ImportError, match="Vector dependencies not available"):
-                VectorSimilaritySearch()
+                with pytest.raises(
+                    ImportError, match="Vector dependencies not available"
+                ):
+                    VectorSimilaritySearch()
+        finally:
+            if saved_vector_search is not None:
+                sys.modules["yokedcache.vector_search"] = saved_vector_search
 
     @pytest.mark.skipif(
         not pytest.importorskip("numpy", reason="numpy not available")

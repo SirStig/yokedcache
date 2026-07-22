@@ -34,9 +34,6 @@ jobs:
       - name: Build static site
         run: python scripts/build_docs_site.py
 
-      - name: Copy changelog for web
-        run: cp CHANGELOG.md site/changelog.md
-
       - name: Build API (pdoc)
         env:
           PDOC_DISPLAY_ENV_VARS: "1"

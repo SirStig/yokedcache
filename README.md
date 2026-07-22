@@ -40,7 +40,7 @@ The base install ships with an in-process memory backend—no Redis required to 
 | `observability` | Prometheus, StatsD, OpenTelemetry |
 | `full` | Everything above plus fuzzy search, vector search, SQLAlchemy helpers |
 
-To require a minimum patch line (for example after a security release): `pip install "yokedcache>=1.0.2"`.
+To require a minimum patch line (for example after a security release): `pip install "yokedcache>=1.1.0"`.
 
 Individual extras: `memcached`, `disk`, `sqlite`, `monitoring`, `tracing`, `vector`, `fuzzy`, `sqlalchemy`.
 

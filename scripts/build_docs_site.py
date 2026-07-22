@@ -23,6 +23,7 @@ STATIC_DIR = SITE_SRC / "static"
 ASSETS_DIR = SITE_SRC / "assets"
 OUT = ROOT / "site"
 INIT_PY = ROOT / "src" / "yokedcache" / "__init__.py"
+CHANGELOG_MD = ROOT / "CHANGELOG.md"
 
 PYPI_PACKAGE = "yokedcache"
 
@@ -336,6 +337,14 @@ def main() -> int:
 
         shutil.copytree(STATIC_DIR, OUT, dirs_exist_ok=True, ignore=_skip_root_html)
     shutil.copytree(ASSETS_DIR, OUT / "assets")
+    if CHANGELOG_MD.is_file():
+        # Ship the changelog with the site so changelog.html renders the
+        # release history from this build instead of falling back to
+        # raw.githubusercontent.com (which can serve a stale copy).
+        shutil.copyfile(CHANGELOG_MD, OUT / "changelog.md")
+    else:
+        print("Missing CHANGELOG.md", file=sys.stderr)
+        return 1
     write_syntax_highlight_css(OUT / "assets" / "syntax-highlight.css")
     try:
         search_entries = build_search_entries()

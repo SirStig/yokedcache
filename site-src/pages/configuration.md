@@ -96,11 +96,11 @@ connection_pool_kwargs={
 | `key_prefix` | `str` | `"yokedcache"` | `YOKEDCACHE_KEY_PREFIX` |
 | `default_serialization` | `SerializationMethod` | `JSON` | `YOKEDCACHE_DEFAULT_SERIALIZATION` |
 | `ttl_jitter_percent` | `float` | `10.0` | — |
-| `allow_legacy_insecure_deserialization` | `bool` | `True` | — |
+| `allow_legacy_insecure_deserialization` | `bool` | `False` | — |
 
 **`ttl_jitter_percent`:** Adds randomness to TTL to prevent cache stampedes. At `10.0`, a 300s TTL becomes 270–330s. Set to `0` to disable.
 
-**`allow_legacy_insecure_deserialization`:** Set to `False` once you've migrated away from 0.x cache entries. Improves security by rejecting blobs that weren't written with the typed envelope format introduced in 1.0.0.
+**`allow_legacy_insecure_deserialization`:** Defaults to `False` **from 1.1.0** (it was `True` through 1.0.x), so blobs that weren't written with the typed envelope format introduced in 1.0.0 are rejected instead of falling back to `pickle.loads()`. Only set it to `True` while migrating pre-1.0.0 entries off the cache.
 
 ---
 

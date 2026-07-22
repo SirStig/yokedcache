@@ -18,13 +18,13 @@ YokedCache 1.x requires **Python 3.10+** (CI covers 3.10–3.14). On Python 3.9,
 
 **The deserialization envelope (1.x):**
 
-YokedCache 1.0.0 introduced a typed envelope format. Once you've migrated away from 0.x entries, set:
+YokedCache 1.0.0 introduced a typed envelope format. **From 1.1.0**, `allow_legacy_insecure_deserialization` defaults to `False` on `CacheConfig` and on every backend's own copy of the flag, so any entry not written with the 1.x envelope is rejected rather than passed to `pickle.loads()`—closing a class of injection attacks where an attacker writes a raw pickle blob as a cache value.
+
+If you still have pre-1.0.0 entries to migrate off, opt back in explicitly and turn it off once they've aged out:
 
 ```python
-config = CacheConfig(allow_legacy_insecure_deserialization=False)
+config = CacheConfig(allow_legacy_insecure_deserialization=True)
 ```
-
-This rejects any entry not written with the 1.x envelope, preventing a class of injection attacks where an attacker writes a raw pickle or JSON blob as a cache value.
 
 ---
 
@@ -59,10 +59,10 @@ Pickle deserializes arbitrary Python objects and **can execute code on load**. R
 
 ## HTTP middleware security
 
-`HTTPCacheMiddleware` caches full HTTP responses. Without a custom `key_builder`, the default key is the URL only—two different users hitting the same URL will share a response:
+`HTTPCacheMiddleware` caches full HTTP responses. Without a custom `key_builder`, the default key is the URL only—two different users hitting the same URL would share a response. **From 1.1.0**, requests carrying an `Authorization` or `Cookie` header bypass the cache entirely unless you supply a `key_builder`, and responses that set `Set-Cookie` are never cached:
 
 ```python
-# UNSAFE for authenticated routes:
+# Safe but ineffective on authenticated routes: they bypass the cache (1.1.0+)
 app.add_middleware(HTTPCacheMiddleware, cache=cache, ttl=60)
 
 # SAFE: vary key by user
@@ -135,7 +135,7 @@ If you must cache sensitive data, encrypt it at the application layer before cal
 - [ ] `rediss://` (TLS) for any Redis not on localhost
 - [ ] Redis ACL user with least-privilege permissions
 - [ ] Credentials in secrets manager / env vars, not source code
-- [ ] `allow_legacy_insecure_deserialization=False` (after migrating from 0.x)
+- [ ] `allow_legacy_insecure_deserialization` left at its 1.1.0 default of `False`
 - [ ] `HTTPCacheMiddleware` key builder varies by user on authenticated routes
 - [ ] Disk extra not installed if not needed; cache dir non-world-writable if used
 - [ ] Pickle serialization only used with trusted backends

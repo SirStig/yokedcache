@@ -5,8 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
 ## [1.1.0] - 2026-07-22
 
 A comprehensive audit surfaced and fixed a large batch of correctness, security,
@@ -366,7 +364,8 @@ First stable 1.x release. Published as **1.0.0** (not a PEP 440 pre-release) so 
 
 - Initial release: core Redis cache, FastAPI-oriented usage, CLI, configuration, baseline documentation.
 
-[Unreleased]: https://github.com/sirstig/yokedcache/compare/v1.0.2...HEAD
+[1.1.0]: https://github.com/sirstig/yokedcache/compare/v1.0.3...v1.1.0
+[1.0.3]: https://github.com/sirstig/yokedcache/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/sirstig/yokedcache/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/sirstig/yokedcache/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/sirstig/yokedcache/compare/v0.3.0...v1.0.0

@@ -37,7 +37,7 @@ app.add_middleware(
 )
 ```
 
-> **Important:** Don't use this middleware on authenticated routes without a custom `key_builder`. The default key is the URL only—two different users hitting the same URL will share a cache entry and may see each other's data.
+> **Important:** The default key is the URL only, so two different users hitting the same URL would share a cache entry. **From 1.1.0**, the middleware refuses to read or write the cache for a request carrying an `Authorization` or `Cookie` header unless you supply a custom `key_builder`, and never caches a response that sets `Set-Cookie`. Authenticated routes still need a `key_builder` that varies by principal—otherwise they simply won't be cached at all.
 
 ---
 

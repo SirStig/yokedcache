@@ -12,7 +12,7 @@ Before going to production:
 - [ ] `redis_url` uses `rediss://` (TLS) if Redis isn't on localhost
 - [ ] Redis is in a private network / VPC, not exposed to the internet
 - [ ] `key_prefix` is set (avoids collisions if multiple apps share Redis)
-- [ ] `allow_legacy_insecure_deserialization=False` set if you've migrated from 0.x
+- [ ] `allow_legacy_insecure_deserialization` left at its 1.1.0 default of `False` (not re-enabled)
 - [ ] Connection pool sized appropriately for your concurrency
 - [ ] Circuit breaker enabled
 - [ ] Monitoring configured (Prometheus or StatsD)
@@ -292,7 +292,7 @@ yokedcache stats
 - Use TLS (`rediss://`): all traffic between your app and Redis is encrypted
 - Place Redis in a private subnet / VPC: it should never be accessible from the internet
 - Use Redis ACLs: give the cache user only the permissions it needs
-- Set `allow_legacy_insecure_deserialization=False` once you've migrated away from 0.x entries
+- Leave `allow_legacy_insecure_deserialization` at its 1.1.0 default of `False`; only set it to `True` while migrating pre-1.0.0 entries
 - Don't cache sensitive data unless encrypted at rest
 - Rotate Redis credentials regularly; prefer per-service ACL users
 

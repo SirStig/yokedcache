@@ -82,7 +82,6 @@ clean:
 docs:
 	python3 -m pip install -q -e ".[docs]"
 	YOKEDCACHE_SITE_PATH_PREFIX= python3 scripts/build_docs_site.py
-	cp CHANGELOG.md site/changelog.md
 	python3 -m pdoc yokedcache -o site/api --template-directory site-src/pdoc-template
 	@echo "Output in site/ — run: cd site && python3 -m http.server 8000"
 

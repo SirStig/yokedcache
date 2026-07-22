@@ -64,6 +64,10 @@ async def test_redis_set_with_tags_pipeline():
     ):
         mock_redis = AsyncMock()
         mock_redis.ping = AsyncMock()
+        # -2: tag set doesn't exist yet, matching the common "first key with
+        # this tag" case _add_tags_to_key now checks via r.ttl() before
+        # deciding whether to (re)apply an expiry.
+        mock_redis.ttl = AsyncMock(return_value=-2)
 
         class Pipeline:
             async def __aenter__(self):

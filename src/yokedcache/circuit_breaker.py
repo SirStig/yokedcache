@@ -8,6 +8,7 @@ gracefully and prevent cascading failures in high-load scenarios.
 import asyncio
 import functools
 import logging
+import threading
 import time
 from enum import Enum
 from typing import Any, Callable, Optional, Tuple, Type, TypeVar, Union
@@ -66,6 +67,11 @@ class CircuitBreaker:
         self.last_failure_time: Optional[float] = None
         self.state = CircuitBreakerState.CLOSED
 
+        # Guards state transitions and counters so concurrent callers (from
+        # multiple asyncio tasks or threads) can't race, and so HALF_OPEN
+        # only ever admits a single trial call.
+        self._state_lock = threading.Lock()
+
         # Stats
         self.total_requests = 0
         self.total_failures = 0
@@ -81,24 +87,53 @@ class CircuitBreaker:
 
         return time.time() - self.last_failure_time >= self.timeout
 
+    def _try_enter(self) -> None:
+        """Atomically gate entry, raising if the call must not proceed.
+
+        OPEN rejects everything until the timeout elapses, at which point
+        exactly one caller is admitted as a HALF_OPEN trial; any other
+        caller that arrives while a trial is in flight is rejected too.
+        """
+        with self._state_lock:
+            if self.state == CircuitBreakerState.OPEN:
+                if self._should_attempt_reset():
+                    self.state = CircuitBreakerState.HALF_OPEN
+                    logger.info("Circuit breaker moving to half-open state")
+                    return
+                raise CircuitBreakerError(
+                    f"Circuit breaker is open. Failure count: {self.failure_count}",
+                    self.state,
+                )
+            if self.state == CircuitBreakerState.HALF_OPEN:
+                raise CircuitBreakerError(
+                    "Circuit breaker is half-open; a trial call is already "
+                    "in progress.",
+                    self.state,
+                )
+
     def _on_success(self) -> None:
         """Handle successful operation."""
-        self.failure_count = 0
-        self.total_successes += 1
-        self.state = CircuitBreakerState.CLOSED
+        with self._state_lock:
+            self.failure_count = 0
+            self.total_successes += 1
+            self.state = CircuitBreakerState.CLOSED
 
     def _on_failure(self, exception: Exception) -> None:
         """Handle failed operation."""
-        self.failure_count += 1
-        self.total_failures += 1
-        self.last_failure_time = time.time()
+        with self._state_lock:
+            self.failure_count += 1
+            self.total_failures += 1
+            self.last_failure_time = time.time()
 
-        if self.failure_count >= self.failure_threshold:
-            self.state = CircuitBreakerState.OPEN
-            logger.warning(
-                f"Circuit breaker opened after {self.failure_count} failures. "
-                f"Last error: {exception}"
-            )
+            if self.failure_count >= self.failure_threshold:
+                self.state = CircuitBreakerState.OPEN
+                logger.warning(
+                    f"Circuit breaker opened after {self.failure_count} failures. "
+                    f"Last error: {exception}"
+                )
+            elif self.state == CircuitBreakerState.HALF_OPEN:
+                self.state = CircuitBreakerState.OPEN
+                logger.warning("Circuit breaker reopened during half-open test")
 
     def __call__(self, func: Callable) -> Callable:
         """Decorator for protecting functions with circuit breaker."""
@@ -120,17 +155,9 @@ class CircuitBreaker:
 
     async def call_async(self, func: Callable, *args, **kwargs) -> Any:
         """Execute async function with circuit breaker protection."""
-        self.total_requests += 1
-
-        if self.state == CircuitBreakerState.OPEN:
-            if self._should_attempt_reset():
-                self.state = CircuitBreakerState.HALF_OPEN
-                logger.info("Circuit breaker moving to half-open state")
-            else:
-                raise CircuitBreakerError(
-                    f"Circuit breaker is open. Failure count: {self.failure_count}",
-                    self.state,
-                )
+        with self._state_lock:
+            self.total_requests += 1
+        self._try_enter()
 
         try:
             if asyncio.iscoroutinefunction(func):
@@ -146,26 +173,13 @@ class CircuitBreaker:
             if not isinstance(e, self.expected_exception):
                 raise
             self._on_failure(e)
-
-            if self.state == CircuitBreakerState.HALF_OPEN:
-                self.state = CircuitBreakerState.OPEN
-                logger.warning("Circuit breaker reopened during half-open test")
-
             raise
 
     def call_sync(self, func: Callable, *args, **kwargs) -> Any:
         """Execute sync function with circuit breaker protection."""
-        self.total_requests += 1
-
-        if self.state == CircuitBreakerState.OPEN:
-            if self._should_attempt_reset():
-                self.state = CircuitBreakerState.HALF_OPEN
-                logger.info("Circuit breaker moving to half-open state")
-            else:
-                raise CircuitBreakerError(
-                    f"Circuit breaker is open. Failure count: {self.failure_count}",
-                    self.state,
-                )
+        with self._state_lock:
+            self.total_requests += 1
+        self._try_enter()
 
         try:
             result = func(*args, **kwargs)
@@ -177,11 +191,6 @@ class CircuitBreaker:
             if not isinstance(e, self.expected_exception):
                 raise
             self._on_failure(e)
-
-            if self.state == CircuitBreakerState.HALF_OPEN:
-                self.state = CircuitBreakerState.OPEN
-                logger.warning("Circuit breaker reopened during half-open test")
-
             raise
 
     def get_stats(self) -> dict:
@@ -202,23 +211,15 @@ class CircuitBreaker:
 
     def reset(self) -> None:
         """Manually reset the circuit breaker."""
-        self.state = CircuitBreakerState.CLOSED
-        self.failure_count = 0
-        self.last_failure_time = None
+        with self._state_lock:
+            self.state = CircuitBreakerState.CLOSED
+            self.failure_count = 0
+            self.last_failure_time = None
         logger.info("Circuit breaker manually reset")
 
     async def __aenter__(self):
         """Async context manager entry."""
-        # Check if circuit is open and should attempt reset
-        if self.state == CircuitBreakerState.OPEN:
-            if self._should_attempt_reset():
-                self.state = CircuitBreakerState.HALF_OPEN
-                logger.info("Circuit breaker moving to half-open state")
-            else:
-                raise CircuitBreakerError(
-                    f"Circuit breaker is open. Failure count: {self.failure_count}",
-                    self.state,
-                )
+        self._try_enter()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -229,9 +230,6 @@ class CircuitBreaker:
         elif exc_type is not None and isinstance(exc_val, self.expected_exception):
             # Expected failure
             self._on_failure(exc_val)
-            if self.state == CircuitBreakerState.HALF_OPEN:
-                self.state = CircuitBreakerState.OPEN
-                logger.warning("Circuit breaker reopened during half-open test")
         # Don't suppress exceptions
         return False
 

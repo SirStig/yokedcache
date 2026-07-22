@@ -51,6 +51,11 @@ from .utils import (
 
 logger = logging.getLogger(__name__)
 
+# Sentinel distinguishing "no cached value" from a legitimately cached
+# `None`. Used internally so get()/fetch_or_set() don't collapse a real
+# cached None into a caller-supplied default.
+_CACHE_MISS = object()
+
 
 class _InflightLockMap:
     def __init__(self, max_keys: int) -> None:
@@ -61,8 +66,21 @@ class _InflightLockMap:
         if key in self._locks:
             self._locks.move_to_end(key)
             return self._locks[key]
-        while len(self._locks) >= self._max:
-            self._locks.popitem(last=False)
+
+        # Evict oldest *unlocked* entries to make room. A lock that's still
+        # `.locked()` means a fetch_or_set()/_background_refresh() call is
+        # actively holding it - evicting it here would let a concurrent
+        # caller for the same key mint a brand-new, unlocked Lock and
+        # stampede right past the in-progress load, defeating single-flight
+        # protection. If every tracked lock happens to be held, let the map
+        # exceed _max temporarily; it shrinks back down as loads complete.
+        if len(self._locks) >= self._max:
+            for candidate_key in list(self._locks.keys()):
+                if len(self._locks) < self._max:
+                    break
+                if not self._locks[candidate_key].locked():
+                    del self._locks[candidate_key]
+
         lk = asyncio.Lock()
         self._locks[key] = lk
         return lk
@@ -164,7 +182,7 @@ class YokedCache:
     """
 
     # Class-level annotations for late initialization in __init__
-    _stale_store: Dict[str, Dict[str, Any]]
+    _stale_store: "OrderedDict[str, Dict[str, Any]]"
     _tracing_initialized: bool
 
     def __init__(
@@ -225,7 +243,7 @@ class YokedCache:
         self._connected = False
         self._shutdown = False
         # Initialize stale store & tracing flags early
-        self._stale_store = {}
+        self._stale_store = OrderedDict()
         self._tracing_initialized = False
 
         # Initialize SWR scheduler if enabled
@@ -826,17 +844,23 @@ class YokedCache:
         """Close Redis connection."""
         self._shutdown = True
 
-        if self._redis:
-            # Use aclose() if available (Redis 5.0+), otherwise use close()
-            if hasattr(self._redis, "aclose"):
-                await self._redis.aclose()
-            else:
-                await self._redis.close()
+        try:
+            if self._redis:
+                # Use aclose() if available (Redis 5.0+), otherwise use close()
+                if hasattr(self._redis, "aclose"):
+                    await self._redis.aclose()
+                else:
+                    await self._redis.close()
 
-        if self._pool:
-            await self._pool.disconnect()
+            if self._pool:
+                await self._pool.disconnect()
+        finally:
+            # Always clear the connected flag, even if closing raised -
+            # connect() no-ops whenever self._connected is already True, so
+            # a stuck-True flag here would make every future connect() a
+            # silent no-op against an already-torn-down client.
+            self._connected = False
 
-        self._connected = False
         logger.info("Disconnected from Redis")
 
     async def health_check(self) -> bool:
@@ -1133,7 +1157,13 @@ class YokedCache:
                         if self.config.log_cache_misses:
                             logger.debug(f"Cache miss: {sanitized_key}")
                         cache_hit = False
-                        return default
+                        # The backend just confirmed this key is genuinely
+                        # gone (never set, deleted, or naturally expired) -
+                        # drop any stale-store entry for it so the store
+                        # doesn't grow forever for keys nobody explicitly
+                        # deletes/invalidates.
+                        self._stale_store.pop(sanitized_key, None)
+                        return _CACHE_MISS
                     try:
                         value = deserialize_from_cache(
                             data,
@@ -1144,7 +1174,7 @@ class YokedCache:
                             "Failed to deserialize data for key: %s",
                             sanitized_key,
                         )
-                        return default
+                        return _CACHE_MISS
                     self._stats.add_hit()
                     cache_hit = True
                     if touch:
@@ -1156,25 +1186,37 @@ class YokedCache:
                         logger.debug(f"Cache hit: {sanitized_key}")
                     return value
 
+            # fallback_on_error=False means this either returns the
+            # operation's own result (a real hit, or _CACHE_MISS on a clean
+            # miss) or raises - it never silently swallows a real backend
+            # failure into a None here. That's what lets the except block
+            # below tell "genuine error" apart from "ordinary miss" for the
+            # stale-if-error fallback below, instead of applying stale data
+            # to a key that simply expired or was never set.
             result = await self._execute_with_resilience(
                 _get_operation, fallback_on_error=False
             )
-            # handle stale-if-error: if result none and we have stale
-            if result is None and self.config.enable_stale_if_error:
+            success = True
+            return default if result is _CACHE_MISS else result
+
+        except Exception as e:  # noqa: PIE786
+            error_type = type(e).__name__
+
+            # Stale-if-error: only reached for a genuine backend failure
+            # (connection error, circuit breaker open, etc.) caught here -
+            # an ordinary miss or natural TTL expiry returns via the try
+            # block above and never raises, so it can't reach this branch.
+            if self.config.enable_stale_if_error:
                 stale_meta = self._stale_store.get(sanitized_key)
                 if stale_meta:
-                    # Validate stale_if_error ttl window
                     stale_ttl = getattr(self.config, "stale_if_error_ttl", 0)
                     if (
                         stale_ttl <= 0
                         or (time.time() - stale_meta["stored_at"]) <= stale_ttl
                     ):
+                        success = True
                         return stale_meta["value"]
-            success = True
-            return default if result is None else result
 
-        except Exception as e:  # noqa: PIE786
-            error_type = type(e).__name__
             if isinstance(e, CacheConnectionError):
                 # propagate connection errors when fallback disabled
                 raise
@@ -1280,6 +1322,17 @@ class YokedCache:
                 self.config.enable_stale_while_revalidate
                 or self.config.enable_stale_if_error
             ):
+                if sanitized_key in self._stale_store:
+                    self._stale_store.move_to_end(sanitized_key)
+                else:
+                    # Bound growth for long-running processes with high key
+                    # cardinality - entries are otherwise only pruned by an
+                    # explicit delete/invalidate/flush, or by get() noticing
+                    # the key is gone, so a write-heavy, read-rarely
+                    # workload could otherwise grow this dict forever.
+                    max_entries = self.config.max_single_flight_locks
+                    while len(self._stale_store) >= max_entries:
+                        self._stale_store.popitem(last=False)
                 self._stale_store[sanitized_key] = {
                     "value": value,
                     "stored_at": time.time(),
@@ -1368,11 +1421,15 @@ class YokedCache:
         raw_key = key
         try:
             async with self._get_redis() as r:
-                use_raw_first = not raw_key.startswith(f"{self.config.key_prefix}:")
-                primary_key = raw_key if use_raw_first else sanitized_key
-                result = await r.exists(primary_key)
-                if result == 0 and use_raw_first and sanitized_key != raw_key:
-                    result = await r.exists(sanitized_key)
+                # Sanitized key first, raw key only as a fallback - matches
+                # delete()'s priority (data is always written under the
+                # sanitized key, so checking it first avoids a false
+                # positive from an unrelated key of the same raw name in a
+                # shared Redis DB, and keeps the two methods' contracts
+                # consistent with each other).
+                result = await r.exists(sanitized_key)
+                if result == 0 and sanitized_key != raw_key:
+                    result = await r.exists(raw_key)
                 return result > 0
         except Exception as e:  # noqa: PIE786
             logger.error(f"Error checking key existence {sanitized_key}: {e}")
@@ -1408,8 +1465,8 @@ class YokedCache:
         Uses per-key asyncio.Lock to ensure only one loader executes.
         """
         sanitized_key = self._build_key(key)
-        existing = await self.get(key, default=None)
-        if existing is not None:
+        existing = await self.get(key, default=_CACHE_MISS)
+        if existing is not _CACHE_MISS:
             # Optionally schedule background refresh when TTL low (SWR)
             if self.config.enable_stale_while_revalidate:
                 try:
@@ -1440,8 +1497,8 @@ class YokedCache:
         lock = self._inflight_locks[key]
         async with lock:
             # re-check after acquiring lock
-            existing2 = await self.get(key, default=None)
-            if existing2 is not None:
+            existing2 = await self.get(key, default=_CACHE_MISS)
+            if existing2 is not _CACHE_MISS:
                 return existing2
             value = loader()
             if inspect.iscoroutine(value):

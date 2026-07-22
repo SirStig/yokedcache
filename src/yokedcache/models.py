@@ -6,7 +6,7 @@ including cache entries, statistics, and configuration models.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set
 
@@ -49,16 +49,22 @@ class CacheEntry:
         """Check if the cache entry has expired."""
         if self.expires_at is None:
             return False
-        return datetime.utcnow() > self.expires_at
+        expires_at = self.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) > expires_at
 
     @property
     def age_seconds(self) -> float:
         """Get the age of the cache entry in seconds."""
-        return (datetime.utcnow() - self.created_at).total_seconds()
+        created_at = self.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - created_at).total_seconds()
 
     def touch(self) -> None:
         """Update the last accessed timestamp and increment hit count."""
-        self.last_accessed = datetime.utcnow()
+        self.last_accessed = datetime.now(timezone.utc)
         self.hit_count += 1
 
 

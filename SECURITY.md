@@ -4,7 +4,7 @@ Report vulnerabilities via [GitHub Security Advisories](https://github.com/sirst
 
 ## Trust boundaries
 
-Treat Redis and Memcached as **trusted stores**. Anyone who can write arbitrary keys can affect what your app deserializes. Use `CacheConfig.allow_legacy_insecure_deserialization=False` once legacy blobs are gone (see changelog for the envelope format introduced in 1.0.0).
+Treat Redis and Memcached as **trusted stores**. Anyone who can write arbitrary keys can affect what your app deserializes. **From yokedcache 1.1.0**, `CacheConfig.allow_legacy_insecure_deserialization` (and the equivalent per-backend flag on `RedisBackend`/`MemcachedBackend`/`DiskCacheBackend`/`SQLiteBackend`) **defaults to `False`**, so a payload that isn't in the envelope format introduced in 1.0.0 is rejected rather than falling back to `pickle.loads()`. Only set it to `True` if you have pre-1.0.0 legacy-format blobs still in the cache to migrate off of, and turn it back off once they've aged out.
 
 ## Disk backend (`diskcache`)
 

@@ -77,6 +77,10 @@ class CacheMetrics:
         # Operation counters
         self.operation_counts: Dict[str, int] = defaultdict(int)
         self.error_counts: Dict[str, int] = defaultdict(int)
+        # Breakdown by exception type (e.g. "ConnectionError"), kept separate
+        # from error_counts (keyed by operation type) so summing one dict
+        # doesn't double-count the same failure under two different keys.
+        self.error_type_counts: Dict[str, int] = defaultdict(int)
         self.success_counts: Dict[str, int] = defaultdict(int)
 
         # Hit/miss tracking
@@ -85,6 +89,8 @@ class CacheMetrics:
 
         # Performance tracking
         self.operation_times: Dict[str, List[float]] = defaultdict(list)
+        self._table_times: Dict[str, List[float]] = defaultdict(list)
+        self._tag_times: Dict[str, List[float]] = defaultdict(list)
         self.response_times = TimeSeries()
         self.hit_rate_series = TimeSeries()
         self.error_rate_series = TimeSeries()
@@ -134,7 +140,7 @@ class CacheMetrics:
             else:
                 self.error_counts[metric.operation_type] += 1
                 if metric.error_type:
-                    self.error_counts[metric.error_type] += 1
+                    self.error_type_counts[metric.error_type] += 1
 
             # Track hit/miss for get operations
             if metric.operation_type == "get" and metric.cache_hit is not None:
@@ -177,9 +183,11 @@ class CacheMetrics:
                     table_stats["error_count"] += 1
 
                 # Update average response time
-                times = self.operation_times.get(f"table:{metric.table}", [])
-                if times:
-                    table_stats["avg_response_time"] = sum(times) / len(times)
+                table_times = self._table_times[metric.table]
+                table_times.append(metric.duration_ms)
+                if len(table_times) > max_times:
+                    del table_times[:-max_times]
+                table_stats["avg_response_time"] = sum(table_times) / len(table_times)
 
             # Update tag metrics
             for tag in metric.tags:
@@ -194,6 +202,13 @@ class CacheMetrics:
 
                 if not metric.success:
                     tag_stats["error_count"] += 1
+
+                # Update average response time
+                tag_times = self._tag_times[tag]
+                tag_times.append(metric.duration_ms)
+                if len(tag_times) > max_times:
+                    del tag_times[:-max_times]
+                tag_stats["avg_response_time"] = sum(tag_times) / len(tag_times)
 
             # Add to recent operations
             self.recent_operations.append(metric)
@@ -307,7 +322,8 @@ class CacheMetrics:
                 "errors": {
                     "total": total_errors,
                     "rate_percent": self.get_error_rate(),
-                    "by_type": dict(self.error_counts),
+                    "by_operation": dict(self.error_counts),
+                    "by_type": dict(self.error_type_counts),
                 },
             },
             "cache_performance": {
@@ -368,10 +384,13 @@ class CacheMetrics:
         with self._lock:
             self.operation_counts.clear()
             self.error_counts.clear()
+            self.error_type_counts.clear()
             self.success_counts.clear()
             self.hit_counts.clear()
             self.miss_counts.clear()
             self.operation_times.clear()
+            self._table_times.clear()
+            self._tag_times.clear()
             self.recent_operations.clear()
             self.table_metrics.clear()
             self.tag_metrics.clear()

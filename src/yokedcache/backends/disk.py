@@ -18,7 +18,7 @@ except Exception:  # pragma: no cover - optional dependency missing
     diskcache = None
 
 from ..models import CacheStats, FuzzySearchResult, SerializationMethod
-from ..utils import deserialize_from_cache, serialize_for_cache
+from ..utils import deserialize_from_cache, normalize_tags, serialize_for_cache
 from .base import CacheBackend
 
 _DISK_VALUE_KEY = "__yc_disk_v1"
@@ -31,7 +31,7 @@ class DiskCacheBackend(CacheBackend):  # pragma: no cover - thin wrapper
         self,
         directory: str = ".yokedcache",
         default_serialization: SerializationMethod = SerializationMethod.JSON,
-        allow_legacy_insecure_deserialization: bool = True,
+        allow_legacy_insecure_deserialization: bool = False,
         **config,
     ):
         super().__init__(**config)
@@ -42,6 +42,11 @@ class DiskCacheBackend(CacheBackend):  # pragma: no cover - thin wrapper
         self.allow_legacy_insecure_deserialization = (
             allow_legacy_insecure_deserialization
         )
+        # tag -> set of keys, mirroring MemoryBackend's in-process index.
+        # Tags aren't part of diskcache's own storage, so (like every other
+        # backend's tag support) this only tracks keys set() by this process.
+        self._tags: dict[str, set[str]] = {}
+        self._key_tags: dict[str, set[str]] = {}
 
     async def _run(self, func, *args, **kwargs):
         loop = asyncio.get_running_loop()
@@ -64,7 +69,21 @@ class DiskCacheBackend(CacheBackend):  # pragma: no cover - thin wrapper
         except (ValueError, OSError):
             return None
 
+    def _untrack_tags(self, key: str) -> None:
+        """Remove ``key`` from the tag index (called on delete/overwrite)."""
+        old_tags = self._key_tags.pop(key, None)
+        if not old_tags:
+            return
+        for tag in old_tags:
+            keys = self._tags.get(tag)
+            if keys is not None:
+                keys.discard(key)
+                if not keys:
+                    self._tags.pop(tag, None)
+
     async def connect(self) -> None:
+        if self._connected:
+            return
         if diskcache is None:
             raise RuntimeError("diskcache is not installed")
         if self._executor is None:
@@ -113,15 +132,23 @@ class DiskCacheBackend(CacheBackend):  # pragma: no cover - thin wrapper
     ) -> bool:
         if self._cache is None:
             return False
-        expire = ttl
+        expire = ttl or 300
         blob = serialize_for_cache(value, self.default_serialization)
         wrapped = self._wrap_stored(blob)
         await self._run(self._cache.set, key, wrapped, expire=expire)
+
+        self._untrack_tags(key)
+        if tags:
+            normalized_tags = normalize_tags(tags)
+            self._key_tags[key] = normalized_tags
+            for tag in normalized_tags:
+                self._tags.setdefault(tag, set()).add(key)
         return True
 
     async def delete(self, key: str) -> bool:
         if self._cache is None:
             return False
+        self._untrack_tags(key)
         return await self._run(self._cache.delete, key)
 
     async def exists(self, key: str) -> bool:
@@ -136,7 +163,7 @@ class DiskCacheBackend(CacheBackend):  # pragma: no cover - thin wrapper
         cur = await self.get(key, missing)
         if cur is missing:
             return False
-        return await self.set(key, cur, ttl, None)
+        return await self.set(key, cur, ttl, self._key_tags.get(key))
 
     async def invalidate_pattern(self, pattern: str) -> int:
         if self._cache is None:
@@ -149,15 +176,25 @@ class DiskCacheBackend(CacheBackend):  # pragma: no cover - thin wrapper
                 deleted += 1
         return deleted
 
-    async def invalidate_tags(
-        self, tags: Union[str, List[str], Set[str]]
-    ) -> int:  # noqa: D401,E501
-        return 0
+    async def invalidate_tags(self, tags: Union[str, List[str], Set[str]]) -> int:
+        if self._cache is None:
+            return 0
+        normalized_tags = normalize_tags(tags)
+        keys_to_remove: set[str] = set()
+        for tag in normalized_tags:
+            keys_to_remove.update(self._tags.get(tag, set()))
+
+        for key in keys_to_remove:
+            await self._run(self._cache.delete, key)
+            self._untrack_tags(key)
+        return len(keys_to_remove)
 
     async def flush_all(self) -> bool:
         if self._cache is None:
             return False
         await self._run(self._cache.clear)
+        self._tags.clear()
+        self._key_tags.clear()
         return True
 
     async def get_stats(self) -> CacheStats:

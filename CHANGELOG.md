@@ -7,6 +7,177 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-22
+
+A comprehensive audit surfaced and fixed a large batch of correctness, security,
+and reliability bugs across the whole package. Most fixes narrow existing
+behavior toward its documented/intended contract rather than adding new
+features, but a few are behavior changes - see the callouts below.
+
+### Security
+
+- **`allow_legacy_insecure_deserialization` now defaults to `False`** in
+  `CacheConfig` and in every backend that had its own copy of this flag
+  (`RedisBackend`, `MemcachedBackend`, `DiskCacheBackend`, `SQLiteBackend`).
+  Previously, any cached payload that failed JSON parsing silently fell back
+  to `pickle.loads()` by default - a straightforward deserialization-RCE
+  vector if the backend is reachable by anything untrusted. Opt back in
+  explicitly with `allow_legacy_insecure_deserialization=True` if you have
+  pre-1.1 pickle-serialized data to migrate off of.
+- `HTTPCacheMiddleware` no longer reads from or writes to the cache for a
+  request carrying an `Authorization` or `Cookie` header unless you supply
+  `key_builder` - previously the default cache key never varied by
+  principal, so one user's authenticated response could be cached and
+  replayed verbatim to a different user hitting the same path. A response
+  that sets `Set-Cookie` is likewise never cached.
+- CLI `ping` and `export-config` now redact any password embedded in
+  `redis_url` before printing/writing it, instead of leaking it in plaintext
+  to stdout or an exported config file.
+- Circuit breaker's `HALF_OPEN` state now actually admits only a single
+  trial call; previously every concurrent caller during the trial window
+  fell through the `== OPEN` check and hit the (possibly still-broken)
+  backend directly, unlike a normal half-open gate.
+
+### Fixed
+
+- **A cached `None` value is no longer treated as a cache miss.** `get()`,
+  `fetch_or_set()`, and the `@cached` decorator (both the plain miss check
+  and the async double-execution path, see below) previously used `None` as
+  their own "not found" sentinel, so a value your application legitimately
+  cached as `None`/`null` was silently discarded and replaced with the
+  caller's `default` on every read.
+- **`@cached` no longer executes the wrapped async function twice on
+  error.** With the default `skip_cache_on_error=True`, an exception raised
+  by the wrapped function itself (not just a cache-layer failure) was
+  caught by the same handler that retries on cache errors, causing the
+  function - including any side effect like a charge or a write - to run a
+  second time before the exception was finally raised to the caller.
+- **SQLite backend (`SQLiteBackend`) no longer deadlocks on an expired-key
+  read.** `get()` called `delete()` internally while still holding its own
+  (non-reentrant) `asyncio.Lock`, hanging that call forever and, since the
+  lock was never released, every subsequent call on the same backend
+  instance too. Also: values are now actually serialized (previously a
+  `dict`/`list` value raised `sqlite3.InterfaceError`), `exists()` and
+  `get_all_keys()` now honor TTL (previously an expired key still reported
+  as existing), `expire()` now returns `False` for a nonexistent key instead
+  of always `True`, and tag-based invalidation is now implemented instead
+  of silently being a no-op.
+- **Disk backend (`DiskCacheBackend`) tag invalidation is now implemented**
+  instead of silently doing nothing, and `connect()` is now idempotent
+  (calling it twice no longer leaks a file handle from the first open).
+- **Redis backend tag-set TTL is no longer clobbered downward.** Adding a
+  short-lived key to a tag already used by a longer-lived key used to reset
+  the whole tag set's expiry to the new key's (shorter) TTL, so the tag set
+  could expire out from under the still-live key and `invalidate_tags()`
+  would silently stop finding it.
+- **Memcached backend now actually uses every configured server** instead
+  of silently talking to only the first one; keys are sharded across
+  servers by a stable checksum so the same key always maps to the same
+  server across restarts and worker processes.
+- Naive vs. timezone-aware `datetime` mismatch fixed: `CacheEntry.is_expired`
+  and `.age_seconds` used `datetime.utcnow()` while `cache.py`,
+  `vector_search.py`, and `memory.py` constructed entries with tz-aware
+  timestamps, raising `TypeError` on the very first comparison. Backend
+  `fuzzy_search()` call sites that built naive timestamps were also updated
+  for consistency.
+- `generate_cache_key(..., user_id=0)` no longer collides with the
+  unscoped/no-user key - `user_id` was checked with `if user_id:`, and `0`
+  (a common first auto-increment user id) is falsy in Python.
+- Stale-if-error no longer masks ordinary cache misses/expirations. The
+  check used to run on `get()`'s success path, so it couldn't tell "the
+  backend errored" from "the key simply doesn't exist any more" and served
+  stale data past a key's real TTL with zero backend errors involved. It
+  now only triggers from the exception path, on a genuine backend failure.
+- `HTTPCacheMiddleware` now replays the original response's headers (e.g.
+  `Content-Type`) on a cache hit instead of only `ETag`/`Cache-Control`, and
+  includes the query string in its cache key by default (`include_query`
+  now defaults to `True`) so `/search?q=cats` and `/search?q=dogs` no longer
+  collide on the same cache entry. Also fixed a pre-existing bug where a
+  response body cached under the default JSON serialization was silently
+  corrupted (stored as the Python `repr()` of the bytes rather than the
+  bytes themselves), which meant a cache hit could never actually replay
+  correctly.
+- `cache.py`'s `_InflightLockMap` (single-flight/stampede-protection locks)
+  no longer evicts a lock that's currently held; the previous LRU eviction
+  could silently mint a second, unlocked lock for a key whose load was
+  still in progress, letting a concurrent caller stampede past it.
+- `cache.py`'s `_stale_store` is now bounded and pruned on a confirmed clean
+  miss, instead of only ever shrinking via explicit `delete`/`invalidate`/
+  `flush_all` calls - a long-running, high-key-cardinality, TTL-based
+  workload could grow it indefinitely.
+- `cache.py`'s `exists()` now checks the sanitized (prefixed) key first,
+  matching `delete()`'s priority - previously it checked the raw key first,
+  the opposite order, which could disagree with `get()` about whether a key
+  "exists" if an unrelated same-named key happened to exist in a shared
+  Redis DB.
+- `cache.py.disconnect()` and `RedisBackend.disconnect()` now always clear
+  the connected flag even if closing the underlying client raises;
+  previously a raise during teardown left the instance believing it was
+  still connected, making a subsequent `connect()` a silent no-op.
+- SWR (`SWRScheduler`) no longer loses track of the newly-scheduled task on
+  a successful refresh. The reschedule call happened synchronously inside
+  the finishing task, which then unconditionally popped whatever task was
+  now registered under that key - i.e. the *new* task's entry, not its own -
+  orphaning it from `get_active_refreshes()`/`get_stats()`/`stop()`. The
+  retry-after-failure path is now tracked in `_refresh_tasks` too, for the
+  same reason.
+- `initialize_tracing(sample_rate=...)` no longer replaces an
+  already-configured `TracerProvider` (and thus silently drops all of its
+  span processors/exporters); it only installs a sampled provider when none
+  has been explicitly configured yet.
+- `CacheMetrics` no longer double-counts a single failed operation under
+  both its operation-type and its exception-type key, which previously
+  could push `get_error_rate()` above 100%. Per-table and per-tag
+  `avg_response_time` are now actually computed instead of always
+  reporting `0.0` (both previously read from a dict key nothing ever wrote
+  to).
+- CLI: `--redis-url`/`YOKEDCACHE_REDIS_URL` no longer silently overrides a
+  `redis_url` loaded from `--config`; the flag had a non-empty default, so
+  it always looked "explicitly passed" and clobbered the config file's
+  value on every run regardless of whether the user actually passed `-r`.
+- CLI: `export-config` no longer crashes when any table has tags. The `list`
+  and `set` subcommands were defined as module-level functions named `list`
+  and `set`, which shadowed the builtins package-wide; `export-config`'s use
+  of the real `list()` builtin was calling the shadowed Click command
+  instead and crashing. Both subcommands keep their CLI-visible names
+  (`yokedcache list`, `yokedcache set`) via explicit `@main.command("...")`.
+- CLI: `flush`'s confirmation prompt now describes the same target it's
+  about to act on. If more than one of `--key`/`--pattern`/`--tags` was
+  passed at once, the prompt and the actual delete used opposite priority
+  orders, so confirming could authorize a different action than the one
+  that ran.
+- Config env-var overrides no longer silently store a `str` into an
+  `Optional[int]`/`Optional[float]` field (e.g. `YOKEDCACHE_REDIS_PORT`)
+  when that field's current value is `None` - the type-coercion check only
+  looked at the field's runtime value, which can't distinguish "unset" from
+  "meant to be a string," and now falls back to the field's declared type
+  annotation in that case.
+
+### Changed
+
+- `HTTPCacheMiddleware`'s `include_query` default changed from `False` to
+  `True` (see Fixed, above) - if you rely on the old default, pass
+  `include_query=False` explicitly.
+
+### Known limitations (not changed in this release)
+
+- `MemcachedBackend` tag membership is still tracked in this process's
+  memory only (not persisted in Memcached itself), so it doesn't survive a
+  process restart and isn't shared across worker processes. A fully
+  correct fix needs an atomic, Memcached-native index (CAS-based
+  read-modify-write), which was out of scope for this pass.
+- `cached_dependency()`'s non-generator wrapper still always re-invokes the
+  wrapped dependency rather than serving a cached result on a hit. Its
+  primary documented use case is DB session factories (e.g. `get_db()`),
+  where actually reusing a cached session object across requests would be
+  its own hazard; making the "plain value" case behave differently first
+  needs a reliable way to tell the two apart, which the current signature
+  doesn't provide.
+- Config env-var overrides still can't distinguish "explicitly passed a
+  value equal to the field's own default" from "not passed at all" - both
+  cases look identical after `__init__` runs, so an env var can still win
+  over an explicit constructor argument in that specific case.
+
 ## [1.0.3] - 2026-07-22
 
 ### Security

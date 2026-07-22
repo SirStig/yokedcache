@@ -41,7 +41,9 @@ async def test_cached_condition_signature_variants():
         return x
 
     with (
-        patch.object(cache, "get", return_value=None),
+        patch.object(
+            cache, "get", side_effect=lambda key, default=None, touch=True: default
+        ),
         patch.object(cache, "set", return_value=True) as mock_set,
     ):
         await f1(1)
@@ -64,7 +66,9 @@ async def test_cached_condition_exception_defaults_to_cache():
         return x
 
     with (
-        patch.object(cache, "get", return_value=None),
+        patch.object(
+            cache, "get", side_effect=lambda key, default=None, touch=True: default
+        ),
         patch.object(cache, "set", return_value=True) as mock_set,
     ):
         await f(1)
@@ -96,11 +100,14 @@ async def test_cached_async_key_builder():
         return x * 2
 
     with (
-        patch.object(cache, "get", return_value=None) as g,
+        patch.object(
+            cache, "get", side_effect=lambda key, default=None, touch=True: default
+        ) as g,
         patch.object(cache, "set", return_value=True),
     ):
         await f(3)
-        g.assert_called_once_with("kb:3")
+        g.assert_called_once()
+        assert g.call_args.args[0] == "kb:3"
 
 
 def test_cached_dependency_sync_generator():

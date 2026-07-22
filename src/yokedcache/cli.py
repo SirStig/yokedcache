@@ -26,6 +26,24 @@ from .utils import format_bytes, redis_scan_keys_max
 _cache_instance: Optional[YokedCache] = None
 
 
+def _redact_redis_url(url: str) -> str:
+    """Mask any embedded password so a redis_url is safe to print/export."""
+    from urllib.parse import urlparse, urlunparse
+
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return url
+    if not parsed.password:
+        return url
+
+    netloc = parsed.hostname or ""
+    netloc = f"{parsed.username}:***@{netloc}" if parsed.username else f"***@{netloc}"
+    if parsed.port:
+        netloc += f":{parsed.port}"
+    return urlunparse(parsed._replace(netloc=netloc))
+
+
 def get_cache_instance(
     redis_url: Optional[str] = None,
     config_file: Optional[str] = None,
@@ -67,9 +85,9 @@ def async_command(f):
 @click.option(
     "--redis-url",
     "-r",
-    help="Redis connection URL",
+    help="Redis connection URL (overrides --config's redis_url if given)",
     envvar="YOKEDCACHE_REDIS_URL",
-    default="redis://localhost:6379/0",
+    default=None,
 )
 @click.option(
     "--config",
@@ -80,7 +98,7 @@ def async_command(f):
 )
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 @click.pass_context
-def main(ctx, redis_url: str, config: Optional[str], verbose: bool):
+def main(ctx, redis_url: Optional[str], config: Optional[str], verbose: bool):
     """YokedCache CLI - Manage and monitor your cache."""
     ctx.ensure_object(dict)
     ctx.obj["redis_url"] = redis_url
@@ -281,7 +299,7 @@ async def _display_stats(cache: YokedCache, format: str, output: Optional[str] =
                 )
 
 
-@main.command()
+@main.command("list")
 @click.option("--prefix", "-p", help="Key prefix to filter by")
 @click.option("--pattern", "-P", help="Key pattern (supports * and ?)")
 @click.option(
@@ -296,7 +314,7 @@ async def _display_stats(cache: YokedCache, format: str, output: Optional[str] =
 )
 @click.pass_context
 @async_command
-async def list(
+async def list_keys(
     ctx, prefix: Optional[str], pattern: Optional[str], limit: int, format: str
 ):
     """List cached keys."""
@@ -387,7 +405,11 @@ async def flush(
                     click.echo("Aborted.")
                     return
             else:
-                target = pattern or tags or key
+                # Same priority as the action below (key > pattern > tags) -
+                # otherwise the prompt could describe a different target
+                # than what actually gets deleted when more than one
+                # selector is passed at once.
+                target = key or pattern or tags
                 if not click.confirm(f"Are you sure you want to flush: {target}?"):
                     click.echo("Aborted.")
                     return
@@ -500,7 +522,7 @@ async def ping(ctx, timeout: int):
         if healthy:
             response_time = (end_time - start_time) * 1000
             click.echo(f"✓ Redis connection successful ({response_time:.2f}ms)")
-            click.echo(f"  URL: {cache.config.redis_url}")
+            click.echo(f"  URL: {_redact_redis_url(cache.config.redis_url)}")
         else:
             click.echo("✗ Redis connection failed", err=True)
             sys.exit(1)
@@ -523,8 +545,9 @@ async def export_config(ctx, output: Optional[str]):
     )
 
     try:
+        redacted_url = _redact_redis_url(cache.config.redis_url)
         config_dict: Dict[str, Any] = {
-            "redis_url": cache.config.redis_url,
+            "redis_url": redacted_url,
             "default_ttl": cache.config.default_ttl,
             "key_prefix": cache.config.key_prefix,
             "enable_fuzzy": cache.config.enable_fuzzy,
@@ -543,6 +566,12 @@ async def export_config(ctx, output: Optional[str]):
                 }
 
         config_yaml = yaml.dump(config_dict, default_flow_style=False, sort_keys=False)
+        if redacted_url != cache.config.redis_url:
+            click.echo(
+                "Note: password redacted from redis_url; re-add credentials "
+                "before using this file to connect.",
+                err=True,
+            )
 
         if output:
             with open(output, "w") as f:
@@ -585,14 +614,14 @@ async def get(ctx, key: str):
         await cache.disconnect()
 
 
-@main.command()
+@main.command("set")
 @click.argument("key", required=True)
 @click.argument("value", required=True)
 @click.option("--ttl", "-t", type=int, help="Time to live in seconds")
 @click.option("--tags", help="Comma-separated list of tags")
 @click.pass_context
 @async_command
-async def set(ctx, key: str, value: str, ttl: Optional[int], tags: Optional[str]):
+async def set_key(ctx, key: str, value: str, ttl: Optional[int], tags: Optional[str]):
     """Set a value in cache."""
     cache = get_cache_instance(
         redis_url=ctx.obj["redis_url"], config_file=ctx.obj["config_file"]

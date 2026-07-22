@@ -8,7 +8,7 @@ clustering, persistence, and advanced Redis features.
 import logging
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, List, Optional, Set, Union
 
 import redis.asyncio as redis
@@ -47,7 +47,7 @@ class RedisBackend(CacheBackend):
         socket_timeout: int = 5,
         retry_on_timeout: bool = True,
         default_serialization: SerializationMethod = SerializationMethod.JSON,
-        allow_legacy_insecure_deserialization: bool = True,
+        allow_legacy_insecure_deserialization: bool = False,
         **kwargs,
     ):
         """Initialize Redis backend."""
@@ -104,17 +104,23 @@ class RedisBackend(CacheBackend):
 
     async def disconnect(self) -> None:
         """Close Redis connection."""
-        if self._redis:
-            # Use aclose() if available (Redis 5.0+), otherwise use close()
-            if hasattr(self._redis, "aclose"):
-                await self._redis.aclose()
-            else:
-                await self._redis.close()
+        try:
+            if self._redis:
+                # Use aclose() if available (Redis 5.0+), otherwise use close()
+                if hasattr(self._redis, "aclose"):
+                    await self._redis.aclose()
+                else:
+                    await self._redis.close()
 
-        if self._pool:
-            await self._pool.disconnect()
+            if self._pool:
+                await self._pool.disconnect()
+        finally:
+            # Always clear the connected flag, even if closing raised - a
+            # stuck-True flag makes connect() a no-op forever (it returns
+            # immediately when self._connected is True), so it must not
+            # depend on a clean teardown.
+            self._connected = False
 
-        self._connected = False
         logger.info("Disconnected from Redis")
 
     async def health_check(self) -> bool:
@@ -203,13 +209,14 @@ class RedisBackend(CacheBackend):
             serialized_data = serialize_for_cache(value, self.default_serialization)
 
             async with self._get_redis() as r:
+                normalized_tags = normalize_tags(tags) if tags else set()
+
                 async with r.pipeline() as pipe:
                     await pipe.set(sanitized_key, serialized_data, ex=actual_ttl)
 
-                    if tags:
-                        normalized_tags = normalize_tags(tags)
+                    if normalized_tags:
                         await self._add_tags_to_key(
-                            pipe, sanitized_key, normalized_tags, actual_ttl
+                            r, pipe, sanitized_key, normalized_tags, actual_ttl
                         )
 
                     await pipe.execute()
@@ -410,7 +417,7 @@ class RedisBackend(CacheBackend):
                                     cache_entry=CacheEntry(
                                         key=matched_key,
                                         value=value,
-                                        created_at=datetime.utcnow(),
+                                        created_at=datetime.now(timezone.utc),
                                     ),
                                 )
                                 results.append(result)
@@ -449,10 +456,24 @@ class RedisBackend(CacheBackend):
             return 0
 
     async def _add_tags_to_key(
-        self, pipe: redis.Redis, key: str, tags: Set[str], ttl: int
+        self, r: redis.Redis, pipe: Any, key: str, tags: Set[str], ttl: int
     ) -> None:
-        """Add key to tag sets."""
+        """Add key to tag sets, extending (never shrinking) each set's TTL.
+
+        A tag set's expiry must be at least as long as the longest-lived key
+        tagged with it. Unconditionally resetting it to this key's TTL+60s
+        would truncate the expiry out from under an existing, still-live key
+        that shares the tag but was set with a longer TTL - the tag set
+        would then vanish from under it, and invalidate_tags() would find
+        nothing to remove for that key from then on.
+        """
+        desired_ttl = ttl + 60  # Tag sets live slightly longer than their keys
         for tag in tags:
             tag_key = self._build_tag_key(tag)
+            current_ttl = await r.ttl(tag_key)
             await pipe.sadd(tag_key, key)
-            await pipe.expire(tag_key, ttl + 60)  # Tag sets live slightly longer
+            if current_ttl == -1:
+                continue  # No expiry set (persists forever) - leave it be.
+            if current_ttl > desired_ttl:
+                continue  # Existing expiry already covers this key.
+            await pipe.expire(tag_key, desired_ttl)

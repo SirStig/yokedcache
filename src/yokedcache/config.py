@@ -6,6 +6,7 @@ environment variables, and programmatic settings.
 """
 
 import os
+import typing
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -63,7 +64,7 @@ class CacheConfig:
     enable_compression: bool = False
     compression_threshold: int = 1024  # bytes
     default_serialization: SerializationMethod = SerializationMethod.JSON
-    allow_legacy_insecure_deserialization: bool = True
+    allow_legacy_insecure_deserialization: bool = False
     max_single_flight_locks: int = 50_000
 
     # Fuzzy search settings
@@ -195,17 +196,37 @@ class CacheConfig:
             if attr_name in defaults and current_value != defaults[attr_name]:
                 continue
 
+            # For an unset Optional[...] field (current_value is None),
+            # isinstance(current_value, int/float/bool) is always False, so
+            # the runtime value alone can't tell us the intended type (e.g.
+            # redis_port: Optional[int] = None would fall through to "treat
+            # as str" and silently store a string in an int field). Fall
+            # back to the field's declared annotation in that case.
+            target_type: Optional[type] = (
+                type(current_value) if current_value is not None else None
+            )
+            if target_type is None:
+                target_field_def = type(self).__dataclass_fields__.get(attr_name)
+                if target_field_def is not None:
+                    non_none_args = [
+                        arg
+                        for arg in typing.get_args(target_field_def.type)
+                        if arg is not type(None)  # noqa: E721
+                    ]
+                    if non_none_args:
+                        target_type = non_none_args[0]
+
             converted_value: Union[str, int, float, bool]
-            if isinstance(current_value, bool):
+            if target_type is bool:
                 converted_value = env_str.lower() in ("true", "1", "yes", "on")
-            elif isinstance(current_value, int):
+            elif target_type is int:
                 # Some int-like fields might be passed as strings later (tests
                 # allow either)
                 try:
                     converted_value = int(env_str)
                 except ValueError:
                     continue  # Skip invalid value
-            elif isinstance(current_value, float):
+            elif target_type is float:
                 try:
                     converted_value = float(env_str)
                 except ValueError:

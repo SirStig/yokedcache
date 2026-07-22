@@ -135,19 +135,31 @@ def initialize_tracing(
         )
         enabled = False
 
-    _global_tracer = CacheTracer(service_name, enabled)
-
-    # Configure sampling if tracing is available
+    # Configure sampling *before* constructing CacheTracer (which calls
+    # trace.get_tracer()), and only if no real provider is already
+    # configured — replacing an app's existing TracerProvider would discard
+    # its span processors/exporters, silently dropping all future spans.
     if enabled and TRACING_AVAILABLE and sample_rate < 1.0:
         try:
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
+            from opentelemetry.trace import ProxyTracerProvider
 
-            sampler = TraceIdRatioBased(sample_rate)
-            trace.set_tracer_provider(TracerProvider(sampler=sampler))
-            logger.debug(f"Set trace sampling rate to {sample_rate}")
+            current_provider = trace.get_tracer_provider()
+            if isinstance(current_provider, ProxyTracerProvider):
+                sampler = TraceIdRatioBased(sample_rate)
+                trace.set_tracer_provider(TracerProvider(sampler=sampler))
+                logger.debug(f"Set trace sampling rate to {sample_rate}")
+            else:
+                logger.warning(
+                    "A tracer provider is already configured; skipping "
+                    "sample_rate configuration to avoid discarding its "
+                    "span processors/exporters."
+                )
         except ImportError:
             logger.warning("OpenTelemetry SDK not available for sampling configuration")
+
+    _global_tracer = CacheTracer(service_name, enabled)
 
     return _global_tracer
 

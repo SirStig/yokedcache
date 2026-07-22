@@ -8,6 +8,8 @@ import pytest
 
 from yokedcache import CacheConfig, YokedCache
 from yokedcache.exceptions import CacheConnectionError, CacheKeyError
+from yokedcache.models import SerializationMethod
+from yokedcache.utils import serialize_for_cache
 
 
 class TestYokedCacheInitialization:
@@ -131,7 +133,9 @@ class TestYokedCacheBasicOperations:
             mock_redis = AsyncMock()
             mock_get_redis.return_value.__aenter__.return_value = mock_redis
             mock_redis.set.return_value = True
-            mock_redis.get.return_value = b'{"data": "test_value"}'
+            mock_redis.get.return_value = serialize_for_cache(
+                {"data": "test_value"}, SerializationMethod.JSON
+            )
 
             # Test set
             result = await cache.set("test_key", "test_value")
@@ -208,7 +212,9 @@ class TestYokedCacheBasicOperations:
 
             result = await cache.exists("test_key")
             assert result is True
-            mock_redis.exists.assert_called_once_with("test_key")
+            # exists() checks the sanitized (prefixed) key first, matching
+            # what set()/get()/delete() actually read and write under.
+            mock_redis.exists.assert_called_once_with("yokedcache:test_key")
 
     @pytest.mark.asyncio
     async def test_flush_operation(self):

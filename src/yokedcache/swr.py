@@ -71,8 +71,13 @@ class SWRScheduler:
         if not cache or self._shutdown:
             return
 
-        # Cancel any existing refresh task for this key
-        self._cancel_refresh(key)
+        # Cancel any existing refresh task for this key, unless we're being
+        # called synchronously from within that very task rescheduling
+        # itself (self-cancelling here would be a no-op today, but relying
+        # on that is fragile).
+        existing_task = self._refresh_tasks.get(key)
+        if existing_task is not None and existing_task is not asyncio.current_task():
+            self._cancel_refresh(key)
 
         # Calculate delay until refresh should occur
         actual_ttl = ttl if ttl is not None else cache.config.default_ttl
@@ -111,6 +116,7 @@ class SWRScheduler:
         tags: Optional[Union[str, list, Set[str]]] = None,
     ) -> None:
         """Refresh a key after the specified delay."""
+        current_task = asyncio.current_task()
         try:
             # Wait for the delay
             await asyncio.sleep(delay)
@@ -160,7 +166,7 @@ class SWRScheduler:
 
                         # Retry with exponential backoff
                         retry_delay = min(60, delay * 2)  # Max 60 seconds
-                        asyncio.create_task(
+                        self._refresh_tasks[key] = asyncio.create_task(
                             self._refresh_after_delay(
                                 key, loader, retry_delay, ttl, tags
                             )
@@ -173,8 +179,14 @@ class SWRScheduler:
             logger.error(f"Unexpected error in SWR refresh for {key}: {e}")
 
         finally:
-            # Clean up
-            self._refresh_tasks.pop(key, None)
+            # Only remove the dict entry if it's still pointing at this task.
+            # A successful refresh reschedules itself synchronously (see
+            # above) and stores the *new* task under the same key before
+            # this finally block runs — popping unconditionally here would
+            # discard that new task's tracking entry, orphaning it from
+            # get_active_refreshes()/get_stats()/stop().
+            if self._refresh_tasks.get(key) is current_task:
+                self._refresh_tasks.pop(key, None)
             if key in self._refresh_locks:
                 del self._refresh_locks[key]
 

@@ -27,6 +27,11 @@ from .utils import extract_table_from_query
 
 F = TypeVar("F", bound=Callable[..., Any])
 
+# Sentinel distinguishing "cache miss" from a legitimately cached `None` -
+# passed as get()'s `default` so a real cached None isn't mistaken for a
+# miss and silently recomputed/re-cached on every call.
+_MISS = object()
+
 
 def cached(
     cache: Optional[YokedCache] = None,
@@ -102,8 +107,8 @@ def cached(
                         func, args, kwargs, key_prefix or func.__name__
                     )
                 try:
-                    cached_val = actual_cache.get_sync(cache_key)
-                    if cached_val is not None:
+                    cached_val = actual_cache.get_sync(cache_key, default=_MISS)
+                    if cached_val is not _MISS:
                         return cached_val
                 except Exception:
                     if not skip_cache_on_error:
@@ -160,60 +165,69 @@ async def _cached_call(
 ) -> Any:
     """Internal function to handle cached function calls."""
 
+    if cache is None:
+        # Passthrough when no cache provided
+        return await func(*args, **kwargs)
+
+    # Cache-key building and the cache read are wrapped so a cache-layer
+    # failure (bad key_builder, backend error) can fall through to calling
+    # func() normally - but func() itself must NOT be inside this try. If
+    # func() raises (a real error, e.g. from a payment/side-effecting call)
+    # and skip_cache_on_error is True (the default), catching it here and
+    # then calling func() *again* below would run the wrapped function
+    # twice for what the caller sees as a single call.
+    cache_key: Optional[str] = None
     try:
-        if cache is None:
-            # Passthrough when no cache provided
-            return await func(*args, **kwargs)
         if key_builder:
             cache_key = key_builder(*args, **kwargs)
         else:
             cache_key = _build_function_cache_key(func, args, kwargs, key_prefix)
-        try:
-            cached_result = await cache.get(cache_key)
-            if cached_result is not None:
-                return cached_result
-        except Exception:
-            if not skip_cache_on_error:
-                raise
-        if inspect.iscoroutinefunction(func):
-            result = await func(*args, **kwargs)
-        else:
-            result = func(*args, **kwargs)
-        should_cache = True
-        if condition:
-            try:
-                try:
-                    cond_sig = inspect.signature(condition)
-                    if len(cond_sig.parameters) <= 1:
-                        should_cache = condition(result)
-                    else:
-                        should_cache = condition(result, *args, **kwargs)
-                except (ValueError, TypeError):
-                    should_cache = condition(result, *args, **kwargs)
-            except Exception:
-                should_cache = True
-        if should_cache and cache is not None:
-            try:
-                await cache.set(
-                    cache_key,
-                    result,
-                    ttl=ttl,
-                    tags=tags,
-                    serialization=serialization,
-                )
-            except Exception as e:
-                if not skip_cache_on_error:
-                    raise
-                import logging
 
-                logging.getLogger(__name__).warning(f"Failed to cache result: {e}")
-        return result
+        cached_result = await cache.get(cache_key, default=_MISS)
+        if cached_result is not _MISS:
+            return cached_result
     except Exception:
         if not skip_cache_on_error:
             raise
-        if inspect.iscoroutinefunction(func):
-            return await func(*args, **kwargs)
-        return func(*args, **kwargs)
+        cache_key = None  # Key building itself failed; skip the write-back too.
+
+    if inspect.iscoroutinefunction(func):
+        result = await func(*args, **kwargs)
+    else:
+        result = func(*args, **kwargs)
+
+    if cache_key is None:
+        return result
+
+    should_cache = True
+    if condition:
+        try:
+            try:
+                cond_sig = inspect.signature(condition)
+                if len(cond_sig.parameters) <= 1:
+                    should_cache = condition(result)
+                else:
+                    should_cache = condition(result, *args, **kwargs)
+            except (ValueError, TypeError):
+                should_cache = condition(result, *args, **kwargs)
+        except Exception:
+            should_cache = True
+    if should_cache:
+        try:
+            await cache.set(
+                cache_key,
+                result,
+                ttl=ttl,
+                tags=tags,
+                serialization=serialization,
+            )
+        except Exception as e:
+            if not skip_cache_on_error:
+                raise
+            import logging
+
+            logging.getLogger(__name__).warning(f"Failed to cache result: {e}")
+    return result
 
 
 @overload

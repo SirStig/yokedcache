@@ -103,7 +103,7 @@ Python 3.9 is not supported on 1.x. Pin `yokedcache==0.3.0` only as a temporary 
 
 ## Security
 
-Treat Redis and Memcached as trusted stores—anyone who can write arbitrary keys can affect what your app deserializes. Set `allow_legacy_insecure_deserialization=False` on `CacheConfig` once you've migrated away from legacy entries.
+Treat Redis and Memcached as trusted stores—anyone who can write arbitrary keys can affect what your app deserializes. **From 1.1.0**, `allow_legacy_insecure_deserialization` defaults to `False` on `CacheConfig` (and on each backend's own copy of the flag); only set it to `True` while migrating away from pre-1.0.0 legacy entries.
 
 The optional `disk` extra pulls in `diskcache`. **From 1.0.2**, the disk backend stores JSON-safe wrappers around the same **bytes envelope** as other backends (no pickle for cached payloads). **[CVE-2025-69872](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v)** still applies to the upstream package metadata until a patched wheel ships—automated scanners may flag it. Skip the `disk` extra if you don't need it; keep the cache directory non-world-writable if you do. See [SECURITY.md](SECURITY.md).
 

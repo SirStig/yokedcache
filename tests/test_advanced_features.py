@@ -9,6 +9,8 @@ import pytest
 try:
     from yokedcache.cache import YokedCache
     from yokedcache.config import CacheConfig
+    from yokedcache.models import SerializationMethod
+    from yokedcache.utils import serialize_for_cache
 except ImportError:
     pytest.skip("Core modules not available", allow_module_level=True)
 
@@ -406,7 +408,9 @@ class TestCacheIntegration:
         with patch("yokedcache.cache.redis.Redis.from_url") as mock_redis:
             mock_client = AsyncMock()
             mock_redis.return_value = mock_client
-            mock_client.get.return_value = b'"test_value"'
+            mock_client.get.return_value = serialize_for_cache(
+                "test_value", SerializationMethod.JSON
+            )
 
             cache = YokedCache(config)
             await cache.connect()

@@ -15,16 +15,24 @@ Notes:
     - Only caches 200 OK JSON/text responses by default.
     - Uses MD5 hash of body as ETag; weak etags (W/) can be enabled later.
     - Honors If-None-Match header and returns 304 when etag matches.
-    - Cache key pattern: http:{method}:{path} (no query params by default).
-    - Security: the default key does not vary by user or cookies. Do not use this
-      middleware on routes that return user-specific bodies unless you pass
-      key_builder (or equivalent) so each principal gets a distinct cache key.
+    - Cache key pattern: http:{method}:{path}?{query_string} - the query
+      string is included by default (pass include_query=False to opt out),
+      since two requests to the same path with different query strings are
+      generally different resources.
+    - Security: a request carrying an Authorization or Cookie header is
+      passed straight through (never read from or written to the cache)
+      unless you supply key_builder, since this middleware has no way to
+      know how to vary the key per principal on its own. A response that
+      sets Set-Cookie is likewise never cached. If you do supply
+      key_builder, make sure it varies the key per principal yourself -
+      that opts back into caching authenticated/cookied requests.
 
 # flake8: noqa
 """
 
 from __future__ import annotations
 
+import base64
 import hashlib
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
@@ -44,7 +52,7 @@ class HTTPCacheMiddleware:  # pragma: no cover - integration layer
         app: ASGIApp,
         cache: Any,
         default_ttl: int = 60,
-        include_query: bool = False,
+        include_query: bool = True,
         cache_control: Optional[str] = None,
         etag_prefix: str = "",
         key_builder: Optional["_ScopeKeyBuilder"] = None,
@@ -97,14 +105,33 @@ class HTTPCacheMiddleware:  # pragma: no cover - integration layer
             await self.app(scope, receive, send)
             return
 
-        cache_key = self._build_key(scope)
         headers = Headers(scope=scope)
         client_etag = headers.get("if-none-match")
 
+        # Never read from or write to the cache for a request carrying
+        # credentials unless the caller supplied a key_builder - without
+        # one, every principal hitting this path would collide on the same
+        # cache key and one user's response would be served to another.
+        has_credentials = bool(headers.get("authorization") or headers.get("cookie"))
+        if has_credentials and self._key_builder is None:
+            await self.app(scope, receive, send)
+            return
+
+        cache_key = self._build_key(scope)
+
         cached = await self.cache.get(cache_key, default=None)
         if cached is not None and isinstance(cached, dict):
-            body_bytes = cached.get("body", b"")
+            # Body is stored base64-encoded (see below) since a raw `bytes`
+            # value silently corrupts under the default JSON serialization -
+            # orjson has no bytes support, so it falls back to str(bytes_obj)
+            # and stores the *repr* of the bytes rather than the bytes
+            # themselves, breaking every cache hit under default config.
+            raw_body = cached.get("body", "")
+            body_bytes = (
+                base64.b64decode(raw_body) if isinstance(raw_body, str) else raw_body
+            )
             etag = cached.get("etag")
+            cached_headers = cached.get("headers") or []
             if client_etag and etag and self._etag_matches(client_etag, etag):
                 # Return 304
                 etag_value: str = etag
@@ -125,15 +152,18 @@ class HTTPCacheMiddleware:  # pragma: no cover - integration layer
                 await send({"type": "http.response.body", "body": b""})
                 return
 
-            # Serve cached response
+            # Serve cached response, replaying the originally captured
+            # headers (e.g. Content-Type) rather than only etag/cache-control.
             async def send_cached(message):
                 if message["type"] == "http.response.start":
-                    message["headers"].extend(
-                        [
-                            (b"etag", etag.encode() if etag else b""),
-                            (b"cache-control", self.cache_control.encode()),
-                        ]
-                    )
+                    replay = [
+                        (k.encode("latin-1"), v.encode("latin-1"))
+                        for k, v in cached_headers
+                        if k.lower() not in ("etag", "cache-control")
+                    ]
+                    replay.append((b"etag", etag.encode() if etag else b""))
+                    replay.append((b"cache-control", self.cache_control.encode()))
+                    message["headers"].extend(replay)
                 elif message["type"] == "http.response.body":
                     message["body"] = body_bytes
                 await send(message)
@@ -151,10 +181,14 @@ class HTTPCacheMiddleware:  # pragma: no cover - integration layer
         # Capture response
         chunks = []
         status_code_holder = {"status": 200}
+        captured_headers: list = []
 
         async def capture_send(message):
             if message["type"] == "http.response.start":
                 status_code_holder["status"] = message.get("status", 200)
+                captured_headers.clear()
+                for k, v in message.get("headers", []):
+                    captured_headers.append((k.decode("latin-1"), v.decode("latin-1")))
             elif message["type"] == "http.response.body":
                 body = message.get("body", b"")
                 if body:
@@ -166,6 +200,12 @@ class HTTPCacheMiddleware:  # pragma: no cover - integration layer
         status = status_code_holder["status"]
         if status != 200:  # only cache 200
             return
+        # A response that sets cookies is establishing/refreshing
+        # session/personalized state - caching it would replay that same
+        # Set-Cookie (and whatever body it's paired with) to every other
+        # caller of this path.
+        if any(k.lower() == "set-cookie" for k, _ in captured_headers):
+            return
         body_bytes = b"".join(chunks)
         if not body_bytes:
             return
@@ -175,7 +215,12 @@ class HTTPCacheMiddleware:  # pragma: no cover - integration layer
         # Store
         await self.cache.set(
             cache_key,
-            {"etag": etag, "body": body_bytes, "status": status},
+            {
+                "etag": etag,
+                "body": base64.b64encode(body_bytes).decode("ascii"),
+                "status": status,
+                "headers": captured_headers,
+            },
             ttl=self.default_ttl,
         )
         # Note: Original response already sent. Cannot modify headers post-hoc without full buffering; advanced variant could intercept fully.

@@ -27,7 +27,9 @@ class TestCachedDecorator:
             patch.object(cache, "set") as mock_set,
         ):
 
-            mock_get.return_value = None  # Cache miss
+            # Cache miss: a real miss returns whatever `default` was passed
+            # (get() only returns the raw cached value on an actual hit).
+            mock_get.side_effect = lambda key, default=None, touch=True: default
             mock_set.return_value = True
 
             result = await test_function(1, 2)
@@ -67,7 +69,7 @@ class TestCachedDecorator:
             patch.object(cache, "set") as mock_set,
         ):
 
-            mock_get.return_value = None
+            mock_get.side_effect = lambda key, default=None, touch=True: default
             mock_set.return_value = True
 
             result = await get_user_profile(123)
@@ -114,7 +116,7 @@ class TestCachedDecorator:
             patch.object(cache, "set_sync") as mock_set,
         ):
 
-            mock_get.return_value = None
+            mock_get.side_effect = lambda key, default=None, touch=True: default
             mock_set.return_value = True
 
             result = sync_function(3, 4)
@@ -165,7 +167,7 @@ class TestCachedDecorator:
             patch.object(cache, "set") as mock_set,
         ):
 
-            mock_get.return_value = None
+            mock_get.side_effect = lambda key, default=None, touch=True: default
             mock_set.return_value = True
 
             # Test positive result (should cache)

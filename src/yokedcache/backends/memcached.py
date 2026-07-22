@@ -7,7 +7,8 @@ distributed caching across multiple Memcached servers.
 
 import logging
 import time
-from datetime import datetime
+import zlib
+from datetime import datetime, timezone
 from typing import Any, List, Optional, Set, Union
 
 from ..exceptions import CacheSerializationError
@@ -42,7 +43,7 @@ class MemcachedBackend(CacheBackend):
         default_serialization: SerializationMethod = SerializationMethod.PICKLE,
         pool_size: int = 2,
         pool_minsize: int = 1,
-        allow_legacy_insecure_deserialization: bool = True,
+        allow_legacy_insecure_deserialization: bool = False,
         **kwargs,
     ):
         """Initialize Memcached backend."""
@@ -75,12 +76,44 @@ class MemcachedBackend(CacheBackend):
             else:
                 self.server_tuples.append(server)
 
-        self._client: Optional[aiomcache.Client] = None
+        # aiomcache.Client only speaks to a single server, so multi-server
+        # support means one client per configured server, sharded by key.
+        self._clients: List[Any] = []
         self._stats = CacheStats()
         self._start_time = time.time()
 
-        # Tag storage - Memcached doesn't support sets, so we'll simulate them
-        self._tag_storage: dict = {}  # This would need external storage in production
+        # Tag storage - Memcached doesn't support sets or key enumeration, so
+        # tag membership is tracked in this process's memory only. It does
+        # not survive a process restart and is not visible to other
+        # processes/workers sharing the same Memcached servers; a key that
+        # naturally expires via Memcached's own TTL is also never pruned
+        # from here (only delete()/invalidate_tags() remove entries). This
+        # is a real limitation of tag support on this backend, not a bug in
+        # any single operation.
+        self._tag_storage: dict = {}
+
+    @property
+    def _client(self) -> Optional["aiomcache.Client"]:
+        """Back-compat alias for the first configured client."""
+        return self._clients[0] if self._clients else None
+
+    @_client.setter
+    def _client(self, value: Optional["aiomcache.Client"]) -> None:
+        self._clients = [value] if value is not None else []
+
+    def _client_for_key(self, key: str) -> Optional["aiomcache.Client"]:
+        """Pick which server's client owns ``key``.
+
+        Uses a stable checksum (not Python's hash-randomized ``hash()``) so
+        the same key always maps to the same server across process
+        restarts and across different worker processes.
+        """
+        if not self._clients:
+            return None
+        if len(self._clients) == 1:
+            return self._clients[0]
+        index = zlib.crc32(key.encode()) % len(self._clients)
+        return self._clients[index]
 
     async def connect(self) -> None:
         """Establish connection to Memcached."""
@@ -88,19 +121,23 @@ class MemcachedBackend(CacheBackend):
             return
 
         try:
-            self._client = aiomcache.Client(
-                *self.server_tuples[
-                    0
-                ],  # aiomcache only supports single server per client
-                pool_size=self.pool_size,
-                pool_minsize=self.pool_minsize,
-            )
+            clients = [
+                aiomcache.Client(
+                    host,
+                    port,
+                    pool_size=self.pool_size,
+                    pool_minsize=self.pool_minsize,
+                )
+                for host, port in self.server_tuples
+            ]
 
-            # Test connection
-            await self._client.version()
+            # Test each connection
+            for client in clients:
+                await client.version()
 
+            self._clients = clients
             self._connected = True
-            logger.info(f"Connected to Memcached at {self.server_tuples[0]}")
+            logger.info(f"Connected to Memcached at {self.server_tuples}")
 
         except Exception as e:
             self._connected = False
@@ -108,19 +145,20 @@ class MemcachedBackend(CacheBackend):
 
     async def disconnect(self) -> None:
         """Close Memcached connection."""
-        if self._client:
-            await self._client.close()
+        for client in self._clients:
+            await client.close()
 
         self._connected = False
         logger.info("Disconnected from Memcached")
 
     async def health_check(self) -> bool:
         """Check if Memcached connection is healthy."""
-        if not self._connected or not self._client:
+        if not self._connected or not self._clients:
             return False
 
         try:
-            await self._client.version()
+            for client in self._clients:
+                await client.version()
             return True
         except Exception as e:
             logger.warning(f"Memcached health check failed: {e}")
@@ -139,13 +177,13 @@ class MemcachedBackend(CacheBackend):
 
     async def get(self, key: str, default: Any = None) -> Any:
         """Get value from cache."""
-        if not self._client:
+        sanitized_key = self._build_key(key)
+        client = self._client_for_key(sanitized_key)
+        if client is None:
             return default
 
-        sanitized_key = self._build_key(key)
-
         try:
-            data = await self._client.get(sanitized_key.encode())
+            data = await client.get(sanitized_key.encode())
 
             if data is None:
                 self._stats.add_miss()
@@ -175,16 +213,17 @@ class MemcachedBackend(CacheBackend):
         tags: Optional[Set[str]] = None,
     ) -> bool:
         """Set value in cache."""
-        if not self._client:
+        sanitized_key = self._build_key(key)
+        client = self._client_for_key(sanitized_key)
+        if client is None:
             return False
 
-        sanitized_key = self._build_key(key)
         actual_ttl = calculate_ttl_with_jitter(ttl or 300)
 
         try:
             serialized_data = serialize_for_cache(value, self.default_serialization)
 
-            success = await self._client.set(
+            success = await client.set(
                 sanitized_key.encode(), serialized_data, exptime=actual_ttl
             )
 
@@ -207,13 +246,13 @@ class MemcachedBackend(CacheBackend):
 
     async def delete(self, key: str) -> bool:
         """Delete key from cache."""
-        if not self._client:
+        sanitized_key = self._build_key(key)
+        client = self._client_for_key(sanitized_key)
+        if client is None:
             return False
 
-        sanitized_key = self._build_key(key)
-
         try:
-            success = await self._client.delete(sanitized_key.encode())
+            success = await client.delete(sanitized_key.encode())
 
             if success:
                 self._stats.total_deletes += 1
@@ -275,11 +314,12 @@ class MemcachedBackend(CacheBackend):
 
     async def flush_all(self) -> bool:
         """Flush all cache keys."""
-        if not self._client:
+        if not self._clients:
             return False
 
         try:
-            await self._client.flush_all()
+            for client in self._clients:
+                await client.flush_all()
             self._tag_storage.clear()
             logger.warning("Flushed all Memcached keys")
             return True
@@ -292,23 +332,24 @@ class MemcachedBackend(CacheBackend):
         """Get current cache statistics."""
         self._stats.uptime_seconds = time.time() - self._start_time
 
-        try:
-            if self._client:
-                stats = await self._client.stats()
+        total_bytes = 0
+        total_items = 0
+        for client in self._clients:
+            try:
+                stats = await client.stats()
                 # Parse Memcached stats
                 if stats:
                     stats_dict = dict(stats)
                     bytes_val = stats_dict.get(b"bytes", b"0")
                     items_val = stats_dict.get(b"curr_items", b"0")
-                    self._stats.total_memory_bytes = (
-                        int(bytes_val) if bytes_val is not None else 0
-                    )
-                    self._stats.total_keys = (
-                        int(items_val) if items_val is not None else 0
-                    )
+                    total_bytes += int(bytes_val) if bytes_val is not None else 0
+                    total_items += int(items_val) if items_val is not None else 0
+            except Exception as e:
+                logger.debug(f"Could not get Memcached stats: {e}")
 
-        except Exception as e:
-            logger.debug(f"Could not get Memcached stats: {e}")
+        if self._clients:
+            self._stats.total_memory_bytes = total_bytes
+            self._stats.total_keys = total_items
 
         return self._stats
 
@@ -358,7 +399,7 @@ class MemcachedBackend(CacheBackend):
                                     cache_entry=CacheEntry(
                                         key=matched_key,
                                         value=value,
-                                        created_at=datetime.utcnow(),
+                                        created_at=datetime.now(timezone.utc),
                                     ),
                                 )
                                 results.append(result)
@@ -377,14 +418,15 @@ class MemcachedBackend(CacheBackend):
 
     async def get_size_bytes(self) -> int:
         """Get total size of cache in bytes."""
-        try:
-            if self._client:
-                stats = await self._client.stats()
+        total = 0
+        for client in self._clients:
+            try:
+                stats = await client.stats()
                 if stats:
                     stats_dict = dict(stats)
                     bytes_val = stats_dict.get(b"bytes", b"0")
-                    return int(bytes_val) if bytes_val is not None else 0
-        except Exception as e:
-            logger.error(f"Error getting cache size: {e}")
+                    total += int(bytes_val) if bytes_val is not None else 0
+            except Exception as e:
+                logger.error(f"Error getting cache size: {e}")
 
-        return 0
+        return total

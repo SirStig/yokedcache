@@ -146,7 +146,7 @@ def test_record_operation_tag_failure():
     )
     m.record_operation(metric)
     assert m.tag_metrics["user"]["error_count"] == 1
-    assert m.error_counts["ConnectionError"] >= 1
+    assert m.error_type_counts["ConnectionError"] >= 1
 
 
 # ---------------------------------------------------------------------------

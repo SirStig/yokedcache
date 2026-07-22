@@ -13,7 +13,8 @@ import pytest
 from yokedcache.backends import MEMCACHED_AVAILABLE, MemoryBackend, RedisBackend
 from yokedcache.backends.base import CacheBackend
 from yokedcache.exceptions import CacheConnectionError
-from yokedcache.models import CacheStats
+from yokedcache.models import CacheStats, SerializationMethod
+from yokedcache.utils import serialize_for_cache
 
 
 def _make_scan_iter(keys):
@@ -359,7 +360,9 @@ class TestRedisBackend:
         backend, mock_redis = redis_backend
 
         # Mock responses
-        mock_redis.get.return_value = b'"test_value"'
+        mock_redis.get.return_value = serialize_for_cache(
+            "test_value", SerializationMethod.JSON
+        )
         mock_redis.setex.return_value = True
         mock_redis.delete.return_value = 1
         mock_redis.exists.return_value = 1

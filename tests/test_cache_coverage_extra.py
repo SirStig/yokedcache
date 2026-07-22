@@ -20,7 +20,12 @@ async def test_build_key_already_prefixed():
 
 @pytest.mark.asyncio
 async def test_get_pickle_fallback():
-    cache = YokedCache(CacheConfig(enable_env_overrides=False))
+    cache = YokedCache(
+        CacheConfig(
+            enable_env_overrides=False,
+            allow_legacy_insecure_deserialization=True,
+        )
+    )
     pickled = pickle.dumps({"a": 1})
     mock_r = AsyncMock()
     mock_r.get.return_value = pickled

@@ -51,7 +51,7 @@ def generate_cache_key(
     if table:
         key_parts.append(f"table:{table}")
 
-    if user_id:
+    if user_id is not None:
         key_parts.append(f"user:{user_id}")
 
     # Create a hash for query and params to ensure consistent key length

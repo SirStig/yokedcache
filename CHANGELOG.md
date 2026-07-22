@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-07-22
+
+### Security
+
+- Regenerated `uv.lock` (`uv lock --upgrade`). A `pip-audit` pass against the previous lock found 15 known vulnerabilities across 6 packages; after the upgrade only one remains, and it's a documented non-issue for this project (see below). Notable fixes pulled in:
+  - **cryptography** 46.0.7 → 49.0.0 ([GHSA-537c-gmf6-5ccf](https://github.com/advisories/GHSA-537c-gmf6-5ccf), statically linked OpenSSL advisory in wheels before 48.0.1).
+  - **click** 8.3.2 → 8.4.2 (PYSEC-2026-2132, command injection via `click.edit()`).
+  - **urllib3** 2.6.3 → 2.7.0 (PYSEC-2026-142, PYSEC-2026-141 — decompression resource exhaustion and cross-origin header leakage).
+  - **idna** 3.11 → 3.18 (PYSEC-2026-215, incomplete fix for the `idna.encode()` DoS originally tracked as CVE-2024-3651).
+  - **starlette** 1.0.0 → 1.3.1 (`web` extra; PYSEC-2026-161/248/249/2280/2281 — Host-header/path URL-reconstruction bypasses, unbounded `application/x-www-form-urlencoded` parsing, Windows UNC-path SSRF via `StaticFiles`, and unrestricted `HTTPEndpoint` method dispatch).
+- `[tool.uv] constraint-dependencies` now also floors **click** (≥8.3.3), **urllib3** (≥2.7.0), **idna** (≥3.15), and **starlette** (≥1.3.1), and raises the existing **cryptography** floor to ≥48.0.1, so a future `uv lock` (without `--upgrade`) can't silently drift back to a pre-fix release.
+- `redis` optional-dependency floor raised **≥4.0.0 → ≥5.0.0**: the test suite only validates against redis-py 8.0.1, and 5.0+ is what actually guarantees an async `aclose()` (see Fixed, below).
+- Remaining `pip-audit` finding — **diskcache** 5.6.3, PYSEC-2026-2447 (pickle-by-default deserialization) — has no upstream fix version yet and is unchanged from 1.0.2: `DiskCacheBackend` already avoids pickle for application cache values via `diskcache.JSONDisk` (see `SECURITY.md`).
+
+### Fixed
+
+- `RedisBackend.set()` now issues `SET key value EX ttl` instead of the deprecated pipelined `SETEX` call (redis-py 8.0 flags `setex()` for eventual removal in favor of `set(..., ex=...)`).
+- `RedisBackend.disconnect()` now prefers `aclose()` over the deprecated `close()` when available, matching the guard `YokedCache.close()` already used.
+
+### Changed
+
+- `[tool.mypy] python_version` raised `3.10` → `3.12`. This only controls which syntax mypy accepts while type-checking (numpy's stub now uses a PEP 695 `type` statement that requires it); the package's actual supported Python range (`>=3.10`, per `requires-python`) is unchanged.
+
 ## [1.0.2] - 2026-04-15
 
 ### Security

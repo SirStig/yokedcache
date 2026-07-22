@@ -107,9 +107,11 @@ class HTTPCacheMiddleware:  # pragma: no cover - integration layer
             etag = cached.get("etag")
             if client_etag and etag and self._etag_matches(client_etag, etag):
                 # Return 304
+                etag_value: str = etag
+
                 async def send_304(message):
                     if message["type"] == "http.response.start":
-                        headers_list = [(b"etag", etag.encode())]
+                        headers_list = [(b"etag", etag_value.encode())]
                         headers_list.append(
                             (b"cache-control", self.cache_control.encode())
                         )

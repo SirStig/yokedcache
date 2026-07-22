@@ -105,7 +105,11 @@ class RedisBackend(CacheBackend):
     async def disconnect(self) -> None:
         """Close Redis connection."""
         if self._redis:
-            await self._redis.close()
+            # Use aclose() if available (Redis 5.0+), otherwise use close()
+            if hasattr(self._redis, "aclose"):
+                await self._redis.aclose()
+            else:
+                await self._redis.close()
 
         if self._pool:
             await self._pool.disconnect()
@@ -200,7 +204,7 @@ class RedisBackend(CacheBackend):
 
             async with self._get_redis() as r:
                 async with r.pipeline() as pipe:
-                    await pipe.setex(sanitized_key, actual_ttl, serialized_data)
+                    await pipe.set(sanitized_key, serialized_data, ex=actual_ttl)
 
                     if tags:
                         normalized_tags = normalize_tags(tags)

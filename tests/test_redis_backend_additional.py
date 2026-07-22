@@ -73,7 +73,7 @@ async def test_redis_set_with_tags_pipeline():
                 return False
 
             # redis pipeline operations
-            setex = AsyncMock()
+            set = AsyncMock()
             sadd = AsyncMock()
             expire = AsyncMock()
             execute = AsyncMock()
@@ -85,7 +85,7 @@ async def test_redis_set_with_tags_pipeline():
         await backend.connect()
         ok = await backend.set("key", "value", ttl=60, tags={"users"})
         assert ok is True
-        pipeline_mock.setex.assert_called()
+        pipeline_mock.set.assert_called()
         pipeline_mock.sadd.assert_called()
         await backend.disconnect()
 

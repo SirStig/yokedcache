@@ -3,7 +3,7 @@
 
 # Core dependencies
 orjson>=3.11.6
-redis>=4.0.0
+redis>=5.0.0
 fastapi>=0.68.0
 pyyaml>=6.0
 click>=8.0.0

@@ -2,7 +2,7 @@
 # Install with: pip install -r requirements-extended.txt
 
 # Core dependencies (always required)
-redis>=4.0.0
+redis>=5.0.0
 fastapi>=0.68.0
 pyyaml>=6.0
 click>=8.0.0
